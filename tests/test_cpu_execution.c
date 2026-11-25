@@ -107,6 +107,67 @@ int main(void)
             PSX_COP0_CAUSE_EXCCODE_SHIFT));
     machine.cop0_status = 0u;
 
+    /* R3000A load delay: the immediately following instruction reads
+     * the old register value; the loaded value is visible afterwards.
+     */
+    assert(psx_memory_write32(&machine.memory, 0x200u, 0x12345678u));
+    assert(psx_memory_write32(&machine.memory, 0x1c0u, 0x8d280000u)); /* LW t0,0(t1) */
+    assert(psx_memory_write32(&machine.memory, 0x1c4u, 0x01005021u)); /* ADDU t2,t0,zero */
+    assert(psx_memory_write32(&machine.memory, 0x1c8u, 0x01005821u)); /* ADDU t3,t0,zero */
+    psx_cpu_write_gpr(&machine.cpu, 8u, 0x11111111u);
+    psx_cpu_write_gpr(&machine.cpu, 9u, 0x200u);
+    machine.cpu.pc = 0x1c0u; machine.cpu.next_pc = 0x1c4u;
+    machine.cpu.delay_slot_pending = false;
+    machine.cpu.load_delay_pending = false;
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(psx_cpu_read_gpr(&machine.cpu, 8u) == 0x11111111u);
+    assert(machine.cpu.load_delay_pending);
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(psx_cpu_read_gpr(&machine.cpu, 10u) == 0x11111111u);
+    assert(psx_cpu_read_gpr(&machine.cpu, 8u) == 0x12345678u);
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(psx_cpu_read_gpr(&machine.cpu, 11u) == 0x12345678u);
+
+    /* A write to the same destination in the delay instruction wins. */
+    assert(psx_memory_write32(&machine.memory, 0x1d0u, 0x8d280000u)); /* LW t0,0(t1) */
+    assert(psx_memory_write32(&machine.memory, 0x1d4u, 0x24080009u)); /* ADDIU t0,zero,9 */
+    psx_cpu_write_gpr(&machine.cpu, 8u, 0x22222222u);
+    machine.cpu.pc = 0x1d0u; machine.cpu.next_pc = 0x1d4u;
+    machine.cpu.load_delay_pending = false;
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(psx_cpu_read_gpr(&machine.cpu, 8u) == 9u);
+    assert(!machine.cpu.load_delay_pending);
+
+    /* An unrelated instruction allows the older load to commit. */
+    assert(psx_memory_write32(&machine.memory, 0x1e0u, 0x8d280000u)); /* LW t0,0(t1) */
+    assert(psx_memory_write32(&machine.memory, 0x1e4u, 0x240c0001u)); /* ADDIU t4,zero,1 */
+    psx_cpu_write_gpr(&machine.cpu, 8u, 0u);
+    machine.cpu.pc = 0x1e0u; machine.cpu.next_pc = 0x1e4u;
+    machine.cpu.load_delay_pending = false;
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(psx_cpu_read_gpr(&machine.cpu, 8u) == 0x12345678u);
+    assert(psx_cpu_read_gpr(&machine.cpu, 12u) == 1u);
+
+    /* Consecutive loads retire in order and each retain one-instruction delay. */
+    assert(psx_memory_write32(&machine.memory, 0x204u, 0x87654321u));
+    assert(psx_memory_write32(&machine.memory, 0x1f0u, 0x8d280000u)); /* LW t0,0(t1) */
+    assert(psx_memory_write32(&machine.memory, 0x1f4u, 0x8d2a0004u)); /* LW t2,4(t1) */
+    assert(psx_memory_write32(&machine.memory, 0x1f8u, 0x240d0002u)); /* ADDIU t5,zero,2 */
+    psx_cpu_write_gpr(&machine.cpu, 8u, 0u);
+    psx_cpu_write_gpr(&machine.cpu, 10u, 0u);
+    machine.cpu.pc = 0x1f0u; machine.cpu.next_pc = 0x1f4u;
+    machine.cpu.load_delay_pending = false;
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(psx_cpu_read_gpr(&machine.cpu, 8u) == 0x12345678u);
+    assert(psx_cpu_read_gpr(&machine.cpu, 10u) == 0u);
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(psx_cpu_read_gpr(&machine.cpu, 10u) == 0x87654321u);
+    assert(psx_cpu_read_gpr(&machine.cpu, 13u) == 2u);
+    machine.cpu.load_delay_pending = false;
+
     free(bios); free(ram);
     puts("DreamPSX R3000A execution tests: OK");
     return 0;
