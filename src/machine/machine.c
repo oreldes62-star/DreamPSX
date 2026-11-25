@@ -97,6 +97,16 @@ bool psx_machine_step(PsxMachine *machine)
                                         cpu->fault_address, in_delay_slot,
                                         branch_pc);
             return true;
+        case PSX_CPU_STEP_ADDRESS_ERROR_LOAD:
+            psx_machine_raise_exception(machine, PSX_EXCEPTION_ADDRESS_LOAD,
+                                        cpu->fault_address, in_delay_slot,
+                                        branch_pc);
+            return true;
+        case PSX_CPU_STEP_ADDRESS_ERROR_STORE:
+            psx_machine_raise_exception(machine, PSX_EXCEPTION_ADDRESS_STORE,
+                                        cpu->fault_address, in_delay_slot,
+                                        branch_pc);
+            return true;
         case PSX_CPU_STEP_OVERFLOW:
             psx_machine_raise_exception(machine, PSX_EXCEPTION_OVERFLOW,
                                         0u, in_delay_slot, branch_pc);
