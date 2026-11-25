@@ -46,6 +46,23 @@ int main(void)
     psx_machine_refresh_interrupts(&machine);
     assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) == 0u);
 
+    /* An eligible hardware IRQ is dispatched automatically at a safe
+     * instruction boundary and redirects to the general exception vector.
+     */
+    machine.cpu.pc = 0x80000000u;
+    machine.cpu.next_pc = 0x80000004u;
+    psx_irq_set_line(&machine.irq, 2u, true);
+    psx_irq_write_mask(&machine.irq, (uint16_t)(1u << 2));
+    machine.cop0_status = PSX_COP0_STATUS_IEC | PSX_COP0_CAUSE_IP2;
+    assert(psx_machine_step(&machine));
+    assert(machine.cop0_epc == 0x80000000u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_EXCCODE) ==
+           ((uint32_t)PSX_EXCEPTION_INTERRUPT << PSX_COP0_CAUSE_EXCCODE_SHIFT));
+    assert(machine.cpu.pc == 0x80000080u);
+    assert(machine.cpu.next_pc == 0x80000084u);
+    assert((machine.cop0_status & PSX_COP0_STATUS_IEC) == 0u);
+    assert(!psx_machine_interrupt_eligible(&machine));
+
     free(bios);
     free(ram);
     puts("DreamPSX machine-state tests: OK");
