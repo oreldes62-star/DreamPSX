@@ -29,6 +29,9 @@ typedef struct {
     uint32_t next_pc;
     uint32_t delay_branch_pc;
     uint32_t fault_address;
+    uint32_t load_delay_value;
+    uint8_t load_delay_register;
+    bool load_delay_pending;
     bool delay_slot_pending;
     bool initialized;
 } PsxCpu;
