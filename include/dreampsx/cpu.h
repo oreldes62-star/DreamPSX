@@ -21,5 +21,7 @@ uint32_t psx_cpu_read_gpr(const PsxCpu *cpu, unsigned index);
 void psx_cpu_write_gpr(PsxCpu *cpu, unsigned index, uint32_t value);
 bool psx_cpu_fetch_instruction(const PsxCpu *cpu, const PsxBus *bus,
                                uint32_t *instruction);
+/* Executes one supported instruction; false means fetch, bus or opcode failure. */
+bool psx_cpu_step(PsxCpu *cpu, PsxBus *bus);
 
 #endif
