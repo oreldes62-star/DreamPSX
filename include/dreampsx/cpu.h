@@ -13,6 +13,8 @@ typedef struct {
     uint32_t lo;
     uint32_t pc;
     uint32_t next_pc;
+    uint32_t delay_branch_pc;
+    bool delay_slot_pending;
     bool initialized;
 } PsxCpu;
 
