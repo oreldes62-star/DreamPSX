@@ -55,6 +55,7 @@ void psx_machine_raise_exception(PsxMachine *machine, PsxExceptionCode code,
                                       in_delay_slot, branch_pc);
     machine->cpu.pc = vector;
     machine->cpu.next_pc = vector + 4u;
+    machine->cpu.delay_slot_pending = false;
 }
 
 /* Execute one instruction with the machine's live COP0 register state. */
