@@ -56,6 +56,23 @@ int main(void)
     assert(psx_cpu_step(&machine.cpu, &machine.bus));
     assert(psx_cpu_read_gpr(&machine.cpu, 10u) == 0xfeed1234u);
 
+
+    /* A not-taken branch still has a delay slot for exception EPC/BD tracking. */
+    put_word(ram, 0x140u, 0x15090001u); /* BNE t0,t1,+1 (equal: not taken) */
+    put_word(ram, 0x144u, 0x240d002au); /* delay slot */
+    put_word(ram, 0x148u, 0x240e002bu);
+    psx_cpu_write_gpr(&machine.cpu, 8u, 4u);
+    psx_cpu_write_gpr(&machine.cpu, 9u, 4u);
+    machine.cpu.pc = 0x140u;
+    machine.cpu.next_pc = 0x144u;
+    machine.cpu.delay_slot_pending = false;
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(machine.cpu.delay_slot_pending);
+    assert(machine.cpu.delay_branch_pc == 0x140u);
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(!machine.cpu.delay_slot_pending);
+    assert(psx_cpu_read_gpr(&machine.cpu, 13u) == 42u);
+
     free(bios); free(ram);
     puts("DreamPSX R3000A execution tests: OK");
     return 0;
