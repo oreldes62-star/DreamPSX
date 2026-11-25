@@ -4,16 +4,21 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "dreampsx/irq.h"
+#include "dreampsx/memory.h"
 
 /* Shared machine-level state for components that have been implemented.
  * CPU registers and RAM will be attached here as their core interfaces land.
  */
 typedef struct {
     PsxIrqController irq;
+    PsxMemory memory;
     uint32_t cop0_status;
     uint32_t cop0_cause;
 } PsxMachine;
 
+bool psx_machine_init(PsxMachine *machine,
+                      uint8_t *ram, size_t ram_size,
+                      const uint8_t *bios, size_t bios_size);
 void psx_machine_reset(PsxMachine *machine);
 void psx_machine_refresh_interrupts(PsxMachine *machine);
 bool psx_machine_interrupt_eligible(const PsxMachine *machine);
