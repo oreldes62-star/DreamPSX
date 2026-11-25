@@ -99,6 +99,26 @@ int main(void)
     assert((machine.cop0_cause & PSX_COP0_CAUSE_EXCCODE) ==
            ((uint32_t)PSX_EXCEPTION_BUS_DATA << PSX_COP0_CAUSE_EXCCODE_SHIFT));
 
+    /* Misaligned word loads produce Address Error Load, not Bus Error. */
+    machine.cpu.pc = 0x140u;
+    machine.cpu.next_pc = 0x144u;
+    machine.cpu.delay_slot_pending = false;
+    psx_cpu_write_gpr(&machine.cpu, 9u, 0x181u);
+    assert(psx_machine_step(&machine));
+    assert(machine.cop0_badvaddr == 0x181u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_EXCCODE) ==
+           ((uint32_t)PSX_EXCEPTION_ADDRESS_LOAD << PSX_COP0_CAUSE_EXCCODE_SHIFT));
+
+    /* COP0 access in user mode produces Coprocessor Unusable. */
+    assert(psx_memory_write32(&machine.memory, 0x180u, 0x40096000u)); /* MFC0 t1,Status */
+    machine.cpu.pc = 0x180u;
+    machine.cpu.next_pc = 0x184u;
+    machine.cpu.delay_slot_pending = false;
+    machine.cop0_status = PSX_COP0_STATUS_KUC;
+    assert(psx_machine_step(&machine));
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_EXCCODE) ==
+           ((uint32_t)PSX_EXCEPTION_COPROCESSOR_UNUSABLE << PSX_COP0_CAUSE_EXCCODE_SHIFT));
+
     /* Overflow in a branch delay slot must report EPC=branch PC and Cause.BD. */
     assert(psx_memory_write32(&machine.memory, 0x160u, 0x10000001u)); /* BEQ zero,zero,+1 */
     assert(psx_memory_write32(&machine.memory, 0x164u, 0x20280001u)); /* ADDI delay slot */
