@@ -156,7 +156,14 @@ bool psx_cpu_step(PsxCpu *cpu, PsxBus *bus)
             branch_target = old_pc + 4u + (sign_extend_16(imm) << 2);
         }
         break;
-    case 0x08u: result = a + sign_extend_16(imm); write_result = true; break; /* ADDI: overflow exception pending */
+    case 0x08u: { /* ADDI: stop rather than silently wrap until exceptions exist */
+        uint32_t operand = sign_extend_16(imm);
+        result = a + operand;
+        if (((~(a ^ operand)) & (a ^ result) & 0x80000000u) != 0u)
+            return false;
+        write_result = true;
+        break;
+    }
     case 0x09u: result = a + sign_extend_16(imm); write_result = true; break;
     case 0x0au: result = signed_less(a, sign_extend_16(imm)); write_result = true; break;
     case 0x0bu: result = a < sign_extend_16(imm); write_result = true; break;
