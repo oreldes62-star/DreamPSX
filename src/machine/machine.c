@@ -8,9 +8,10 @@ bool psx_machine_init(PsxMachine *machine,
     if (!machine || !psx_memory_init(&machine->memory, ram, ram_size,
                                      bios, bios_size)) return false;
     psx_machine_reset(machine);
+    if (!psx_bus_init(&machine->bus, &machine->memory, &machine->irq))
+        return false;
     return true;
 }
-
 
 void psx_machine_reset(PsxMachine *machine)
 {
