@@ -74,7 +74,7 @@ PsxCpuStepResult psx_cpu_step_result_with_cop0(PsxCpu *cpu, PsxBus *bus,
     uint16_t half_value;
 
     if (!cpu || !cpu->initialized ||
-        !psx_cpu_fetch_instruction(cpu, bus, &instruction)) return PSX_CPU_STEP_FETCH_BUS_ERROR;
+        !psx_cpu_fetch_instruction(cpu, bus, &instruction)) { if (cpu) cpu->fault_address = cpu->pc; return PSX_CPU_STEP_FETCH_BUS_ERROR; }
 
     old_pc = cpu->pc;
     was_delay_slot = cpu->delay_slot_pending;
@@ -222,17 +222,17 @@ PsxCpuStepResult psx_cpu_step_result_with_cop0(PsxCpu *cpu, PsxBus *bus,
     case 0x0fu: result = (uint32_t)imm << 16; write_result = true; break;
     case 0x20u: /* LB */
         address = a + sign_extend_16(imm);
-        if (!psx_bus_read8(bus, address, &byte_value)) return PSX_CPU_STEP_DATA_BUS_ERROR;
+        if (!psx_bus_read8(bus, address, &byte_value)) { cpu->fault_address = address; return PSX_CPU_STEP_DATA_BUS_ERROR; }
         result = (byte_value & 0x80u) ? (0xffffff00u | byte_value) : byte_value;
         write_result = true; break;
     case 0x21u: /* LH */
         address = a + sign_extend_16(imm);
-        if (!psx_bus_read16(bus, address, &half_value)) return PSX_CPU_STEP_DATA_BUS_ERROR;
+        if (!psx_bus_read16(bus, address, &half_value)) { cpu->fault_address = address; return PSX_CPU_STEP_DATA_BUS_ERROR; }
         result = (half_value & 0x8000u) ? (0xffff0000u | half_value) : half_value;
         write_result = true; break;
     case 0x23u: /* LW */
         address = a + sign_extend_16(imm);
-        if (!psx_bus_read32(bus, address, &result)) return PSX_CPU_STEP_DATA_BUS_ERROR;
+        if (!psx_bus_read32(bus, address, &result)) { cpu->fault_address = address; return PSX_CPU_STEP_DATA_BUS_ERROR; }
         write_result = true; break;
     case 0x24u: /* LBU */
         address = a + sign_extend_16(imm);
@@ -244,15 +244,15 @@ PsxCpuStepResult psx_cpu_step_result_with_cop0(PsxCpu *cpu, PsxBus *bus,
         result = half_value; write_result = true; break;
     case 0x28u: /* SB */
         address = a + sign_extend_16(imm);
-        if (!psx_bus_write8(bus, address, (uint8_t)b)) return PSX_CPU_STEP_DATA_BUS_ERROR;
+        if (!psx_bus_write8(bus, address, (uint8_t)b)) { cpu->fault_address = address; return PSX_CPU_STEP_DATA_BUS_ERROR; }
         break;
     case 0x29u: /* SH */
         address = a + sign_extend_16(imm);
-        if (!psx_bus_write16(bus, address, (uint16_t)b)) return PSX_CPU_STEP_DATA_BUS_ERROR;
+        if (!psx_bus_write16(bus, address, (uint16_t)b)) { cpu->fault_address = address; return PSX_CPU_STEP_DATA_BUS_ERROR; }
         break;
     case 0x2bu: /* SW */
         address = a + sign_extend_16(imm);
-        if (!psx_bus_write32(bus, address, b)) return PSX_CPU_STEP_DATA_BUS_ERROR;
+        if (!psx_bus_write32(bus, address, b)) { cpu->fault_address = address; return PSX_CPU_STEP_DATA_BUS_ERROR; }
         break;
     default:
         return PSX_CPU_STEP_RESERVED_INSTRUCTION;
