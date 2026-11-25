@@ -1,0 +1,115 @@
+--- a/src/cpu/cpu.c
++++ b/src/cpu/cpu.c
+@@ -109,6 +109,18 @@
+             case 0x06: /* CTC2 */
+                 psx_gte_write_control(c->gte,rd,b);
+                 break;
++            case 0x08: /* BC2F / BC2T: PS1 GTE condition line reads false */
++                if (rt > 1u) {
++                    exception(c,PSX_EXC_RESERVED,instr_pc);
++                    goto done;
++                }
++                /* PSX-SPX documents the GTE condition line as apparently
++                   always false: BC2F is therefore always taken, BC2T never. */
++                if (rt == 0u) {
++                    c->branch_pending=true;
++                    c->branch_target=c->pc+((uint32_t)(SIMM(instr)*4));
++                }
++                break;
+             case 0x10: /* GTE command: bit 25 distinguishes command from transfer */
+                 if ((instr & 0x02000000u)==0 || !psx_gte_execute(c->gte,instr)) {
+                     exception(c,PSX_EXC_RESERVED,instr_pc); goto done;
+@@ -158,6 +170,39 @@
+         }
+         break;
+     }
++    case 0x32: { /* LWC2: load word into a GTE data register */
++        if ((c->cop0_status & (1u << 30)) == 0) {
++            exception(c,PSX_EXC_COP_UNUSABLE,instr_pc);
++            c->cop0_cause = (c->cop0_cause & ~(3u << 28)) | (2u << 28);
++            goto done;
++        }
++        if (!c->gte) { exception(c,PSX_EXC_RESERVED,instr_pc); goto done; }
++        uint32_t ad=a+(uint32_t)SIMM(instr);
++        if (ad&3u) {
++            c->cop0_bad_vaddr=ad;
++            exception(c,PSX_EXC_ADDR_LOAD,instr_pc);
++            goto done;
++        }
++        if (c->bus.read32)
++            psx_gte_write_data(c->gte,rt,c->bus.read32(c->bus.userdata,ad));
++        break;
++    }
++    case 0x3a: { /* SWC2: store a GTE data register to memory */
++        if ((c->cop0_status & (1u << 30)) == 0) {
++            exception(c,PSX_EXC_COP_UNUSABLE,instr_pc);
++            c->cop0_cause = (c->cop0_cause & ~(3u << 28)) | (2u << 28);
++            goto done;
++        }
++        if (!c->gte) { exception(c,PSX_EXC_RESERVED,instr_pc); goto done; }
++        uint32_t ad=a+(uint32_t)SIMM(instr);
++        if (ad&3u) {
++            c->cop0_bad_vaddr=ad;
++            exception(c,PSX_EXC_ADDR_STORE,instr_pc);
++            goto done;
++        }
++        store32(c,ad,psx_gte_read_data(c->gte,rt));
++        break;
++    }
+     case 0x22: { /* LWL, little-endian merge load */
+         uint32_t ad=a+(uint32_t)SIMM(instr), aligned=ad&~3u;
+         uint32_t mem=c->bus.read32?c->bus.read32(c->bus.userdata,aligned):0;
+--- a/tests/test_cpu.c
++++ b/tests/test_cpu.c
+@@ -52,6 +52,21 @@
+  w32(&m,0x900,I(0x2a,1,2,3)); /* swl r2,3(r1) */
+  w32(&m,0x904,I(0x2e,1,2,0)); /* swr r2,0(r1) */
+  psx_cpu_run(&c,2);assert(r32(&m,0x340)==0xb2c3d400u);assert(r8(&m,0x344)==0xa1);
++ /* PS1 COP2 condition line: BC2F always branches, BC2T never branches.
++    Both forms execute the instruction in the delay slot. */
++ psx_cpu_reset(&c,0x940);c.cop0_status|=(1u<<30);
++ w32(&m,0x940,I(0x12,0x08,0,2)); /* bc2f +2 -> 0x94c */
++ w32(&m,0x944,I(9,0,14,14));    /* delay slot */
++ w32(&m,0x948,I(9,0,15,15));    /* skipped */
++ w32(&m,0x94c,I(9,0,16,16));    /* target */
++ psx_cpu_run(&c,3);
++ assert(c.gpr[14]==14 && c.gpr[15]==0 && c.gpr[16]==16 && c.pc==0x950);
++ psx_cpu_reset(&c,0x950);c.cop0_status|=(1u<<30);
++ w32(&m,0x950,I(0x12,0x08,1,2)); /* bc2t +2 -> not taken */
++ w32(&m,0x954,I(9,0,17,17));    /* sequential delay slot */
++ w32(&m,0x958,I(9,0,18,18));    /* sequential next */
++ psx_cpu_run(&c,3);
++ assert(c.gpr[17]==17 && c.gpr[18]==18 && c.pc==0x95c);
+  /* COP2 access without Status.CU2 raises Coprocessor Unusable (CE=2). */
+  psx_cpu_reset(&c,0x960);psx_gte_reset(&gte);
+  w32(&m,0x960,(0x12u<<26)|(0x04u<<21)|(1u<<16)|(9u<<11));
+@@ -79,5 +94,29 @@
+  psx_cpu_run(&c,4);
+  assert((int32_t)psx_gte_read_data(&gte,25)==0x1000);
+  assert(c.gpr[2]==0x1000u && c.gpr[3]==1u);
++ /* LWC2 transfers memory words into GTE data registers; SWC2 writes them back. */
++ psx_cpu_reset(&c,0xb00);psx_gte_reset(&gte);c.cop0_status|=(1u<<30);c.gpr[1]=0x380;
++ w32(&m,0x380,0x89abcdefu);
++ w32(&m,0xb00,I(0x32,1,9,0)); /* lwc2 IR1,0(r1) */
++ w32(&m,0xb04,I(0x3a,1,9,4)); /* swc2 IR1,4(r1) */
++ psx_cpu_run(&c,2);
++ assert(psx_gte_read_data(&gte,9)==0x89abcdefu);
++ assert(r32(&m,0x384)==0x89abcdefu);
++ /* LWC2/SWC2 enforce word alignment and report the bad virtual address. */
++ psx_cpu_reset(&c,0xb20);psx_gte_reset(&gte);c.cop0_status|=(1u<<30);c.gpr[1]=0x381;
++ w32(&m,0xb20,I(0x32,1,9,0));
++ psx_cpu_step(&c);
++ assert(c.last_exception==PSX_EXC_ADDR_LOAD && c.cop0_bad_vaddr==0x381u);
++ psx_cpu_reset(&c,0xb40);psx_gte_reset(&gte);c.cop0_status|=(1u<<30);c.gpr[1]=0x381;
++ w32(&m,0xb40,I(0x3a,1,9,0));
++ psx_cpu_step(&c);
++ assert(c.last_exception==PSX_EXC_ADDR_STORE && c.cop0_bad_vaddr==0x381u);
++ /* LWC2/SWC2 require CU2 just like the other COP2 instructions. */
++ psx_cpu_reset(&c,0xb60);psx_gte_reset(&gte);c.gpr[1]=0x380;
++ w32(&m,0xb60,I(0x32,1,9,0));psx_cpu_step(&c);
++ assert(c.last_exception==PSX_EXC_COP_UNUSABLE && ((c.cop0_cause>>28)&3u)==2u);
++ psx_cpu_reset(&c,0xb80);psx_gte_reset(&gte);c.gpr[1]=0x380;
++ w32(&m,0xb80,I(0x3a,1,9,0));psx_cpu_step(&c);
++ assert(c.last_exception==PSX_EXC_COP_UNUSABLE && ((c.cop0_cause>>28)&3u)==2u);
+  puts("DreamPSX CPU tests: OK");return 0;
+ }
