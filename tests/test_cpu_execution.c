@@ -101,7 +101,10 @@ int main(void)
     machine.cop0_status = PSX_COP0_STATUS_KUC;
     machine.cpu.pc = 0x164u;
     machine.cpu.next_pc = 0x168u;
-    assert(!psx_machine_step(&machine));
+    assert(psx_machine_step(&machine));
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_EXCCODE) ==
+           ((uint32_t)PSX_EXCEPTION_COPROCESSOR_UNUSABLE <<
+            PSX_COP0_CAUSE_EXCCODE_SHIFT));
     machine.cop0_status = 0u;
 
     free(bios); free(ram);
