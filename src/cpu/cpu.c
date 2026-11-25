@@ -111,6 +111,8 @@ PsxCpuStepResult psx_cpu_step_result_with_cop0(PsxCpu *cpu, PsxBus *bus,
         case 0x02u: result = b >> shamt; write_result = true; break;
         case 0x03u: result = arithmetic_shift_right(b, shamt); write_result = true; break;
         case 0x08u: control_transfer = true; branch = true; branch_target = a; break; /* JR */
+        case 0x0cu: return PSX_CPU_STEP_SYSCALL;
+        case 0x0du: return PSX_CPU_STEP_BREAKPOINT;
         case 0x09u: /* JALR */
             result = old_pc + 8u;
             psx_cpu_write_gpr(cpu, rd, result);
