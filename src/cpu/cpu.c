@@ -65,6 +65,8 @@ bool psx_cpu_step(PsxCpu *cpu, PsxBus *bus)
     uint32_t a, b, result = 0u, address;
     uint16_t imm;
     bool write_result = false, branch = false;
+    bool control_transfer = false;
+    bool was_delay_slot;
     uint32_t branch_target = 0u;
     uint8_t byte_value;
     uint16_t half_value;
@@ -73,6 +75,13 @@ bool psx_cpu_step(PsxCpu *cpu, PsxBus *bus)
         !psx_cpu_fetch_instruction(cpu, bus, &instruction)) return false;
 
     old_pc = cpu->pc;
+    was_delay_slot = cpu->delay_slot_pending;
+    /* Branches in a delay slot are architecturally unpredictable on R3000A. */
+    if (was_delay_slot &&
+        (((instruction >> 26) >= 0x02u && (instruction >> 26) <= 0x07u) ||
+         ((instruction >> 26) == 0u &&
+          (((instruction & 63u) == 0x08u) || ((instruction & 63u) == 0x09u)))))
+        return false;
     sequential_pc = cpu->next_pc;
     sequential_next = cpu->next_pc + 4u;
     op = instruction >> 26;
@@ -91,11 +100,11 @@ bool psx_cpu_step(PsxCpu *cpu, PsxBus *bus)
         case 0x00u: result = b << shamt; write_result = true; break;
         case 0x02u: result = b >> shamt; write_result = true; break;
         case 0x03u: result = arithmetic_shift_right(b, shamt); write_result = true; break;
-        case 0x08u: branch = true; branch_target = a; break; /* JR */
+        case 0x08u: control_transfer = true; branch = true; branch_target = a; break; /* JR */
         case 0x09u: /* JALR */
             result = old_pc + 8u;
             psx_cpu_write_gpr(cpu, rd, result);
-            branch = true; branch_target = a;
+            control_transfer = true; branch = true; branch_target = a;
             break;
         case 0x10u: result = cpu->hi; write_result = true; break; /* MFHI */
         case 0x11u: cpu->hi = a; break; /* MTHI */
@@ -143,12 +152,14 @@ bool psx_cpu_step(PsxCpu *cpu, PsxBus *bus)
         break;
     case 0x02u:
     case 0x03u:
+        control_transfer = true;
         branch = true;
         branch_target = ((old_pc + 4u) & 0xf0000000u) |
                         ((instruction & 0x03ffffffu) << 2);
         if (op == 0x03u) psx_cpu_write_gpr(cpu, 31u, old_pc + 8u);
         break;
     case 0x04u: case 0x05u: case 0x06u: case 0x07u:
+        control_transfer = true;
         if ((op == 0x04u && a == b) || (op == 0x05u && a != b) ||
             (op == 0x06u && ((a & 0x80000000u) != 0u || a == 0u)) ||
             (op == 0x07u && ((a & 0x80000000u) == 0u && a != 0u))) {
@@ -212,6 +223,12 @@ bool psx_cpu_step(PsxCpu *cpu, PsxBus *bus)
     if (write_result) psx_cpu_write_gpr(cpu, (op == 0u) ? rd : rt, result);
     cpu->pc = sequential_pc;
     cpu->next_pc = branch ? branch_target : sequential_next;
+    if (was_delay_slot) {
+        cpu->delay_slot_pending = false;
+    } else if (control_transfer) {
+        cpu->delay_slot_pending = true;
+        cpu->delay_branch_pc = old_pc;
+    }
     cpu->gpr[0] = 0u;
     return true;
 }
