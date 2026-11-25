@@ -18,10 +18,10 @@ Experimental project. The complete source snapshot is distributed as a ZIP; this
 - [CPU bus core milestone 2.3](docs/BUS-CORE-MILESTONE-2.3.md)
 - [Machine/bus integration milestone 2.4](docs/MACHINE-BUS-INTEGRATION-MILESTONE-2.4.md)
 - [R3000A context and BIOS fetch milestone 2.5](docs/R3000A-CONTEXT-MILESTONE-2.5.md)
-- [First R3000A execution milestone 2.6](docs/R3000A-EXECUTION-MILESTONE-2.6.md)
+- [First R3000A execution milestone 2.6](docs/R3000A-EXECUTION-MILESTONE-2.6.md)\n- [R3000A integer and memory expansion milestone 2.7](docs/R3000A-INTEGER-MEMORY-MILESTONE-2.7.md)
 
 ## Target
 Sega Dreamcast with 16 MiB RAM. Long-term target: CDI test build for Flycast, then GDEMU.
 
 ## Limitations
-No Dreamcast/KallistiOS build, CDI image or playable game exists yet. CPU registers and BIOS instruction fetch are now represented, but instruction decoding/execution and remaining hardware devices are not implemented. The repository is not yet a complete buildable checkout.
+No Dreamcast/KallistiOS build, CDI image or playable game exists yet. CPU registers and BIOS instruction fetch are now represented, but instruction decoding/execution remains partial, and remaining hardware devices are not implemented. The repository is not yet a complete buildable checkout.
