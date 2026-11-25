@@ -73,6 +73,37 @@ int main(void)
     assert(!machine.cpu.delay_slot_pending);
     assert(psx_cpu_read_gpr(&machine.cpu, 13u) == 42u);
 
+
+    /* COP0 transfers: MTC0 Status, MFC0 Status, EPC and RFE. */
+    put_word(ram, 0x160u, 0x40886000u); /* MTC0 t0,Status */
+    put_word(ram, 0x164u, 0x40096000u); /* MFC0 t1,Status */
+    put_word(ram, 0x168u, 0x40887000u); /* MTC0 t0,EPC */
+    put_word(ram, 0x16cu, 0x400a7000u); /* MFC0 t2,EPC */
+    put_word(ram, 0x170u, 0x42000010u); /* RFE */
+    machine.cpu.pc = 0x160u;
+    machine.cpu.next_pc = 0x164u;
+    machine.cpu.delay_slot_pending = false;
+    machine.cop0_status = 0x0000003cu;
+    psx_cpu_write_gpr(&machine.cpu, 8u, 0x00000055u);
+    assert(psx_machine_step(&machine));
+    assert(machine.cop0_status == 0x55u);
+    assert(psx_machine_step(&machine));
+    assert(psx_cpu_read_gpr(&machine.cpu, 9u) == 0x55u);
+    assert(psx_machine_step(&machine));
+    assert(machine.cop0_epc == 0x55u);
+    assert(psx_machine_step(&machine));
+    assert(psx_cpu_read_gpr(&machine.cpu, 10u) == 0x55u);
+    machine.cop0_status = 0x0000003cu;
+    assert(psx_machine_step(&machine));
+    assert(machine.cop0_status == 0x0000000fu);
+
+    /* COP0 is rejected while the current mode is user mode. */
+    machine.cop0_status = PSX_COP0_STATUS_KUC;
+    machine.cpu.pc = 0x164u;
+    machine.cpu.next_pc = 0x168u;
+    assert(!psx_machine_step(&machine));
+    machine.cop0_status = 0u;
+
     free(bios); free(ram);
     puts("DreamPSX R3000A execution tests: OK");
     return 0;
