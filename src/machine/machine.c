@@ -56,3 +56,15 @@ void psx_machine_raise_exception(PsxMachine *machine, PsxExceptionCode code,
     machine->cpu.pc = vector;
     machine->cpu.next_pc = vector + 4u;
 }
+
+/* Execute one instruction with the machine's live COP0 register state. */
+bool psx_machine_step(PsxMachine *machine)
+{
+    if (!machine) return false;
+    psx_machine_refresh_interrupts(machine);
+    return psx_cpu_step_with_cop0(&machine->cpu, &machine->bus,
+                                  &machine->cop0_status,
+                                  &machine->cop0_cause,
+                                  &machine->cop0_epc,
+                                  &machine->cop0_badvaddr);
+}
