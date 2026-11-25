@@ -26,6 +26,7 @@ Experimental project. The complete source snapshot is distributed as a ZIP; this
 - [Automatic hardware interrupt dispatch milestone 3.1](docs/AUTOMATIC-IRQ-DISPATCH-MILESTONE-3.1.md)
 - [Synchronous CPU exception dispatch milestone 3.2](docs/SYNCHRONOUS-CPU-EXCEPTIONS-MILESTONE-3.2.md)
 - [R3000A SYSCALL, BREAK and encoding validation milestone 3.3](docs/R3000A-SYSCALL-BREAK-VALIDATION-MILESTONE-3.3.md)
+- [R3000A load delay slot milestone 3.4](docs/R3000A-LOAD-DELAY-MILESTONE-3.4.md)
 
 ## Target
 Sega Dreamcast with 16 MiB RAM. Long-term target: CDI test build for Flycast, then GDEMU.
