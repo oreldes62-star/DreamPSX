@@ -13,6 +13,8 @@ Experimental project. The complete source snapshot is distributed as a ZIP; this
 
 - [IRQ MMIO adapter milestone 1.8](docs/IRQ-MMIO-MILESTONE-1.8.md) — byte/halfword/word accessors for I_STAT and I_MASK; not yet connected to the main CPU bus.
 
+- [COP0 IRQ milestone 1.9](docs/COP0-IRQ-MILESTONE-1.9.md) — Cause.IP2 mirroring and Status/Cause interrupt eligibility helper; not yet wired into the live CPU core.
+
 ## Target
 Sega Dreamcast with 16 MiB RAM. Long-term target: CDI test build for Flycast, then GDEMU.
 
