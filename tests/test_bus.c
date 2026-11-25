@@ -1,0 +1,50 @@
+#include <assert.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
+#include "dreampsx/bus.h"
+
+int main(void)
+{
+    uint8_t ram[PSX_RAM_SIZE] = {0};
+    uint8_t bios[PSX_BIOS_SIZE] = {0};
+    PsxMemory memory = {0};
+    PsxIrqController irq;
+    PsxBus bus = {0};
+    uint32_t word = 0;
+    uint16_t half = 0;
+
+    psx_irq_reset(&irq);
+    assert(psx_memory_init(&memory, ram, sizeof(ram), bios, sizeof(bios)));
+    assert(psx_bus_init(&bus, &memory, &irq));
+
+    /* RAM is visible through physical, cached and uncached segments. */
+    assert(psx_bus_write32(&bus, 0x00000100u, 0x12345678u));
+    assert(psx_bus_read32(&bus, 0x80000100u, &word));
+    assert(word == 0x12345678u);
+    assert(psx_bus_write16(&bus, 0xa0000102u, 0xabcd));
+    assert(psx_bus_read32(&bus, 0x00000100u, &word));
+    assert(word == 0xabcd5678u);
+
+    /* IRQ registers are routed through the same bus, including KSEG1. */
+    assert(psx_bus_write16(&bus, 0xbf801074u, 0x0020u));
+    psx_irq_set_line(&irq, 5u, true);
+    assert(psx_bus_read16(&bus, 0x1f801070u, &half));
+    assert((half & 0x0020u) != 0u);
+    assert(psx_bus_read32(&bus, 0xbf801070u, &word));
+    assert((word & 0xffffu) == half);
+
+    /* I_STAT is write-zero-to-clear: writing zero clears the pending bit. */
+    assert(psx_bus_write16(&bus, 0xbf801070u, (uint16_t)~0x0020u));
+    assert(psx_bus_read16(&bus, 0x1f801070u, &half));
+    assert((half & 0x0020u) == 0u);
+
+    /* Unknown hardware registers and invalid alignments are rejected. */
+    assert(!psx_bus_read32(&bus, 0x1f801080u, &word));
+    assert(!psx_bus_read16(&bus, 0x00000101u, &half));
+    assert(!psx_bus_write32(&bus, 0x1f801072u, 0u));
+    assert(!psx_bus_read32(NULL, 0u, &word));
+
+    puts("bus tests passed");
+    return 0;
+}
