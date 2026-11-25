@@ -97,6 +97,17 @@ int main(void)
     assert((machine.cop0_cause & PSX_COP0_CAUSE_EXCCODE) ==
            ((uint32_t)PSX_EXCEPTION_BREAKPOINT << PSX_COP0_CAUSE_EXCCODE_SHIFT));
 
+    /* Invalid fixed fields in an otherwise known SPECIAL opcode are reserved. */
+    assert(psx_memory_write32(&machine.memory, 0x118u, 0x00284000u)); /* malformed SLL: rs != 0 */
+    machine.cpu.pc = 0x118u;
+    machine.cpu.next_pc = 0x11cu;
+    machine.cpu.delay_slot_pending = false;
+    machine.cop0_status = 0u;
+    assert(psx_machine_step(&machine));
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_EXCCODE) ==
+           ((uint32_t)PSX_EXCEPTION_RESERVED_INSTRUCTION <<
+            PSX_COP0_CAUSE_EXCCODE_SHIFT));
+
     /* A reserved instruction is no longer a silent boolean failure. */
     assert(psx_memory_write32(&machine.memory, 0x120u, 0xffffffffu));
     machine.cpu.pc = 0x120u;
