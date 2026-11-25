@@ -26,7 +26,8 @@ bool psx_machine_init(PsxMachine *machine,
 void psx_machine_reset(PsxMachine *machine);
 void psx_machine_refresh_interrupts(PsxMachine *machine);
 bool psx_machine_interrupt_eligible(const PsxMachine *machine);
-bool psx_machine_step(PsxMachine *machine);\nvoid psx_machine_raise_exception(PsxMachine *machine, PsxExceptionCode code,
+bool psx_machine_step(PsxMachine *machine);
+void psx_machine_raise_exception(PsxMachine *machine, PsxExceptionCode code,
                                  uint32_t badvaddr, bool in_delay_slot,
                                  uint32_t branch_pc);
 
