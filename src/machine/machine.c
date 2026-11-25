@@ -17,6 +17,7 @@ void psx_machine_reset(PsxMachine *machine)
 {
     if (!machine) return;
     psx_irq_reset(&machine->irq);
+    psx_cpu_reset(&machine->cpu);
     machine->cop0_status = 0u;
     machine->cop0_cause = 0u;
 }
