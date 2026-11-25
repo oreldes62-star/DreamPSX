@@ -73,8 +73,16 @@ PsxCpuStepResult psx_cpu_step_result_with_cop0(PsxCpu *cpu, PsxBus *bus,
     uint8_t byte_value;
     uint16_t half_value;
 
-    if (!cpu || !cpu->initialized ||
-        !psx_cpu_fetch_instruction(cpu, bus, &instruction)) { if (cpu) cpu->fault_address = cpu->pc; return PSX_CPU_STEP_FETCH_BUS_ERROR; }
+    if (!cpu || !cpu->initialized || !bus)
+        return PSX_CPU_STEP_FETCH_BUS_ERROR;
+    if ((cpu->pc & 3u) != 0u) {
+        cpu->fault_address = cpu->pc;
+        return PSX_CPU_STEP_ADDRESS_ERROR_LOAD;
+    }
+    if (!psx_cpu_fetch_instruction(cpu, bus, &instruction)) {
+        cpu->fault_address = cpu->pc;
+        return PSX_CPU_STEP_FETCH_BUS_ERROR;
+    }
 
     old_pc = cpu->pc;
     was_delay_slot = cpu->delay_slot_pending;
