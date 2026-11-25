@@ -58,7 +58,7 @@ bool psx_cpu_fetch_instruction(const PsxCpu *cpu, const PsxBus *bus,
     return psx_bus_read32(bus, cpu->pc, instruction);
 }
 
-bool psx_cpu_step_with_cop0(PsxCpu *cpu, PsxBus *bus,
+PsxCpuStepResult psx_cpu_step_result_with_cop0(PsxCpu *cpu, PsxBus *bus,
                             uint32_t *cop0_status, uint32_t *cop0_cause,
                             uint32_t *cop0_epc, uint32_t *cop0_badvaddr)
 {
@@ -74,7 +74,7 @@ bool psx_cpu_step_with_cop0(PsxCpu *cpu, PsxBus *bus,
     uint16_t half_value;
 
     if (!cpu || !cpu->initialized ||
-        !psx_cpu_fetch_instruction(cpu, bus, &instruction)) return false;
+        !psx_cpu_fetch_instruction(cpu, bus, &instruction)) return PSX_CPU_STEP_FETCH_BUS_ERROR;
 
     old_pc = cpu->pc;
     was_delay_slot = cpu->delay_slot_pending;
@@ -83,7 +83,7 @@ bool psx_cpu_step_with_cop0(PsxCpu *cpu, PsxBus *bus,
         (((instruction >> 26) >= 0x02u && (instruction >> 26) <= 0x07u) ||
          ((instruction >> 26) == 0u &&
           (((instruction & 63u) == 0x08u) || ((instruction & 63u) == 0x09u)))))
-        return false;
+        return PSX_CPU_STEP_UNPREDICTABLE;
     sequential_pc = cpu->next_pc;
     sequential_next = cpu->next_pc + 4u;
     op = instruction >> 26;
@@ -149,7 +149,7 @@ bool psx_cpu_step_with_cop0(PsxCpu *cpu, PsxBus *bus,
         case 0x27u: result = ~(a | b); write_result = true; break;
         case 0x2au: result = signed_less(a, b); write_result = true; break;
         case 0x2bu: result = a < b; write_result = true; break;
-        default: return false;
+        default: return PSX_CPU_STEP_RESERVED_INSTRUCTION;
         }
         break;
     case 0x10u: { /* COP0: MFC0, MTC0 and RFE */
@@ -157,7 +157,7 @@ bool psx_cpu_step_with_cop0(PsxCpu *cpu, PsxBus *bus,
         uint32_t cp_value;
         if (!cop0_status || !cop0_cause || !cop0_epc || !cop0_badvaddr ||
             ((*cop0_status & 0x00000002u) != 0u))
-            return false; /* COP0 is privileged on the R3000A. */
+            return PSX_CPU_STEP_COPROCESSOR_UNUSABLE;
         if (cop_rs == 0u) { /* MFC0 */
             switch (rd) {
             case 8u: cp_value = *cop0_badvaddr; break;
@@ -165,7 +165,7 @@ bool psx_cpu_step_with_cop0(PsxCpu *cpu, PsxBus *bus,
             case 13u: cp_value = *cop0_cause; break;
             case 14u: cp_value = *cop0_epc; break;
             case 15u: cp_value = 0x00000002u; break; /* R3000A PRId */
-            default: return false;
+            default: return PSX_CPU_STEP_RESERVED_INSTRUCTION;
             }
             result = cp_value;
             write_result = true;
@@ -178,13 +178,13 @@ bool psx_cpu_step_with_cop0(PsxCpu *cpu, PsxBus *bus,
                               (b & 0x00000300u);
                 break;
             case 14u: *cop0_epc = b; break;
-            default: return false; /* BadVAddr and PRId are read-only. */
+            default: return PSX_CPU_STEP_RESERVED_INSTRUCTION; /* BadVAddr and PRId are read-only. */
             }
         } else if (cop_rs == 16u && funct == 0x10u) { /* RFE */
             *cop0_status = (*cop0_status & ~0x0000000fu) |
                            ((*cop0_status >> 2) & 0x0000000fu);
         } else {
-            return false;
+            return PSX_CPU_STEP_RESERVED_INSTRUCTION;
         }
         break;
     }
@@ -209,7 +209,7 @@ bool psx_cpu_step_with_cop0(PsxCpu *cpu, PsxBus *bus,
         uint32_t operand = sign_extend_16(imm);
         result = a + operand;
         if (((~(a ^ operand)) & (a ^ result) & 0x80000000u) != 0u)
-            return false;
+            return PSX_CPU_STEP_OVERFLOW;
         write_result = true;
         break;
     }
@@ -222,40 +222,40 @@ bool psx_cpu_step_with_cop0(PsxCpu *cpu, PsxBus *bus,
     case 0x0fu: result = (uint32_t)imm << 16; write_result = true; break;
     case 0x20u: /* LB */
         address = a + sign_extend_16(imm);
-        if (!psx_bus_read8(bus, address, &byte_value)) return false;
+        if (!psx_bus_read8(bus, address, &byte_value)) return PSX_CPU_STEP_DATA_BUS_ERROR;
         result = (byte_value & 0x80u) ? (0xffffff00u | byte_value) : byte_value;
         write_result = true; break;
     case 0x21u: /* LH */
         address = a + sign_extend_16(imm);
-        if (!psx_bus_read16(bus, address, &half_value)) return false;
+        if (!psx_bus_read16(bus, address, &half_value)) return PSX_CPU_STEP_DATA_BUS_ERROR;
         result = (half_value & 0x8000u) ? (0xffff0000u | half_value) : half_value;
         write_result = true; break;
     case 0x23u: /* LW */
         address = a + sign_extend_16(imm);
-        if (!psx_bus_read32(bus, address, &result)) return false;
+        if (!psx_bus_read32(bus, address, &result)) return PSX_CPU_STEP_DATA_BUS_ERROR;
         write_result = true; break;
     case 0x24u: /* LBU */
         address = a + sign_extend_16(imm);
-        if (!psx_bus_read8(bus, address, &byte_value)) return false;
+        if (!psx_bus_read8(bus, address, &byte_value)) return PSX_CPU_STEP_RESERVED_INSTRUCTION;
         result = byte_value; write_result = true; break;
     case 0x25u: /* LHU */
         address = a + sign_extend_16(imm);
-        if (!psx_bus_read16(bus, address, &half_value)) return false;
+        if (!psx_bus_read16(bus, address, &half_value)) return PSX_CPU_STEP_RESERVED_INSTRUCTION;
         result = half_value; write_result = true; break;
     case 0x28u: /* SB */
         address = a + sign_extend_16(imm);
-        if (!psx_bus_write8(bus, address, (uint8_t)b)) return false;
+        if (!psx_bus_write8(bus, address, (uint8_t)b)) return PSX_CPU_STEP_DATA_BUS_ERROR;
         break;
     case 0x29u: /* SH */
         address = a + sign_extend_16(imm);
-        if (!psx_bus_write16(bus, address, (uint16_t)b)) return false;
+        if (!psx_bus_write16(bus, address, (uint16_t)b)) return PSX_CPU_STEP_DATA_BUS_ERROR;
         break;
     case 0x2bu: /* SW */
         address = a + sign_extend_16(imm);
-        if (!psx_bus_write32(bus, address, b)) return false;
+        if (!psx_bus_write32(bus, address, b)) return PSX_CPU_STEP_DATA_BUS_ERROR;
         break;
     default:
-        return false;
+        return PSX_CPU_STEP_RESERVED_INSTRUCTION;
     }
 
     if (write_result) psx_cpu_write_gpr(cpu, (op == 0u) ? rd : rt, result);
@@ -268,9 +268,16 @@ bool psx_cpu_step_with_cop0(PsxCpu *cpu, PsxBus *bus,
         cpu->delay_branch_pc = old_pc;
     }
     cpu->gpr[0] = 0u;
-    return true;
+    return PSX_CPU_STEP_OK;
 }
 
+bool psx_cpu_step_with_cop0(PsxCpu *cpu, PsxBus *bus,
+                            uint32_t *status, uint32_t *cause,
+                            uint32_t *epc, uint32_t *badvaddr)
+{
+    return psx_cpu_step_result_with_cop0(cpu, bus, status, cause, epc,
+                                         badvaddr) == PSX_CPU_STEP_OK;
+}
 
 bool psx_cpu_step(PsxCpu *cpu, PsxBus *bus)
 {
