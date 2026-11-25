@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "dreampsx/bus.h"
 #include "dreampsx/irq.h"
 #include "dreampsx/memory.h"
 
@@ -12,6 +13,7 @@
 typedef struct {
     PsxIrqController irq;
     PsxMemory memory;
+    PsxBus bus;
     uint32_t cop0_status;
     uint32_t cop0_cause;
 } PsxMachine;
