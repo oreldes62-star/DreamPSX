@@ -55,6 +55,15 @@ bool psx_memory_init(PsxMemory *memory,
     return true;
 }
 
+static bool span_is_mapped(const PsxMemory *memory, uint32_t address,
+                             unsigned length)
+{
+    for (unsigned i = 0; i < length; ++i) {
+        if (!locate(memory, address + i, NULL, NULL)) return false;
+    }
+    return true;
+}
+
 bool psx_memory_read8(const PsxMemory *memory, uint32_t address, uint8_t *value)
 {
     const uint8_t *ptr = NULL;
@@ -93,8 +102,9 @@ bool psx_memory_write8(PsxMemory *memory, uint32_t address, uint8_t value)
 
 bool psx_memory_write16(PsxMemory *memory, uint32_t address, uint16_t value)
 {
-    if ((address & 1u) ||
-        !psx_memory_write8(memory, address, (uint8_t)value) ||
+    if ((address & 1u) || !span_is_mapped(memory, address, 2u))
+        return false;
+    if (!psx_memory_write8(memory, address, (uint8_t)value) ||
         !psx_memory_write8(memory, address + 1u, (uint8_t)(value >> 8)))
         return false;
     return true;
@@ -102,8 +112,9 @@ bool psx_memory_write16(PsxMemory *memory, uint32_t address, uint16_t value)
 
 bool psx_memory_write32(PsxMemory *memory, uint32_t address, uint32_t value)
 {
-    if ((address & 3u) ||
-        !psx_memory_write16(memory, address, (uint16_t)value) ||
+    if ((address & 3u) || !span_is_mapped(memory, address, 4u))
+        return false;
+    if (!psx_memory_write16(memory, address, (uint16_t)value) ||
         !psx_memory_write16(memory, address + 2u, (uint16_t)(value >> 16)))
         return false;
     return true;
