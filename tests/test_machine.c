@@ -76,6 +76,27 @@ int main(void)
            ((uint32_t)PSX_EXCEPTION_OVERFLOW << PSX_COP0_CAUSE_EXCCODE_SHIFT));
     assert(machine.cpu.pc == 0x80000080u);
 
+    /* SYSCALL and BREAK use distinct architectural exception codes. */
+    assert(psx_memory_write32(&machine.memory, 0x110u, 0x0000000cu));
+    machine.cpu.pc = 0x110u;
+    machine.cpu.next_pc = 0x114u;
+    machine.cpu.delay_slot_pending = false;
+    machine.cop0_status = 0u;
+    assert(psx_machine_step(&machine));
+    assert(machine.cop0_epc == 0x110u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_EXCCODE) ==
+           ((uint32_t)PSX_EXCEPTION_SYSCALL << PSX_COP0_CAUSE_EXCCODE_SHIFT));
+
+    assert(psx_memory_write32(&machine.memory, 0x114u, 0x0000000du));
+    machine.cpu.pc = 0x114u;
+    machine.cpu.next_pc = 0x118u;
+    machine.cpu.delay_slot_pending = false;
+    machine.cop0_status = 0u;
+    assert(psx_machine_step(&machine));
+    assert(machine.cop0_epc == 0x114u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_EXCCODE) ==
+           ((uint32_t)PSX_EXCEPTION_BREAKPOINT << PSX_COP0_CAUSE_EXCCODE_SHIFT));
+
     /* A reserved instruction is no longer a silent boolean failure. */
     assert(psx_memory_write32(&machine.memory, 0x120u, 0xffffffffu));
     machine.cpu.pc = 0x120u;
