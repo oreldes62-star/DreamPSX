@@ -1,6 +1,17 @@
 #include "dreampsx/machine.h"
 #include "dreampsx/cop0_irq.h"
 
+bool psx_machine_init(PsxMachine *machine,
+                      uint8_t *ram, size_t ram_size,
+                      const uint8_t *bios, size_t bios_size)
+{
+    if (!machine || !psx_memory_init(&machine->memory, ram, ram_size,
+                                     bios, bios_size)) return false;
+    psx_machine_reset(machine);
+    return true;
+}
+
+
 void psx_machine_reset(PsxMachine *machine)
 {
     if (!machine) return;
