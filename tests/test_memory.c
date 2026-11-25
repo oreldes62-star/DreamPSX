@@ -37,10 +37,16 @@ int main(void)
     assert(psx_memory_write8(&memory, PSX_BIOS_BASE, 0u));
     assert(psx_memory_read8(&memory, PSX_BIOS_BASE, &b) && b == 0x5au);
 
-    /* Reject misalignment and unmapped locations. */
+    /* Reject misalignment and unmapped locations without partial writes. */
     assert(!psx_memory_read16(&memory, 1u, &h));
     assert(!psx_memory_write32(&memory, 2u, 0u));
     assert(!psx_memory_read8(&memory, 0x1f801000u, &b));
+    assert(psx_memory_write8(&memory, PSX_SCRATCH_BASE +
+                             PSX_SCRATCH_SIZE - 1u, 0x33u));
+    assert(!psx_memory_write16(&memory, PSX_SCRATCH_BASE +
+                               PSX_SCRATCH_SIZE - 2u, 0x7788u));
+    assert(psx_memory_read8(&memory, PSX_SCRATCH_BASE +
+                            PSX_SCRATCH_SIZE - 1u, &b) && b == 0x33u);
 
     free(bios);
     free(ram);
