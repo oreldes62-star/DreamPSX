@@ -6,8 +6,8 @@
 #include "dreampsx/irq.h"
 #include "dreampsx/memory.h"
 
-/* Shared machine-level state for components that have been implemented.
- * CPU registers and RAM will be attached here as their core interfaces land.
+/* Shared machine-level state for implemented components.
+ * CPU registers and remaining peripherals will be attached as their interfaces land.
  */
 typedef struct {
     PsxIrqController irq;
