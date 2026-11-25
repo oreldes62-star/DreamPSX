@@ -5,6 +5,9 @@
 #include <stdint.h>
 
 /* MIPS-I / PlayStation COP0 register fields. */
+#define PSX_COP0_STATUS_KUC      (1u << 1)
+#define PSX_COP0_CAUSE_SOFTWARE_IP 0x00000300u
+#define PSX_COP0_PRID_R3000A     0x00000002u
 #define PSX_COP0_STATUS_BEV       (1u << 22)
 #define PSX_COP0_STATUS_EXCEPTION_STACK 0x0000003fu
 #define PSX_COP0_CAUSE_BD         (1u << 31)
