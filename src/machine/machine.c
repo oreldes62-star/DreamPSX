@@ -1,5 +1,6 @@
 #include "dreampsx/machine.h"
 #include "dreampsx/cop0_irq.h"
+#include "dreampsx/cop0.h"
 
 bool psx_machine_init(PsxMachine *machine,
                       uint8_t *ram, size_t ram_size,
@@ -20,6 +21,8 @@ void psx_machine_reset(PsxMachine *machine)
     psx_cpu_reset(&machine->cpu);
     machine->cop0_status = 0u;
     machine->cop0_cause = 0u;
+    machine->cop0_epc = 0u;
+    machine->cop0_badvaddr = 0u;
 }
 
 void psx_machine_refresh_interrupts(PsxMachine *machine)
@@ -35,4 +38,21 @@ bool psx_machine_interrupt_eligible(const PsxMachine *machine)
     if (!machine) return false;
     return psx_cop0_interrupt_eligible(machine->cop0_status,
                                        machine->cop0_cause);
+}
+
+void psx_machine_raise_exception(PsxMachine *machine, PsxExceptionCode code,
+                                 uint32_t badvaddr, bool in_delay_slot,
+                                 uint32_t branch_pc)
+{
+    uint32_t vector;
+    if (!machine) return;
+
+    machine->cop0_badvaddr = badvaddr;
+    vector = psx_cop0_exception_entry(&machine->cop0_status,
+                                      &machine->cop0_cause,
+                                      &machine->cop0_epc,
+                                      code, machine->cpu.pc,
+                                      in_delay_slot, branch_pc);
+    machine->cpu.pc = vector;
+    machine->cpu.next_pc = vector + 4u;
 }
