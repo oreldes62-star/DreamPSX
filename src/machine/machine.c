@@ -116,6 +116,14 @@ bool psx_machine_step(PsxMachine *machine)
                                         PSX_EXCEPTION_COPROCESSOR_UNUSABLE,
                                         0u, in_delay_slot, branch_pc);
             return true;
+        case PSX_CPU_STEP_SYSCALL:
+            psx_machine_raise_exception(machine, PSX_EXCEPTION_SYSCALL,
+                                        0u, in_delay_slot, branch_pc);
+            return true;
+        case PSX_CPU_STEP_BREAKPOINT:
+            psx_machine_raise_exception(machine, PSX_EXCEPTION_BREAKPOINT,
+                                        0u, in_delay_slot, branch_pc);
+            return true;
         case PSX_CPU_STEP_RESERVED_INSTRUCTION:
         case PSX_CPU_STEP_UNPREDICTABLE:
             psx_machine_raise_exception(machine,
