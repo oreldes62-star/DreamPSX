@@ -58,7 +58,9 @@ bool psx_cpu_fetch_instruction(const PsxCpu *cpu, const PsxBus *bus,
     return psx_bus_read32(bus, cpu->pc, instruction);
 }
 
-bool psx_cpu_step(PsxCpu *cpu, PsxBus *bus)
+bool psx_cpu_step_with_cop0(PsxCpu *cpu, PsxBus *bus,
+                            uint32_t *cop0_status, uint32_t *cop0_cause,
+                            uint32_t *cop0_epc, uint32_t *cop0_badvaddr)
 {
     uint32_t instruction, old_pc, sequential_pc, sequential_next;
     unsigned op, rs, rt, rd, shamt, funct;
@@ -150,6 +152,42 @@ bool psx_cpu_step(PsxCpu *cpu, PsxBus *bus)
         default: return false;
         }
         break;
+    case 0x10u: { /* COP0: MFC0, MTC0 and RFE */
+        unsigned cop_rs = rs;
+        uint32_t cp_value;
+        if (!cop0_status || !cop0_cause || !cop0_epc || !cop0_badvaddr ||
+            ((*cop0_status & 0x00000002u) != 0u))
+            return false; /* COP0 is privileged on the R3000A. */
+        if (cop_rs == 0u) { /* MFC0 */
+            switch (rd) {
+            case 8u: cp_value = *cop0_badvaddr; break;
+            case 12u: cp_value = *cop0_status; break;
+            case 13u: cp_value = *cop0_cause; break;
+            case 14u: cp_value = *cop0_epc; break;
+            case 15u: cp_value = 0x00000002u; break; /* R3000A PRId */
+            default: return false;
+            }
+            result = cp_value;
+            write_result = true;
+        } else if (cop_rs == 4u) { /* MTC0 */
+            switch (rd) {
+            case 12u: *cop0_status = b; break;
+            case 13u:
+                /* Software may change IP0/IP1; hardware IP bits remain external. */
+                *cop0_cause = (*cop0_cause & ~0x00000300u) |
+                              (b & 0x00000300u);
+                break;
+            case 14u: *cop0_epc = b; break;
+            default: return false; /* BadVAddr and PRId are read-only. */
+            }
+        } else if (cop_rs == 16u && funct == 0x10u) { /* RFE */
+            *cop0_status = (*cop0_status & ~0x0000000fu) |
+                           ((*cop0_status >> 2) & 0x0000000fu);
+        } else {
+            return false;
+        }
+        break;
+    }
     case 0x02u:
     case 0x03u:
         control_transfer = true;
@@ -231,4 +269,10 @@ bool psx_cpu_step(PsxCpu *cpu, PsxBus *bus)
     }
     cpu->gpr[0] = 0u;
     return true;
+}
+
+
+bool psx_cpu_step(PsxCpu *cpu, PsxBus *bus)
+{
+    return psx_cpu_step_with_cop0(cpu, bus, NULL, NULL, NULL, NULL);
 }
