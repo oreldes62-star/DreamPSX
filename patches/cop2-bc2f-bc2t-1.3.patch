@@ -1,0 +1,19 @@
+--- a/src/cpu/cpu.c
++++ b/src/cpu/cpu.c
+@@
+             case 0x06: /* CTC2 */
+                 psx_gte_write_control(c->gte,rd,b);
+                 break;
++            case 0x08: /* BC2F / BC2T: PS1 GTE condition line reads false */
++                if (rt > 1u) {
++                    exception(c,PSX_EXC_RESERVED,instr_pc);
++                    goto done;
++                }
++                /* PSX-SPX documents the GTE condition line as apparently
++                   always false: BC2F is therefore always taken, BC2T never. */
++                if (rt == 0u) {
++                    c->branch_pending=true;
++                    c->branch_target=c->pc+((uint32_t)(SIMM(instr)*4));
++                }
++                break;
+             case 0x10: /* GTE command: bit 25 distinguishes command from transfer */
