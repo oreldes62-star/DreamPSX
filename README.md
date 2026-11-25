@@ -19,8 +19,10 @@ Experimental project. The complete source snapshot is distributed as a ZIP; this
 
 - [Machine state milestone 2.1](docs/MACHINE-STATE-MILESTONE-2.1.md) — shared machine container for IRQ and COP0 state, with reset and interrupt coordination.
 
+- [Memory backing-store milestone 2.2](docs/MEMORY-BACKING-STORE-MILESTONE-2.2.md) — 2 MiB RAM mirrors, KSEG0/KSEG1 aliases, scratchpad and read-only BIOS with 8/16/32-bit accessors.
+
 ## Target
 Sega Dreamcast with 16 MiB RAM. Long-term target: CDI test build for Flycast, then GDEMU.
 
 ## Limitations
-No Dreamcast/KallistiOS build, CDI image or playable game exists yet. The IRQ MMIO adapter, COP0 bridge and initial shared machine-state container exist, but are not yet connected to a complete CPU execution loop or unified memory bus.
+No Dreamcast/KallistiOS build, CDI image or playable game exists yet. The IRQ MMIO adapter, COP0 bridge, shared machine state and core RAM/scratchpad/BIOS backing store exist as modules. They are not yet connected to a complete CPU execution loop or full hardware MMIO bus.
