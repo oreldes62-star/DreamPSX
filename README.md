@@ -23,6 +23,7 @@ Experimental project. The complete source snapshot is distributed as a ZIP; this
 - [R3000A COP0 exception entry milestone 2.8](docs/R3000A-COP0-EXCEPTIONS-MILESTONE-2.8.md)
 - [R3000A delay-slot tracking milestone 2.9](docs/R3000A-DELAY-SLOT-MILESTONE-2.9.md)
 - [R3000A COP0 instruction support milestone 3.0](docs/R3000A-COP0-INSTRUCTIONS-MILESTONE-3.0.md)
+- [Automatic hardware interrupt dispatch milestone 3.1](docs/AUTOMATIC-IRQ-DISPATCH-MILESTONE-3.1.md)
 
 ## Target
 Sega Dreamcast with 16 MiB RAM. Long-term target: CDI test build for Flycast, then GDEMU.
