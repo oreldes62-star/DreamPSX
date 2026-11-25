@@ -1,12 +1,21 @@
 #include "dreampsx/machine.h"
 #include "dreampsx/cop0_irq.h"
+#include <stdlib.h>
+#include <string.h>
 #include <assert.h>
 #include <stdio.h>
 
 int main(void)
 {
     PsxMachine machine;
-    psx_machine_reset(&machine);
+    uint8_t *ram = (uint8_t *)calloc(1u, PSX_RAM_SIZE);
+    uint8_t *bios = (uint8_t *)calloc(1u, PSX_BIOS_SIZE);
+    assert(ram && bios);
+    assert(psx_machine_init(&machine, ram, PSX_RAM_SIZE, bios, PSX_BIOS_SIZE));
+    assert(psx_memory_write32(&machine.memory, 0u, 0xdecafbad));
+    uint32_t memory_probe = 0u;
+    assert(psx_memory_read32(&machine.memory, 0x80000000u, &memory_probe));
+    assert(memory_probe == 0xdecafbad);
 
     /* Reset establishes a clean IRQ/COP0 state. */
     assert(psx_irq_read_stat(&machine.irq) == 0u);
@@ -37,6 +46,8 @@ int main(void)
     psx_machine_refresh_interrupts(&machine);
     assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) == 0u);
 
+    free(bios);
+    free(ram);
     puts("DreamPSX machine-state tests: OK");
     return 0;
 }
