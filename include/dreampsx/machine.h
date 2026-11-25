@@ -4,16 +4,15 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "dreampsx/bus.h"
+#include "dreampsx/cpu.h"
 #include "dreampsx/irq.h"
 #include "dreampsx/memory.h"
 
-/* Shared machine-level state for implemented components.
- * CPU registers and remaining peripherals will be attached as their interfaces land.
- */
 typedef struct {
     PsxIrqController irq;
     PsxMemory memory;
     PsxBus bus;
+    PsxCpu cpu;
     uint32_t cop0_status;
     uint32_t cop0_cause;
 } PsxMachine;
