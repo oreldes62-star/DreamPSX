@@ -75,9 +75,46 @@ bool psx_machine_step(PsxMachine *machine)
         return true;
     }
 
-    return psx_cpu_step_with_cop0(&machine->cpu, &machine->bus,
-                                  &machine->cop0_status,
-                                  &machine->cop0_cause,
-                                  &machine->cop0_epc,
-                                  &machine->cop0_badvaddr);
+    {
+        PsxCpu *cpu = &machine->cpu;
+        bool in_delay_slot = cpu->delay_slot_pending;
+        uint32_t branch_pc = cpu->delay_branch_pc;
+        PsxCpuStepResult result = psx_cpu_step_result_with_cop0(
+            cpu, &machine->bus, &machine->cop0_status,
+            &machine->cop0_cause, &machine->cop0_epc,
+            &machine->cop0_badvaddr);
+
+        if (result == PSX_CPU_STEP_OK) return true;
+
+        switch (result) {
+        case PSX_CPU_STEP_FETCH_BUS_ERROR:
+            psx_machine_raise_exception(machine, PSX_EXCEPTION_BUS_INSTRUCTION,
+                                        cpu->fault_address, in_delay_slot,
+                                        branch_pc);
+            return true;
+        case PSX_CPU_STEP_DATA_BUS_ERROR:
+            psx_machine_raise_exception(machine, PSX_EXCEPTION_BUS_DATA,
+                                        cpu->fault_address, in_delay_slot,
+                                        branch_pc);
+            return true;
+        case PSX_CPU_STEP_OVERFLOW:
+            psx_machine_raise_exception(machine, PSX_EXCEPTION_OVERFLOW,
+                                        0u, in_delay_slot, branch_pc);
+            return true;
+        case PSX_CPU_STEP_COPROCESSOR_UNUSABLE:
+            psx_machine_raise_exception(machine,
+                                        PSX_EXCEPTION_COPROCESSOR_UNUSABLE,
+                                        0u, in_delay_slot, branch_pc);
+            return true;
+        case PSX_CPU_STEP_RESERVED_INSTRUCTION:
+        case PSX_CPU_STEP_UNPREDICTABLE:
+            psx_machine_raise_exception(machine,
+                                        PSX_EXCEPTION_RESERVED_INSTRUCTION,
+                                        0u, in_delay_slot, branch_pc);
+            return true;
+        case PSX_CPU_STEP_OK:
+        default:
+            return false;
+        }
+    }
 }
