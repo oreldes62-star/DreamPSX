@@ -7,6 +7,16 @@
 
 #define PSX_CPU_RESET_PC 0xbfc00000u
 
+typedef enum {
+    PSX_CPU_STEP_OK = 0,
+    PSX_CPU_STEP_FETCH_BUS_ERROR,
+    PSX_CPU_STEP_DATA_BUS_ERROR,
+    PSX_CPU_STEP_RESERVED_INSTRUCTION,
+    PSX_CPU_STEP_OVERFLOW,
+    PSX_CPU_STEP_COPROCESSOR_UNUSABLE,
+    PSX_CPU_STEP_UNPREDICTABLE
+} PsxCpuStepResult;
+
 typedef struct {
     uint32_t gpr[32];
     uint32_t hi;
@@ -23,7 +33,11 @@ uint32_t psx_cpu_read_gpr(const PsxCpu *cpu, unsigned index);
 void psx_cpu_write_gpr(PsxCpu *cpu, unsigned index, uint32_t value);
 bool psx_cpu_fetch_instruction(const PsxCpu *cpu, const PsxBus *bus,
                                uint32_t *instruction);
-/* Executes one supported instruction; false means fetch, bus or opcode failure. */
+/* Detailed result lets the machine translate CPU faults into COP0 exceptions. */
+PsxCpuStepResult psx_cpu_step_result_with_cop0(
+    PsxCpu *cpu, PsxBus *bus, uint32_t *status, uint32_t *cause,
+    uint32_t *epc, uint32_t *badvaddr);
+/* Compatibility wrappers: true only when an instruction executed. */
 bool psx_cpu_step(PsxCpu *cpu, PsxBus *bus);
 bool psx_cpu_step_with_cop0(PsxCpu *cpu, PsxBus *bus,
                             uint32_t *status, uint32_t *cause,
