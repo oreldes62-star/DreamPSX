@@ -63,6 +63,18 @@ bool psx_machine_step(PsxMachine *machine)
 {
     if (!machine) return false;
     psx_machine_refresh_interrupts(machine);
+
+    /* Interrupts are sampled at instruction boundaries, never between a
+     * branch and its delay-slot instruction. The exception entry redirects
+     * execution to the selected general exception vector.
+     */
+    if (!machine->cpu.delay_slot_pending &&
+        psx_machine_interrupt_eligible(machine)) {
+        psx_machine_raise_exception(machine, PSX_EXCEPTION_INTERRUPT,
+                                     0u, false, 0u);
+        return true;
+    }
+
     return psx_cpu_step_with_cop0(&machine->cpu, &machine->bus,
                                   &machine->cop0_status,
                                   &machine->cop0_cause,
