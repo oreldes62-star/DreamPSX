@@ -167,6 +167,27 @@ int main(void)
     assert((machine.cop0_cause & PSX_COP0_CAUSE_EXCCODE) ==
            ((uint32_t)PSX_EXCEPTION_OVERFLOW << PSX_COP0_CAUSE_EXCCODE_SHIFT));
 
+    /* A pending load is retired before a synchronous exception enters
+     * the handler; the faulting instruction itself is not retired.
+     */
+    assert(psx_memory_write32(&machine.memory, 0x300u, 0xa5a55a5au));
+    assert(psx_memory_write32(&machine.memory, 0x1a0u, 0x8d280000u)); /* LW t0,0(t1) */
+    assert(psx_memory_write32(&machine.memory, 0x1a4u, 0x0000000cu)); /* SYSCALL */
+    psx_cpu_write_gpr(&machine.cpu, 8u, 0x11111111u);
+    psx_cpu_write_gpr(&machine.cpu, 9u, 0x300u);
+    machine.cpu.pc = 0x1a0u;
+    machine.cpu.next_pc = 0x1a4u;
+    machine.cpu.delay_slot_pending = false;
+    machine.cpu.load_delay_pending = false;
+    machine.cop0_status = 0u;
+    assert(psx_machine_step(&machine));
+    assert(machine.cpu.load_delay_pending);
+    assert(psx_cpu_read_gpr(&machine.cpu, 8u) == 0x11111111u);
+    assert(psx_machine_step(&machine));
+    assert(psx_cpu_read_gpr(&machine.cpu, 8u) == 0xa5a55a5au);
+    assert(!machine.cpu.load_delay_pending);
+    assert(machine.cop0_epc == 0x1a4u);
+
     free(bios);
     free(ram);
     puts("DreamPSX machine-state tests: OK");
