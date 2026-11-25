@@ -11,6 +11,8 @@ Experimental project. The complete source snapshot is distributed as a ZIP; this
 - [Memory milestone 1.5](docs/MEMORY-MILESTONE-1.5.md) — RAM mirrors, scratchpad and BIOS design/implementation snapshot.
 - [IRQ milestone 1.6](docs/IRQ-MILESTONE-1.6.md) — standalone interrupt-controller core and test source.
 
+- [IRQ MMIO adapter milestone 1.8](docs/IRQ-MMIO-MILESTONE-1.8.md) — byte/halfword/word accessors for I_STAT and I_MASK; not yet connected to the main CPU bus.
+
 ## Target
 Sega Dreamcast with 16 MiB RAM. Long-term target: CDI test build for Flycast, then GDEMU.
 
