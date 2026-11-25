@@ -17,8 +17,10 @@ Experimental project. The complete source snapshot is distributed as a ZIP; this
 
 - [IRQ/COP0 integration milestone 2.0](docs/IRQ-COP0-INTEGRATION-MILESTONE-2.0.md) — tested module-level bridge from I_STAT/I_MASK controller output to COP0 Cause.IP2.
 
+- [Machine state milestone 2.1](docs/MACHINE-STATE-MILESTONE-2.1.md) — shared machine container for IRQ and COP0 state, with reset and interrupt coordination.
+
 ## Target
 Sega Dreamcast with 16 MiB RAM. Long-term target: CDI test build for Flycast, then GDEMU.
 
 ## Limitations
-No Dreamcast/KallistiOS build, CDI image or playable game exists yet. The IRQ MMIO adapter and COP0 bridge exist as standalone modules, but are not yet connected to the complete CPU execution loop or unified machine bus.
+No Dreamcast/KallistiOS build, CDI image or playable game exists yet. The IRQ MMIO adapter, COP0 bridge and initial shared machine-state container exist, but are not yet connected to a complete CPU execution loop or unified memory bus.
