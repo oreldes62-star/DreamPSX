@@ -106,6 +106,40 @@ PsxCpuStepResult psx_cpu_step_result_with_cop0(PsxCpu *cpu, PsxBus *bus,
 
     switch (op) {
     case 0x00u:
+        /* Validate fixed fields for the SPECIAL encodings implemented below. */
+        switch (funct) {
+        case 0x00u: case 0x02u: case 0x03u:
+            if (rs != 0u) return PSX_CPU_STEP_RESERVED_INSTRUCTION;
+            break;
+        case 0x08u:
+            if (rt != 0u || rd != 0u || shamt != 0u)
+                return PSX_CPU_STEP_RESERVED_INSTRUCTION;
+            break;
+        case 0x09u:
+            if (rt != 0u || shamt != 0u)
+                return PSX_CPU_STEP_RESERVED_INSTRUCTION;
+            break;
+        case 0x10u: case 0x12u:
+            if (rs != 0u || rt != 0u || shamt != 0u)
+                return PSX_CPU_STEP_RESERVED_INSTRUCTION;
+            break;
+        case 0x11u: case 0x13u:
+            if (rt != 0u || rd != 0u || shamt != 0u)
+                return PSX_CPU_STEP_RESERVED_INSTRUCTION;
+            break;
+        case 0x18u: case 0x19u: case 0x1au: case 0x1bu:
+            if (rd != 0u || shamt != 0u)
+                return PSX_CPU_STEP_RESERVED_INSTRUCTION;
+            break;
+        case 0x21u: case 0x23u: case 0x24u: case 0x25u:
+        case 0x26u: case 0x27u: case 0x2au: case 0x2bu:
+            if (shamt != 0u) return PSX_CPU_STEP_RESERVED_INSTRUCTION;
+            break;
+        case 0x0cu: case 0x0du: /* SYSCALL/BREAK code field is variable. */
+            break;
+        default:
+            break;
+        }
         switch (funct) {
         case 0x00u: result = b << shamt; write_result = true; break;
         case 0x02u: result = b >> shamt; write_result = true; break;
@@ -169,6 +203,8 @@ PsxCpuStepResult psx_cpu_step_result_with_cop0(PsxCpu *cpu, PsxBus *bus,
             ((*cop0_status & 0x00000002u) != 0u))
             return PSX_CPU_STEP_COPROCESSOR_UNUSABLE;
         if (cop_rs == 0u) { /* MFC0 */
+            if ((instruction & 0x7ffu) != 0u)
+                return PSX_CPU_STEP_RESERVED_INSTRUCTION;
             switch (rd) {
             case 8u: cp_value = *cop0_badvaddr; break;
             case 12u: cp_value = *cop0_status; break;
@@ -180,6 +216,8 @@ PsxCpuStepResult psx_cpu_step_result_with_cop0(PsxCpu *cpu, PsxBus *bus,
             result = cp_value;
             write_result = true;
         } else if (cop_rs == 4u) { /* MTC0 */
+            if ((instruction & 0x7ffu) != 0u)
+                return PSX_CPU_STEP_RESERVED_INSTRUCTION;
             switch (rd) {
             case 12u: *cop0_status = b; break;
             case 13u:
@@ -190,7 +228,7 @@ PsxCpuStepResult psx_cpu_step_result_with_cop0(PsxCpu *cpu, PsxBus *bus,
             case 14u: *cop0_epc = b; break;
             default: return PSX_CPU_STEP_RESERVED_INSTRUCTION; /* BadVAddr and PRId are read-only. */
             }
-        } else if (cop_rs == 16u && funct == 0x10u) { /* RFE */
+        } else if (cop_rs == 16u && (instruction & 0x7ffu) == 0x10u) { /* RFE */
             *cop0_status = (*cop0_status & ~0x0000000fu) |
                            ((*cop0_status >> 2) & 0x0000000fu);
         } else {
