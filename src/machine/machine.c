@@ -47,6 +47,16 @@ void psx_machine_raise_exception(PsxMachine *machine, PsxExceptionCode code,
     uint32_t vector;
     if (!machine) return;
 
+    /* Retire the preceding instruction's pending load before exception
+     * entry. The faulting instruction itself is not retired.
+     */
+    if (machine->cpu.load_delay_pending) {
+        psx_cpu_write_gpr(&machine->cpu,
+                          machine->cpu.load_delay_register,
+                          machine->cpu.load_delay_value);
+        machine->cpu.load_delay_pending = false;
+    }
+
     machine->cop0_badvaddr = badvaddr;
     vector = psx_cop0_exception_entry(&machine->cop0_status,
                                       &machine->cop0_cause,
