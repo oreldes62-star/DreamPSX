@@ -21,8 +21,10 @@ Experimental project. The complete source snapshot is distributed as a ZIP; this
 
 - [Memory backing-store milestone 2.2](docs/MEMORY-BACKING-STORE-MILESTONE-2.2.md) — 2 MiB RAM mirrors, KSEG0/KSEG1 aliases, scratchpad and read-only BIOS with 8/16/32-bit accessors.
 
+- [CPU bus core milestone 2.3](docs/BUS-CORE-MILESTONE-2.3.md) — unified CPU-facing routing for RAM, scratchpad, BIOS and the first IRQ MMIO registers.
+
 ## Target
 Sega Dreamcast with 16 MiB RAM. Long-term target: CDI test build for Flycast, then GDEMU.
 
 ## Limitations
-No Dreamcast/KallistiOS build, CDI image or playable game exists yet. The IRQ MMIO adapter, COP0 bridge, shared machine state and core RAM/scratchpad/BIOS backing store exist as modules. They are not yet connected to a complete CPU execution loop or full hardware MMIO bus.
+No Dreamcast/KallistiOS build, CDI image or playable game exists yet. The IRQ MMIO adapter, COP0 bridge, shared machine state, RAM/scratchpad/BIOS backing store and first CPU-facing bus slice exist as modules. The bus currently routes only memory and IRQ registers; it is not yet connected to a complete CPU execution loop or the full hardware MMIO map.
