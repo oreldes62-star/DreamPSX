@@ -15,8 +15,10 @@ Experimental project. The complete source snapshot is distributed as a ZIP; this
 
 - [COP0 IRQ milestone 1.9](docs/COP0-IRQ-MILESTONE-1.9.md) — Cause.IP2 mirroring and Status/Cause interrupt eligibility helper; not yet wired into the live CPU core.
 
+- [IRQ/COP0 integration milestone 2.0](docs/IRQ-COP0-INTEGRATION-MILESTONE-2.0.md) — tested module-level bridge from I_STAT/I_MASK controller output to COP0 Cause.IP2.
+
 ## Target
 Sega Dreamcast with 16 MiB RAM. Long-term target: CDI test build for Flycast, then GDEMU.
 
 ## Limitations
-No Dreamcast/KallistiOS build, CDI image or playable game exists yet. The IRQ module is not yet integrated into the CPU or memory-mapped I/O bus.
+No Dreamcast/KallistiOS build, CDI image or playable game exists yet. The IRQ MMIO adapter and COP0 bridge exist as standalone modules, but are not yet connected to the complete CPU execution loop or unified machine bus.
