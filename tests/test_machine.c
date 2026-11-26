@@ -216,6 +216,42 @@ int main(void)
            ((uint32_t)PSX_EXCEPTION_BUS_DATA <<
             PSX_COP0_CAUSE_EXCCODE_SHIFT));
 
+    /* A hardware interrupt at the instruction boundary also retires
+     * the pending load before entering the exception handler.
+     */
+    psx_irq_set_line(&machine.irq, 2u, false);
+    psx_irq_write_stat(&machine.irq, (uint16_t)~(1u << 2));
+    psx_irq_write_mask(&machine.irq, 0u);
+    psx_machine_refresh_interrupts(&machine);
+    assert(psx_memory_write32(&machine.memory, 0x308u, 0x2468ace0u));
+    assert(psx_memory_write32(&machine.memory, 0x1c0u, 0x8d280000u)); /* LW t0,0(t1) */
+    assert(psx_memory_write32(&machine.memory, 0x1c4u, 0x240c0001u)); /* ADDIU t4,zero,1 */
+    psx_cpu_write_gpr(&machine.cpu, 8u, 0x33333333u);
+    psx_cpu_write_gpr(&machine.cpu, 9u, 0x308u);
+    machine.cpu.pc = 0x1c0u;
+    machine.cpu.next_pc = 0x1c4u;
+    machine.cpu.delay_slot_pending = false;
+    machine.cpu.load_delay_pending = false;
+    machine.cop0_status = 0u;
+    assert(psx_machine_step(&machine));
+    assert(machine.cpu.load_delay_pending);
+    assert(psx_cpu_read_gpr(&machine.cpu, 8u) == 0x33333333u);
+    psx_irq_set_line(&machine.irq, 2u, true);
+    psx_irq_write_mask(&machine.irq, (uint16_t)(1u << 2));
+    machine.cop0_status = PSX_COP0_STATUS_IEC | PSX_COP0_CAUSE_IP2;
+    assert(psx_machine_step(&machine));
+    assert(psx_cpu_read_gpr(&machine.cpu, 8u) == 0x2468ace0u);
+    assert(!machine.cpu.load_delay_pending);
+    assert(machine.cop0_epc == 0x1c4u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_EXCCODE) ==
+           ((uint32_t)PSX_EXCEPTION_INTERRUPT <<
+            PSX_COP0_CAUSE_EXCCODE_SHIFT));
+    /* Acknowledge the source so later tests start with a clean controller. */
+    psx_irq_set_line(&machine.irq, 2u, false);
+    psx_irq_write_stat(&machine.irq, (uint16_t)~(1u << 2));
+    psx_irq_write_mask(&machine.irq, 0u);
+    psx_machine_refresh_interrupts(&machine);
+
     /* Halfword loads/stores and word stores report alignment faults with
      * the original effective address in BadVAddr.
      */
