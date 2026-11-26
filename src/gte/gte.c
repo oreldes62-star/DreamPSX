@@ -350,10 +350,14 @@ static void gte_execute_rtps(PsxGte *gte, uint32_t instruction)
     }
 
     /* SZ3 uses MAC3>>12 when sf=0 and MAC3 directly when sf=1. */
-    sz = (uint32_t)gte_shift_mac(mac[2], 12u);
-    if ((int64_t)sz > 0xffffu) {
-        flags |= 1u << 18u;
-        sz = 0xffffu;
+    {
+        int64_t depth = gte_shift_mac(mac[2], 12u);
+        if (depth < 0) depth = 0;
+        if (depth > 0xffff) {
+            flags |= 1u << 18u;
+            depth = 0xffff;
+        }
+        sz = (uint32_t)depth;
     }
     gte_push_sz(gte, sz);
 
@@ -364,12 +368,12 @@ static void gte_execute_rtps(PsxGte *gte, uint32_t instruction)
     gte_check_mac0_overflow(mac0, &flags);
     gte->data[24] = (uint32_t)mac0;
     {
-        int32_t sx = gte_saturate_screen(mac0 / 65536, 14u, &flags);
+        int32_t sx = gte_saturate_screen(gte_shift_mac(mac0, 16u), 14u, &flags);
         mac0 = (int64_t)quotient * ir[1] + (int32_t)gte->control[25];
         gte_check_mac0_overflow(mac0, &flags);
         gte->data[24] = (uint32_t)mac0;
         {
-            int32_t sy = gte_saturate_screen(mac0 / 65536, 13u, &flags);
+            int32_t sy = gte_saturate_screen(gte_shift_mac(mac0, 16u), 13u, &flags);
             sxy = (uint16_t)sx | ((uint32_t)(uint16_t)sy << 16u);
         }
     }
