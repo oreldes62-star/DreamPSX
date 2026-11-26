@@ -14,6 +14,8 @@ R3000A one-instruction load delay and machine-level synchronous exceptions.
 - The faulting load does not overwrite its destination register.
 - The pending-load state is cleared, and COP0 records the faulting instruction
   PC and effective address.
+- A second regression case enables a hardware IRQ immediately after a load;
+  interrupt entry retires the pending value before redirecting to the handler.
 
 This exercises the CPU's delayed write-back path together with
 `psx_machine_step()` and `psx_machine_raise_exception()`.
