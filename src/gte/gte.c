@@ -402,7 +402,11 @@ bool psx_gte_execute(PsxGte *gte, uint32_t instruction)
 
     if (!gte) return false;
     command = instruction & 0x3fu;
-    if (command == 0x01u) {\n        gte_execute_rtps(gte, instruction);\n        return true;\n    }\n    if (command == 0x12u) {
+    if (command == 0x01u) {
+        gte_execute_rtps(gte, instruction);
+        return true;
+    }
+    if (command == 0x12u) {
         gte_execute_mvmva(gte, instruction);
         return true;
     }
