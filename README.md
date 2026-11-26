@@ -55,9 +55,10 @@ Experimental project. The host-side CMake build and all 13 CTest targets passed 
 - [GTE GPF interpolation milestone 3.30](docs/GTE-GPF-MILESTONE-3.30.md)
 - [GTE GPL accumulated interpolation milestone 3.31](docs/GTE-GPL-MILESTONE-3.31.md)
 - [GTE NCS normal color milestone 3.32](docs/GTE-NCS-MILESTONE-3.32.md)
+- [GTE NCCS normal color modulation milestone 3.33](docs/GTE-NCCS-MILESTONE-3.33.md)
 
 ## Target
 Sega Dreamcast with 16 MiB RAM. Long-term target: CDI test build for Flycast, then GDEMU.
 
 ## Limitations
-No Dreamcast/KallistiOS build, CDI image or playable game exists yet. CPU registers and BIOS instruction fetch are represented, and a growing subset of R3000A instructions plus the first GTE geometry commands (NCLIP, MVMVA, RTPS, RTPT, AVSZ3, AVSZ4, SQR, OP, GPF, GPL and NCS initial implementations) execute; instruction decoding/execution remains partial, and remaining hardware devices are not implemented. The host CMake/CTest suite passes in GitHub Actions, but it does not produce a Dreamcast binary or CDI image.
+No Dreamcast/KallistiOS build, CDI image or playable game exists yet. CPU registers and BIOS instruction fetch are represented, and a growing subset of R3000A instructions plus the first GTE geometry commands (NCLIP, MVMVA, RTPS, RTPT, AVSZ3, AVSZ4, SQR, OP, GPF, GPL, NCS and NCCS initial implementations) execute; instruction decoding/execution remains partial, and remaining hardware devices are not implemented. The host CMake/CTest suite passes in GitHub Actions, but it does not produce a Dreamcast binary or CDI image.
