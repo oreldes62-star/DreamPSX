@@ -345,6 +345,43 @@ int main(void)
            ((uint32_t)PSX_EXCEPTION_OVERFLOW <<
             PSX_COP0_CAUSE_EXCCODE_SHIFT));
 
+    /* MFC0 is a delayed GPR load: the immediately following ADDIU reads
+     * the old destination value, then the COP0 result becomes visible.
+     */
+    assert(psx_memory_write32(&machine.memory, 0x200u, 0x40086000u)); /* MFC0 t0,Status */
+    assert(psx_memory_write32(&machine.memory, 0x204u, 0x25090001u)); /* ADDIU t1,t0,1 */
+    machine.cop0_status = 0x00001234u;
+    psx_cpu_write_gpr(&machine.cpu, 8u, 5u);
+    machine.cpu.pc = 0x200u;
+    machine.cpu.next_pc = 0x204u;
+    machine.cpu.delay_slot_pending = false;
+    machine.cpu.load_delay_pending = false;
+    assert(psx_machine_step(&machine));
+    assert(machine.cpu.load_delay_pending);
+    assert(psx_cpu_read_gpr(&machine.cpu, 8u) == 5u);
+    assert(psx_machine_step(&machine));
+    assert(psx_cpu_read_gpr(&machine.cpu, 8u) == 0x1234u);
+    assert(psx_cpu_read_gpr(&machine.cpu, 9u) == 6u);
+
+    /* MTC0 reads the old GPR value when it immediately follows LW. The load
+     * retires after the COP0 write, so EPC receives the pre-load value.
+     */
+    assert(psx_memory_write32(&machine.memory, 0x320u, 0xabcdef01u));
+    assert(psx_memory_write32(&machine.memory, 0x210u, 0x8d280000u)); /* LW t0,0(t1) */
+    assert(psx_memory_write32(&machine.memory, 0x214u, 0x40887000u)); /* MTC0 t0,EPC */
+    psx_cpu_write_gpr(&machine.cpu, 8u, 0x11112222u);
+    psx_cpu_write_gpr(&machine.cpu, 9u, 0x320u);
+    machine.cpu.pc = 0x210u;
+    machine.cpu.next_pc = 0x214u;
+    machine.cpu.delay_slot_pending = false;
+    machine.cpu.load_delay_pending = false;
+    assert(psx_machine_step(&machine));
+    assert(machine.cpu.load_delay_pending);
+    assert(psx_machine_step(&machine));
+    assert(machine.cop0_epc == 0x11112222u);
+    assert(psx_cpu_read_gpr(&machine.cpu, 8u) == 0xabcdef01u);
+    assert(!machine.cpu.load_delay_pending);
+
     /* Halfword loads/stores and word stores report alignment faults with
      * the original effective address in BadVAddr.
      */
