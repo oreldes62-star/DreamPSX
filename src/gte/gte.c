@@ -409,6 +409,37 @@ static void gte_execute_rtpt(PsxGte *gte, uint32_t instruction)
         gte_execute_rtps(gte, instruction, vertex, &accumulated_flags);
 }
 
+static void gte_execute_op(PsxGte *gte, uint32_t instruction)
+{
+    unsigned shift = (instruction & (1u << 19u)) ? 12u : 0u;
+    bool lm = (instruction & (1u << 10u)) != 0u;
+    int32_t ir1 = gte_signed16(gte->data[9]);
+    int32_t ir2 = gte_signed16(gte->data[10]);
+    int32_t ir3 = gte_signed16(gte->data[11]);
+    int32_t d1 = gte_matrix_element(gte, 0u, 0u, 0u);
+    int32_t d2 = gte_matrix_element(gte, 0u, 1u, 1u);
+    int32_t d3 = gte_matrix_element(gte, 0u, 2u, 2u);
+    int64_t mac[3];
+    uint32_t flags = 0u;
+    unsigned i;
+
+    mac[0] = (int64_t)ir3 * d2 - (int64_t)ir2 * d3;
+    mac[1] = (int64_t)ir1 * d3 - (int64_t)ir3 * d1;
+    mac[2] = (int64_t)ir2 * d1 - (int64_t)ir1 * d2;
+
+    for (i = 0u; i < 3u; ++i) {
+        int64_t result;
+        gte_check_mac_overflow(mac[i], i, &flags);
+        result = gte_shift_mac(mac[i], shift);
+        gte->data[25u + i] = (uint32_t)result;
+        gte->data[9u + i] = (uint32_t)gte_saturate_ir(
+            result, i, lm, &flags);
+    }
+
+    if (flags & 0x7f87e000u) flags |= 0x80000000u;
+    gte->control[31] = flags;
+}
+
 static void gte_execute_sqr(PsxGte *gte, uint32_t instruction)
 {
     unsigned shift = (instruction & (1u << 19u)) ? 12u : 0u;
@@ -478,6 +509,10 @@ bool psx_gte_execute(PsxGte *gte, uint32_t instruction)
     }
     if (command == 0x30u) {
         gte_execute_rtpt(gte, instruction);
+        return true;
+    }
+    if (command == 0x0cu) {
+        gte_execute_op(gte, instruction);
         return true;
     }
     if (command == 0x28u) {
