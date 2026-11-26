@@ -996,7 +996,7 @@ int main(void)
     assert(psx_gte_write_data(&gte, 20u, 0x11111111u)); /* RGB0 */
     assert(psx_gte_write_data(&gte, 21u, 0x22222222u)); /* RGB1 */
     assert(psx_gte_write_data(&gte, 22u, 0x33333333u)); /* RGB2 */
-    assert(psx_gte_execute(&gte, 0x4a00041cu)); /* CC, sf=1, lm=1 */
+    assert(psx_gte_execute(&gte, 0x4a08041cu)); /* CC, sf=1, lm=1 */
     assert(psx_gte_read_data(&gte, 25u, &value) && value == 0x200u);
     assert(psx_gte_read_data(&gte, 26u, &value) && value == 0x400u);
     assert(psx_gte_read_data(&gte, 27u, &value) && value == 0x800u);
