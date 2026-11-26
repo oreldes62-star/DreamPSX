@@ -219,6 +219,8 @@ int main(void)
     machine.cpu.delay_slot_pending = false;
     machine.cop0_status = 0x0000003cu;
     psx_cpu_write_gpr(&machine.cpu, 8u, 0x00000055u);
+    psx_cpu_write_gpr(&machine.cpu, 9u, 0u);
+    psx_cpu_write_gpr(&machine.cpu, 10u, 0u);
     assert(psx_machine_step(&machine));
     assert(machine.cop0_status == 0x55u);
     assert(psx_machine_step(&machine)); /* MFC0 queues t1 */
