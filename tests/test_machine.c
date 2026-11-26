@@ -541,6 +541,7 @@ int main(void)
     machine.cpu.delay_slot_pending = false;
     machine.cpu.load_delay_pending = false;
     machine.cop0_status = 0u;
+    machine.cop0_cause = 0u; /* Do not inherit the previous trap's ExcCode. */
     psx_cpu_write_gpr(&machine.cpu, 8u, 0x55u);
     psx_cpu_write_gpr(&machine.cpu, 9u, 0xaau);
     assert(psx_machine_step(&machine));
