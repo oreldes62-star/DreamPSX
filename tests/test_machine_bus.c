@@ -186,6 +186,7 @@ int main(void)
     assert(((machine.cop0_cause & PSX_COP0_CAUSE_EXCCODE) >>
             PSX_COP0_CAUSE_EXCCODE_SHIFT) == PSX_EXCEPTION_ADDRESS_STORE);
 
+    free(gpu_vram);
     free(bios);
     free(ram);
     puts("DreamPSX machine-bus integration tests: OK");
