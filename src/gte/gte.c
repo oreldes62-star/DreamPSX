@@ -675,6 +675,98 @@ static void gte_execute_dcpl(PsxGte *gte, uint32_t instruction)
     gte->control[31] = flags;
 }
 
+static void gte_execute_ncds(PsxGte *gte, uint32_t instruction)
+{
+    unsigned shift = (instruction & (1u << 19u)) ? 12u : 0u;
+    bool lm = (instruction & (1u << 10u)) != 0u;
+    int32_t normal[3], light[3];
+    const uint32_t channels[3] = {
+        gte->data[6] & 0xffu,
+        (gte->data[6] >> 8u) & 0xffu,
+        (gte->data[6] >> 16u) & 0xffu
+    };
+    int32_t ir0 = gte_signed16(gte->data[8]);
+    int64_t mac[3];
+    uint32_t flags = 0u;
+    uint32_t rgb = gte->data[6] & 0xff000000u;
+    unsigned i, j;
+
+    normal[0] = gte_signed16(gte->data[0]);
+    normal[1] = gte_signed16(gte->data[0] >> 16u);
+    normal[2] = gte_signed16(gte->data[1]);
+
+    /* Stage 1: light matrix times normal. */
+    for (i = 0u; i < 3u; ++i) {
+        int64_t accumulator = 0;
+        for (j = 0u; j < 3u; ++j) {
+            accumulator += (int64_t)gte_matrix_element(gte, 1u, i, j) *
+                           normal[j];
+            gte_check_mac_overflow(accumulator, i, &flags);
+        }
+        light[i] = gte_saturate_ir(gte_shift_mac(accumulator, shift),
+                                   i, lm, &flags);
+    }
+
+    /* Stage 2: background plus color matrix. */
+    for (i = 0u; i < 3u; ++i) {
+        int64_t accumulator = (int64_t)(int32_t)gte->control[13u + i] * 4096;
+        gte_check_mac_overflow(accumulator, i, &flags);
+        for (j = 0u; j < 3u; ++j) {
+            accumulator += (int64_t)gte_matrix_element(gte, 2u, i, j) *
+                           light[j];
+            gte_check_mac_overflow(accumulator, i, &flags);
+        }
+        accumulator = gte_shift_mac(accumulator, shift);
+        light[i] = gte_saturate_ir(accumulator, i, lm, &flags);
+    }
+
+    /* Stage 3: modulate the color, then interpolate toward far color. */
+    for (i = 0u; i < 3u; ++i) {
+        int64_t base = (int64_t)channels[i] * light[i] * 16;
+        int64_t far = (int64_t)(int32_t)gte->control[21u + i] * 4096;
+        int32_t difference;
+        gte_check_mac_overflow(base, i, &flags);
+        difference = gte_saturate_ir(
+            gte_shift_mac(far - base, shift), i, false, &flags);
+        mac[i] = base + (int64_t)ir0 * difference;
+        gte_check_mac_overflow(mac[i], i, &flags);
+        mac[i] = gte_shift_mac(mac[i], shift);
+        gte->data[25u + i] = (uint32_t)mac[i];
+        gte->data[9u + i] = (uint32_t)gte_saturate_ir(
+            mac[i], i, lm, &flags);
+    }
+
+    rgb |= gte_color_channel(mac[0]) |
+           (gte_color_channel(mac[1]) << 8u) |
+           (gte_color_channel(mac[2]) << 16u);
+    gte_push_rgb(gte, rgb);
+    if (flags & 0x7f87e000u) flags |= 0x80000000u;
+    gte->control[31] = flags;
+}
+
+static void gte_execute_ncdt(PsxGte *gte, uint32_t instruction)
+{
+    uint32_t saved_v0 = gte->data[0];
+    uint32_t saved_v0z = gte->data[1];
+    uint32_t accumulated_flags = 0u;
+    unsigned vertex;
+
+    for (vertex = 0u; vertex < 3u; ++vertex) {
+        uint32_t flags;
+        gte->data[0] = gte->data[vertex * 2u];
+        gte->data[1] = gte->data[vertex * 2u + 1u];
+        gte_execute_ncds(gte, instruction);
+        flags = gte->control[31];
+        accumulated_flags |= flags & 0x7fffffffu;
+    }
+
+    gte->data[0] = saved_v0;
+    gte->data[1] = saved_v0z;
+    if (accumulated_flags & 0x7f87e000u)
+        accumulated_flags |= 0x80000000u;
+    gte->control[31] = accumulated_flags;
+}
+
 static void gte_execute_nct(PsxGte *gte, uint32_t instruction)
 {
     uint32_t saved_v0 = gte->data[0];
@@ -897,6 +989,14 @@ bool psx_gte_execute(PsxGte *gte, uint32_t instruction)
     }
     if (command == 0x29u) {
         gte_execute_dcpl(gte, instruction);
+        return true;
+    }
+    if (command == 0x13u) {
+        gte_execute_ncds(gte, instruction);
+        return true;
+    }
+    if (command == 0x16u) {
+        gte_execute_ncdt(gte, instruction);
         return true;
     }
     if (command == 0x1eu) {
