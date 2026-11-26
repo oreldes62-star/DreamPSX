@@ -508,7 +508,7 @@ int main(void)
         assert(psx_memory_read32(&machine.memory, 0x3e0u, &first));
         assert(psx_memory_read32(&machine.memory, 0x3e4u, &second));
         assert(first == 0x223344aau);
-        assert(second == 0xddccbb11u);
+        assert(second == 0x88776611u);
     }
 
     /* Signed/unsigned byte and halfword loads, plus little-endian stores. */
