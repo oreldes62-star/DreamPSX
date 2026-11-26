@@ -58,12 +58,12 @@ static void execute_flat_triangle(PsxGpu *gpu)
     const uint32_t xy0 = gpu->parameters[0];
     const uint32_t xy1 = gpu->parameters[1];
     const uint32_t xy2 = gpu->parameters[2];
-    const int x0 = sign_extend_11(xy0);
-    const int y0 = sign_extend_11(xy0 >> 16u);
-    const int x1 = sign_extend_11(xy1);
-    const int y1 = sign_extend_11(xy1 >> 16u);
-    const int x2 = sign_extend_11(xy2);
-    const int y2 = sign_extend_11(xy2 >> 16u);
+    const int x0 = sign_extend_11(xy0) + gpu->draw_offset_x;
+    const int y0 = sign_extend_11(xy0 >> 16u) + gpu->draw_offset_y;
+    const int x1 = sign_extend_11(xy1) + gpu->draw_offset_x;
+    const int y1 = sign_extend_11(xy1 >> 16u) + gpu->draw_offset_y;
+    const int x2 = sign_extend_11(xy2) + gpu->draw_offset_x;
+    const int y2 = sign_extend_11(xy2 >> 16u) + gpu->draw_offset_y;
     const int min_x = (x0 < x1 ? (x0 < x2 ? x0 : x2) :
                                       (x1 < x2 ? x1 : x2));
     const int max_x = (x0 > x1 ? (x0 > x2 ? x0 : x2) :
@@ -76,17 +76,20 @@ static void execute_flat_triangle(PsxGpu *gpu)
     const uint16_t color = rgb24_to_rgb15(gpu->command);
     int start_x, end_x, start_y, end_y;
 
-    if (area == 0 || max_x < 0 || max_y < 0 ||
-        min_x >= (int)PSX_GPU_VRAM_WIDTH ||
-        min_y >= (int)PSX_GPU_VRAM_HEIGHT)
+    if (area == 0 || max_x < (int)gpu->draw_area_left ||
+        max_y < (int)gpu->draw_area_top ||
+        min_x > (int)gpu->draw_area_right ||
+        min_y > (int)gpu->draw_area_bottom)
         return;
 
-    start_x = min_x < 0 ? 0 : min_x;
-    end_x = max_x >= (int)PSX_GPU_VRAM_WIDTH ?
-            (int)PSX_GPU_VRAM_WIDTH - 1 : max_x;
-    start_y = min_y < 0 ? 0 : min_y;
-    end_y = max_y >= (int)PSX_GPU_VRAM_HEIGHT ?
-            (int)PSX_GPU_VRAM_HEIGHT - 1 : max_y;
+    start_x = min_x < (int)gpu->draw_area_left ?
+              (int)gpu->draw_area_left : min_x;
+    end_x = max_x > (int)gpu->draw_area_right ?
+            (int)gpu->draw_area_right : max_x;
+    start_y = min_y < (int)gpu->draw_area_top ?
+              (int)gpu->draw_area_top : min_y;
+    end_y = max_y > (int)gpu->draw_area_bottom ?
+            (int)gpu->draw_area_bottom : max_y;
 
     for (int y = start_y; y <= end_y; ++y) {
         for (int x = start_x; x <= end_x; ++x) {
@@ -159,6 +162,12 @@ void psx_gpu_reset(PsxGpu *gpu)
     gpu->parameters[0] = 0u;
     gpu->parameters[1] = 0u;
     gpu->parameters[2] = 0u;
+    gpu->draw_area_left = 0u;
+    gpu->draw_area_top = 0u;
+    gpu->draw_area_right = PSX_GPU_VRAM_WIDTH - 1u;
+    gpu->draw_area_bottom = PSX_GPU_VRAM_HEIGHT - 1u;
+    gpu->draw_offset_x = 0;
+    gpu->draw_offset_y = 0;
     gpu->parameter_count = 0u;
     gpu->parameter_expected = 0u;
     gpu->transfer_mode = PSX_GPU_TRANSFER_IDLE;
@@ -201,6 +210,18 @@ bool psx_gpu_gp0_write(PsxGpu *gpu, uint32_t value)
 
     gpu->command = value;
     switch (value >> 24u) {
+    case 0xe3u: /* Drawing area top-left. */
+        gpu->draw_area_left = value & 0x3ffu;
+        gpu->draw_area_top = (value >> 10u) & 0x1ffu;
+        break;
+    case 0xe4u: /* Drawing area bottom-right. */
+        gpu->draw_area_right = value & 0x3ffu;
+        gpu->draw_area_bottom = (value >> 10u) & 0x1ffu;
+        break;
+    case 0xe5u: /* Drawing offset, signed 11-bit coordinates. */
+        gpu->draw_offset_x = sign_extend_11(value);
+        gpu->draw_offset_y = sign_extend_11(value >> 11u);
+        break;
     case 0x20u: /* Flat-shaded triangle */
         gpu->parameter_expected = 3u;
         gpu->parameter_count = 0u;
