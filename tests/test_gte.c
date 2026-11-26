@@ -292,7 +292,7 @@ int main(void)
     assert(psx_gte_write_control(&gte, 2u, 0x00001000u));
     assert(psx_gte_write_control(&gte, 4u, 0x00001000u));
     assert(psx_gte_write_control(&gte, 7u, 1000u));
-    assert(psx_gte_write_control(&gte, 24u, 0x70000000u));
+    assert(psx_gte_write_control(&gte, 24u, 0x7fffffffu));
     assert(psx_gte_write_control(&gte, 26u, 200u));
     assert(psx_gte_write_data(&gte, 0u, 0x00007fffu));
     assert(psx_gte_write_data(&gte, 1u, 1000u));
