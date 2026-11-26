@@ -173,6 +173,14 @@ int main(void)
     assert((value & (1u << 15u)) == 0u);
     assert((value & (1u << 31u)) != 0u);
 
+    /* A fresh NCLIP command must replace, not retain, the previous FLAG. */
+    assert(psx_gte_write_data(&gte, 12u, 0x00000000u));
+    assert(psx_gte_write_data(&gte, 13u, 0x00000064u));
+    assert(psx_gte_write_data(&gte, 14u, 0x00640000u));
+    assert(psx_gte_execute(&gte, 0x4b400006u));
+    assert(psx_gte_read_data(&gte, 24u, &value) && value == 10000u);
+    assert(psx_gte_read_control(&gte, 31u, &value) && value == 0u);
+
     /* RTPS: identity projection, screen offsets and SZ FIFO output. */
     psx_gte_reset(&gte);
     assert(psx_gte_write_control(&gte, 0u, 0x00001000u));
