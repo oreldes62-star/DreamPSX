@@ -1395,6 +1395,33 @@ int main(void)
     assert((value & (1u << 24u)) != 0u);
     assert((value & 0x80000000u) != 0u);
 
+    /* IR2 and IR3 lower boundaries are inclusive at -32768. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 2u, 0x10000000u)); /* RT[1][1]=4096 */
+    assert(psx_gte_write_control(&gte, 4u, 0x00001000u)); /* RT[2][2]=4096 */
+    assert(psx_gte_write_data(&gte, 0u, 0x80000000u)); /* V0.y=-32768 */
+    assert(psx_gte_write_data(&gte, 1u, 0xffff8000u)); /* V0.z=-32768 */
+    assert(psx_gte_execute(&gte, 0x48080012u)); /* sf=1, RT, V0, TR, lm=0 */
+    assert(psx_gte_read_data(&gte, 10u, &value) && value == 0xffff8000u);
+    assert(psx_gte_read_data(&gte, 11u, &value) && value == 0xffff8000u);
+    assert(psx_gte_read_control(&gte, 31u, &value) && value == 0u);
+
+    /* IR2 and IR3 clamp one unit below -32768 and set their own flags. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 2u, 0x10000000u)); /* RT[1][1]=4096 */
+    assert(psx_gte_write_control(&gte, 4u, 0x00001000u)); /* RT[2][2]=4096 */
+    assert(psx_gte_write_control(&gte, 6u, 0xffffffffu)); /* TRY=-1 */
+    assert(psx_gte_write_control(&gte, 7u, 0xffffffffu)); /* TRZ=-1 */
+    assert(psx_gte_write_data(&gte, 0u, 0x80000000u)); /* V0.y=-32768 */
+    assert(psx_gte_write_data(&gte, 1u, 0xffff8000u)); /* V0.z=-32768 */
+    assert(psx_gte_execute(&gte, 0x48080012u));
+    assert(psx_gte_read_data(&gte, 10u, &value) && value == 0xffff8000u);
+    assert(psx_gte_read_data(&gte, 11u, &value) && value == 0xffff8000u);
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 23u)) != 0u); /* IR2 saturation */
+    assert((value & (1u << 22u)) != 0u); /* IR3 saturation */
+    assert((value & 0x80000000u) != 0u); /* FLAG summary */
+
     /* Independent PCSX-Redux reference: RT rotation plus TR translation. */
     psx_gte_reset(&gte);
     assert(psx_gte_write_control(&gte, 0u, 0xf0000000u));
