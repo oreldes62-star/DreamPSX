@@ -39,7 +39,7 @@ int main(void)
     assert(psx_bus_read16(&machine.bus, PSX_IRQ_STAT_ADDR, &half));
     assert((half & (1u << 2)) == 0u);
 
-    /* BIOS is readable; unmapped hardware and misaligned words are rejected. */
+    /* GPU registers share the machine bus and update its VRAM state. */\n    assert(psx_bus_write32(&machine.bus, 0x1f801810u, 0x0200ff00u));\n    assert(psx_bus_write32(&machine.bus, 0x1f801810u, 0u));\n    assert(psx_bus_write32(&machine.bus, 0x1f801810u, 1u | (1u << 16u)));\n    assert(psx_gpu_vram_read(&machine.gpu, 0u, 1u, &half));\n    assert(half == 0x03e0u);\n    assert(psx_bus_read32(&machine.bus, 0xbf801814u, &word));\n    assert(word == 0x14802000u);\n\n    /* BIOS is readable; unmapped hardware and misaligned words are rejected. */
     assert(psx_bus_read32(&machine.bus, PSX_BIOS_BASE, &word));
     assert(!psx_bus_read32(&machine.bus, 0x1f801080u, &word));
     assert(!psx_bus_read32(&machine.bus, 0x00000101u, &word));
