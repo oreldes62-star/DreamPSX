@@ -124,7 +124,7 @@ int main(void)
     assert(psx_gte_read_data(&gte, 27u, &value) && value == 12288u);
 
     /* lm=1 clamps negative IR outputs to zero while preserving MAC values. */
-    assert(psx_gte_write_data(&gte, 0u, 0xffff0001u)); /* V0=(-1,-1,3) */
+    assert(psx_gte_write_data(&gte, 0u, 0xffffffffu)); /* V0=(-1,-1,3) */
     assert(psx_gte_write_data(&gte, 1u, 3u));
     assert(psx_gte_execute(&gte, 0x48086412u)); /* sf=1, lm=1, RT/V0/no TR */
     assert(psx_gte_read_data(&gte, 25u, &value) && value == (uint32_t)-1);
