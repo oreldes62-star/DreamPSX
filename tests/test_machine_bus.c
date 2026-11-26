@@ -44,6 +44,36 @@ int main(void)
     assert(!psx_bus_read32(&machine.bus, 0x1f801080u, &word));
     assert(!psx_bus_read32(&machine.bus, 0x00000101u, &word));
 
+    /* LWC2/SWC2 unmapped accesses become COP0 data-bus exceptions. */
+    machine.cop0_status = 0x40000000u; /* CU2 enabled */
+    psx_cpu_write_gpr(&machine.cpu, 12u, 0x1f000000u);
+    assert(psx_bus_write32(&machine.bus, 0x200u,
+                           (0x32u << 26) | (12u << 21))); /* LWC2 D0,0(t4) */
+    machine.cpu.pc = 0x200u;
+    machine.cpu.next_pc = 0x204u;
+    machine.cpu.delay_slot_pending = false;
+    machine.cpu.load_delay_pending = false;
+    assert(psx_machine_step(&machine));
+    assert(machine.cop0_epc == 0x200u);
+    assert(machine.cop0_badvaddr == 0x1f000000u);
+    assert(((machine.cop0_cause & PSX_COP0_CAUSE_EXCCODE) >>
+            PSX_COP0_CAUSE_EXCCODE_SHIFT) == PSX_EXCEPTION_BUS_DATA);
+
+    machine.cop0_status = 0x40000000u;
+    machine.cop0_cause = 0u;
+    psx_cpu_write_gpr(&machine.cpu, 12u, 0x1f000000u);
+    assert(psx_bus_write32(&machine.bus, 0x204u,
+                           (0x3au << 26) | (12u << 21))); /* SWC2 D0,0(t4) */
+    machine.cpu.pc = 0x204u;
+    machine.cpu.next_pc = 0x208u;
+    machine.cpu.delay_slot_pending = false;
+    machine.cpu.load_delay_pending = false;
+    assert(psx_machine_step(&machine));
+    assert(machine.cop0_epc == 0x204u);
+    assert(machine.cop0_badvaddr == 0x1f000000u);
+    assert(((machine.cop0_cause & PSX_COP0_CAUSE_EXCCODE) >>
+            PSX_COP0_CAUSE_EXCCODE_SHIFT) == PSX_EXCEPTION_BUS_DATA);
+
     free(bios);
     free(ram);
     puts("DreamPSX machine-bus integration tests: OK");
