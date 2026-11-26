@@ -382,6 +382,35 @@ int main(void)
     assert(psx_cpu_read_gpr(&machine.cpu, 8u) == 0xabcdef01u);
     assert(!machine.cpu.load_delay_pending);
 
+    /* An IRQ between MFC0 and its consumer must retire the delayed COP0
+     * transfer before exception entry, just like a memory load.
+     */
+    machine.cop0_epc = 0x13572468u;
+    assert(psx_memory_write32(&machine.memory, 0x218u, 0x40087000u)); /* MFC0 t0,EPC */
+    psx_cpu_write_gpr(&machine.cpu, 8u, 0xdeadbeefu);
+    machine.cpu.pc = 0x218u;
+    machine.cpu.next_pc = 0x21cu;
+    machine.cpu.delay_slot_pending = false;
+    machine.cpu.load_delay_pending = false;
+    machine.cop0_status = 0u;
+    assert(psx_machine_step(&machine));
+    assert(machine.cpu.load_delay_pending);
+    assert(psx_cpu_read_gpr(&machine.cpu, 8u) == 0xdeadbeefu);
+    psx_irq_set_line(&machine.irq, 2u, true);
+    psx_irq_write_mask(&machine.irq, (uint16_t)(1u << 2));
+    machine.cop0_status = PSX_COP0_STATUS_IEC | PSX_COP0_CAUSE_IP2;
+    assert(psx_machine_step(&machine));
+    assert(psx_cpu_read_gpr(&machine.cpu, 8u) == 0x13572468u);
+    assert(!machine.cpu.load_delay_pending);
+    assert(machine.cop0_epc == 0x21cu);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_EXCCODE) ==
+           ((uint32_t)PSX_EXCEPTION_INTERRUPT <<
+            PSX_COP0_CAUSE_EXCCODE_SHIFT));
+    psx_irq_set_line(&machine.irq, 2u, false);
+    psx_irq_write_stat(&machine.irq, (uint16_t)~(1u << 2));
+    psx_irq_write_mask(&machine.irq, 0u);
+    psx_machine_refresh_interrupts(&machine);
+
     /* Halfword loads/stores and word stores report alignment faults with
      * the original effective address in BadVAddr.
      */
