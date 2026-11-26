@@ -351,7 +351,7 @@ int main(void)
                               (0x26u << 26) | (9u << 21) | (8u << 16)));
     assert(psx_memory_write32(&machine.memory, 0x308u, 0u));
     psx_cpu_write_gpr(&machine.cpu, 8u, 0xdeadbeefu);
-    psx_cpu_write_gpr(&machine.cpu, 9u, 0x201u);
+    psx_cpu_write_gpr(&machine.cpu, 9u, 0x221u);
     machine.cpu.pc = 0x300u; machine.cpu.next_pc = 0x304u;
     machine.cpu.load_delay_pending = false;
     assert(psx_cpu_step(&machine.cpu, &machine.bus));
