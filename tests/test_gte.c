@@ -204,6 +204,8 @@ int main(void)
     assert(psx_gte_read_data(&gte, 8u, &value) && value == 0u);
     assert(psx_gte_read_control(&gte, 31u, &value));
     assert((value & (1u << 12u)) != 0u);
+    /* FLAG.12 is deliberately excluded from the summary bit 31. */
+    assert((value & (1u << 31u)) == 0u);
 
     /* RTPS IR0 upper boundary: 4096 is inclusive. */
     psx_gte_reset(&gte);
@@ -232,6 +234,7 @@ int main(void)
     assert(psx_gte_read_data(&gte, 8u, &value) && value == 4096u);
     assert(psx_gte_read_control(&gte, 31u, &value));
     assert((value & (1u << 12u)) != 0u);
+    assert((value & (1u << 31u)) == 0u);
 
     /* RTPS projects an offset vertex using H/SZ3. */
     psx_gte_reset(&gte);
