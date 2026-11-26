@@ -130,13 +130,29 @@ bool psx_gte_write_data(PsxGte *gte, uint8_t index, uint32_t value)
 bool psx_gte_read_control(const PsxGte *gte, uint8_t index, uint32_t *value)
 {
     if (!gte || !value || index >= PSX_GTE_REGISTER_COUNT) return false;
-    *value = gte->control[index];
+
+    switch (index) {
+    case 26u: /* H is an unsigned 16-bit projection parameter. */
+        *value = gte->control[index] & 0xffffu;
+        break;
+    case 27u: /* DQA and the depth-cue scale factors are signed 16-bit. */
+    case 29u:
+    case 30u:
+        *value = sign_extend_16(gte->control[index]);
+        break;
+    default:
+        *value = gte->control[index];
+        break;
+    }
     return true;
 }
 
 bool psx_gte_write_control(PsxGte *gte, uint8_t index, uint32_t value)
 {
     if (!gte || index >= PSX_GTE_REGISTER_COUNT) return false;
+    if (index == 26u) value &= 0xffffu;
+    if (index == 27u || index == 29u || index == 30u)
+        value = sign_extend_16(value);
     if (index == 31u) value &= 0x7ffff000u;
     gte->control[index] = value;
     if (index == 31u && (value & 0x7f87e000u) != 0u)
