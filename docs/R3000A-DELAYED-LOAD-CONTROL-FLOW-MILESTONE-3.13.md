@@ -4,6 +4,7 @@
 
 - CPU regression: a BEQ immediately following an LW compares the pre-load GPR value, then the pending load retires after the branch has read its operands. The test verifies the branch decision, updated register value, delay-slot instruction and target instruction.
 - Machine regression: a hardware IRQ asserted after a branch but before its delay slot is deferred until the delay-slot LW executes. At the next instruction boundary, the pending load retires before interrupt entry; EPC points to the branch target and Cause.BD remains clear.
+- CPU regression: an LW targeting `$ra` immediately before `JALR $ra,$ra` must not replace the old jump target. The JALR link value (`PC + 8`) wins over the pending load, and execution reaches the old `$ra` target.
 
 ## Validation
 
