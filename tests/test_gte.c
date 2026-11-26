@@ -20,6 +20,22 @@ int main(void)
     assert(psx_gte_read_data(&gte, 9u, &value));
     assert(value == 0xffff8001u);
 
+    /* VZ0..VZ2 are signed 16-bit registers on read and write. */
+    for (uint8_t index = 1u; index <= 5u; index += 2u) {
+        assert(psx_gte_write_data(&gte, index, 0x12348001u));
+        assert(psx_gte_read_data(&gte, index, &value));
+        assert(value == 0xffff8001u);
+    }
+
+    /* OTZ and SZ0..SZ3 are unsigned 16-bit registers. */
+    for (uint8_t index = 7u; index <= 19u; ++index) {
+        if (index != 7u && index < 16u) continue;
+        if (index > 7u && index < 16u) continue;
+        assert(psx_gte_write_data(&gte, index, 0x1234ffffu));
+        assert(psx_gte_read_data(&gte, index, &value));
+        assert(value == 0xffffu);
+    }
+
     assert(psx_gte_write_data(&gte, 9u, 0x0800u));
     assert(psx_gte_write_data(&gte, 10u, 0x0300u));
     assert(psx_gte_write_data(&gte, 11u, 0x1f80u));
