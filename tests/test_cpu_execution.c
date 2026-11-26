@@ -827,6 +827,19 @@ int main(void)
     assert(((machine.cop0_cause >> 2u) & 31u) ==
            PSX_EXCEPTION_COPROCESSOR_UNUSABLE);
 
+    /* CU2 gating takes priority over decoding an unsupported COP2 command. */
+    machine.cop0_status = 0u;
+    machine.cop0_cause = 0u;
+    machine.cpu.delay_slot_pending = false;
+    machine.cpu.load_delay_pending = false;
+    put_word(ram, 0x53cu, 0x4a000002u); /* Unsupported COP2 command, CU2 off */
+    machine.cpu.pc = 0x53cu;
+    machine.cpu.next_pc = 0x540u;
+    assert(psx_machine_step(&machine));
+    assert(machine.cop0_epc == 0x53cu);
+    assert(((machine.cop0_cause >> 2u) & 31u) ==
+           PSX_EXCEPTION_COPROCESSOR_UNUSABLE);
+
     /* A CU2 exception in a branch delay slot records Cause.BD and branch EPC. */
     machine.cop0_status = 0u;
     machine.cop0_cause = 0u;
