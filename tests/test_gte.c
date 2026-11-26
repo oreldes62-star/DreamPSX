@@ -294,6 +294,12 @@ int main(void)
     assert(psx_gte_write_data(&gte, 3u, 1000u));
     assert(psx_gte_write_data(&gte, 4u, 0x00640000u)); /* V2=(0,100,1000) */
     assert(psx_gte_write_data(&gte, 5u, 1000u));
+    /* Seed SZ FIFO to verify that three RTPS passes shift old depth out
+     * while preserving the previous newest entry in SZ0. */
+    assert(psx_gte_write_data(&gte, 16u, 111u));
+    assert(psx_gte_write_data(&gte, 17u, 222u));
+    assert(psx_gte_write_data(&gte, 18u, 333u));
+    assert(psx_gte_write_data(&gte, 19u, 444u));
     assert(psx_gte_execute(&gte, 0x4a080030u)); /* RTPT, sf=1 */
     assert(psx_gte_read_data(&gte, 12u, &value));
     assert((int16_t)(value & 0xffffu) == 160);
@@ -309,7 +315,7 @@ int main(void)
     assert(psx_gte_read_data(&gte, 19u, &value) && value == 1000u);
     /* RTPT leaves MAC/IR registers at the final vertex and shifts all
      * four depth entries, including the previous SZ3, through the FIFO. */
-    assert(psx_gte_read_data(&gte, 16u, &value) && value == 0u);
+    assert(psx_gte_read_data(&gte, 16u, &value) && value == 444u);
     assert(psx_gte_read_data(&gte, 25u, &value) && value == 0u);
     assert(psx_gte_read_data(&gte, 26u, &value) && value == 100u);
     assert(psx_gte_read_data(&gte, 27u, &value) && value == 1000u);
