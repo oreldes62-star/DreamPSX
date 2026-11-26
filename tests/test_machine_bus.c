@@ -113,6 +113,30 @@ int main(void)
     assert(((machine.cop0_cause & PSX_COP0_CAUSE_EXCCODE) >>
             PSX_COP0_CAUSE_EXCCODE_SHIFT) == PSX_EXCEPTION_BUS_DATA);
 
+    /* A not-taken branch still marks its following LWC2 as a delay slot. */
+    machine.cop0_status = 0x40000000u;
+    machine.cop0_cause = 0u;
+    psx_cpu_write_gpr(&machine.cpu, 8u, 7u);
+    psx_cpu_write_gpr(&machine.cpu, 9u, 7u);
+    psx_cpu_write_gpr(&machine.cpu, 12u, 0x1f000000u);
+    assert(psx_bus_write32(&machine.bus, 0x230u,
+                           (0x05u << 26) | (8u << 21) | (9u << 16) | 1u)); /* BNE equal: not taken */
+    assert(psx_bus_write32(&machine.bus, 0x234u,
+                           (0x32u << 26) | (12u << 21))); /* LWC2 delay slot */
+    machine.cpu.pc = 0x230u;
+    machine.cpu.next_pc = 0x234u;
+    machine.cpu.delay_slot_pending = false;
+    machine.cpu.load_delay_pending = false;
+    assert(psx_machine_step(&machine));
+    assert(machine.cpu.delay_slot_pending);
+    assert(machine.cpu.next_pc == 0x238u); /* sequential path, despite delay slot */
+    assert(psx_machine_step(&machine));
+    assert(machine.cop0_epc == 0x230u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_BD) != 0u);
+    assert(machine.cop0_badvaddr == 0x1f000000u);
+    assert(((machine.cop0_cause & PSX_COP0_CAUSE_EXCCODE) >>
+            PSX_COP0_CAUSE_EXCCODE_SHIFT) == PSX_EXCEPTION_BUS_DATA);
+
     free(bios);
     free(ram);
     puts("DreamPSX machine-bus integration tests: OK");
