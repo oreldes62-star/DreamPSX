@@ -146,6 +146,32 @@ int main(void)
     assert(psx_gte_read_data(&gte, 14u, &value));
     assert((int16_t)(value & 0xffffu) == 1023);
 
+    /* RTPS sf=0 preserves the unshifted MAC3 and derives SZ3 >> 12. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 2u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 4u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 7u, 0x1000u));
+    assert(psx_gte_write_control(&gte, 26u, 200u));
+    assert(psx_gte_execute(&gte, 0x4a000001u)); /* RTPS, sf=0 */
+    assert(psx_gte_read_data(&gte, 27u, &value) && value == 0x01000000u);
+    assert(psx_gte_read_data(&gte, 11u, &value) && value == 0x7fffu);
+    assert(psx_gte_read_data(&gte, 19u, &value) && value == 4096u);
+    assert(psx_gte_read_control(&gte, 31u, &value) && value == 0u);
+
+    /* Negative camera-space depth clamps SZ3 to zero, not to 0xffff. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 2u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 4u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 7u, (uint32_t)-1));
+    assert(psx_gte_write_control(&gte, 26u, 200u));
+    assert(psx_gte_execute(&gte, 0x4a080001u));
+    assert(psx_gte_read_data(&gte, 19u, &value) && value == 0u);
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 17u)) != 0u);
+    assert((value & (1u << 18u)) == 0u);
+
     /* MVMVA: identity rotation, V0 plus a translation vector. */
     psx_gte_reset(&gte);
     assert(psx_gte_write_control(&gte, 0u, 0x00001000u)); /* RT11=4096 */
