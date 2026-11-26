@@ -672,7 +672,7 @@ int main(void)
          * MTC2: the GTE receives the old GPR value, then the load retires. */
         psx_cpu_write_gpr(&machine.cpu, 9u, 0x11223344u);
         put_word(ram, 0x540u, (0x12u << 26) | (9u << 16) | (9u << 11)); /* MFC2 t1,D9 */
-        put_word(ram, 0x544u, (0x12u << 26) | (4u << 21) | (9u << 16) | (10u << 11)); /* MTC2 t1,D10 */
+        put_word(ram, 0x544u, (0x12u << 26) | (4u << 21) | (9u << 16) | (0u << 11)); /* MTC2 t1,VXY0 (full-width register) */
         put_word(ram, 0x548u, 0u);
         machine.cpu.pc = 0x540u;
         machine.cpu.next_pc = 0x544u;
@@ -680,7 +680,7 @@ int main(void)
         machine.cpu.load_delay_pending = false;
         assert(psx_machine_step(&machine));
         assert(psx_machine_step(&machine));
-        assert(psx_gte_read_data(&machine.gte, 10u, &value));
+        assert(psx_gte_read_data(&machine.gte, 0u, &value));
         assert(value == 0x11223344u); /* MTC2 saw the pre-MFC2 value. */
         assert(psx_cpu_read_gpr(&machine.cpu, 9u) == 0xffff8001u);
         assert(!machine.cpu.load_delay_pending); /* MTC2 retires the pending MFC2 load. */
