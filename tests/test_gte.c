@@ -784,6 +784,32 @@ int main(void)
     assert(psx_gte_read_control(&gte, 31u, &value));
     assert((value & (1u << 15u)) != 0u); /* X projection underflows */
 
+    /* RTPS projection Y MAC0: positive overflow is reported independently. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 0x1000u));
+    assert(psx_gte_write_control(&gte, 2u, 0x1000u));
+    assert(psx_gte_write_control(&gte, 4u, 0x1000u));
+    assert(psx_gte_write_control(&gte, 25u, 0x7fffffffu)); /* OFY */
+    assert(psx_gte_write_control(&gte, 26u, 1u)); /* H=1 */
+    assert(psx_gte_write_data(&gte, 0u, 0x00010000u)); /* IR2=1 */
+    assert(psx_gte_write_data(&gte, 1u, 4096u)); /* SZ=4096 */
+    assert(psx_gte_execute(&gte, 0x4a080001u));
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 16u)) != 0u); /* Y projection overflows */
+
+    /* RTPS projection Y MAC0: negative overflow is reported independently. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 0x1000u));
+    assert(psx_gte_write_control(&gte, 2u, 0x1000u));
+    assert(psx_gte_write_control(&gte, 4u, 0x1000u));
+    assert(psx_gte_write_control(&gte, 25u, 0x80000000u)); /* OFY */
+    assert(psx_gte_write_control(&gte, 26u, 1u)); /* H=1 */
+    assert(psx_gte_write_data(&gte, 0u, 0xffff0000u)); /* IR2=-1 */
+    assert(psx_gte_write_data(&gte, 1u, 4096u)); /* SZ=4096 */
+    assert(psx_gte_execute(&gte, 0x4a080001u));
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 15u)) != 0u); /* Y projection underflows */
+
     /* The signed 44-bit MAC boundary is inclusive at both ends.
      * TRX*4096 is 0x7ffffffff000; adding 4095 reaches the
      * largest representable value without raising MAC1 overflow. */
