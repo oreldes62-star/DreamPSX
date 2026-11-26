@@ -381,6 +381,29 @@ PsxCpuStepResult psx_cpu_step_result_with_cop0(PsxCpu *cpu, PsxBus *bus,
         if ((address & 1u) != 0u) { cpu->fault_address = address; return PSX_CPU_STEP_ADDRESS_ERROR_STORE; }
         if (!psx_bus_write16(bus, address, (uint16_t)b)) { cpu->fault_address = address; return PSX_CPU_STEP_DATA_BUS_ERROR; }
         break;
+    case 0x2au: /* SWL — Store Word Left, little-endian */
+    case 0x2eu: { /* SWR — Store Word Right, little-endian */
+        unsigned offset, first_lane, last_lane, lane;
+        address = a + sign_extend_16(imm);
+        offset = address & 3u;
+        if (op == 0x2au) {
+            first_lane = 0u;
+            last_lane = offset;
+        } else {
+            first_lane = offset;
+            last_lane = 3u;
+        }
+        for (lane = first_lane; lane <= last_lane; ++lane) {
+            unsigned register_lane = (op == 0x2au)
+                ? (3u - offset + lane) : (lane - offset);
+            uint8_t value = (uint8_t)(b >> (register_lane * 8u));
+            if (!psx_bus_write8(bus, (address & ~3u) + lane, value)) {
+                cpu->fault_address = address;
+                return PSX_CPU_STEP_DATA_BUS_ERROR;
+            }
+        }
+        break;
+    }
     case 0x2bu: /* SW */
         address = a + sign_extend_16(imm);
         if ((address & 3u) != 0u) { cpu->fault_address = address; return PSX_CPU_STEP_ADDRESS_ERROR_STORE; }
