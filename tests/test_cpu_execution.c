@@ -760,14 +760,14 @@ int main(void)
     put_word(ram, 0x620u, 0x89abcdefu);
     put_word(ram, 0x624u, 0u);
     psx_cpu_write_gpr(&machine.cpu, 12u, 0x620u);
-    put_word(ram, 0x59cu, (0x32u << 26) | (12u << 21) | (7u << 16)); /* LWC2 D7,0(t4) */
-    put_word(ram, 0x5a0u, (0x3au << 26) | (12u << 21) | (7u << 16) | 4u); /* SWC2 D7,4(t4) */
+    put_word(ram, 0x59cu, (0x32u << 26) | (12u << 21)); /* LWC2 D0,0(t4) */
+    put_word(ram, 0x5a0u, (0x3au << 26) | (12u << 21) | 4u); /* SWC2 D0,4(t4) */
     machine.cpu.pc = 0x59cu;
     machine.cpu.next_pc = 0x5a0u;
     machine.cpu.delay_slot_pending = false;
     machine.cpu.load_delay_pending = false;
     assert(psx_machine_step(&machine));
-    assert(machine.gte.data[7u] == 0x89abcdefu);
+    assert(machine.gte.data[0u] == 0x89abcdefu);
     assert(psx_machine_step(&machine));
     assert(ram[0x624u] == 0xefu && ram[0x625u] == 0xcdu &&
            ram[0x626u] == 0xabu && ram[0x627u] == 0x89u);
