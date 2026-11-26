@@ -554,7 +554,7 @@ static void gte_execute_gpl(PsxGte *gte, uint32_t instruction)
     for (i = 0u; i < 3u; ++i) {
         int32_t ir = gte_signed16(gte->data[9u + i]);
         int32_t previous_mac = (int32_t)gte->data[25u + i];
-        int64_t mac = ((int64_t)previous_mac * 4096) +
+        int64_t mac = ((int64_t)previous_mac * (INT64_C(1) << shift)) +
                       ((int64_t)ir0 * ir);
         int64_t result;
 
