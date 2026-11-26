@@ -10,11 +10,13 @@ int main(void)
     PsxMachine machine;
     uint8_t *ram = (uint8_t *)calloc(1u, PSX_RAM_SIZE);
     uint8_t *bios = (uint8_t *)calloc(1u, PSX_BIOS_SIZE);
+    uint16_t *gpu_vram = (uint16_t *)calloc(PSX_GPU_VRAM_WIDTH * PSX_GPU_VRAM_HEIGHT, sizeof(uint16_t));
     uint32_t word = 0u;
     uint16_t half = 0u;
 
-    assert(ram && bios);
-    assert(psx_machine_init(&machine, ram, PSX_RAM_SIZE, bios, PSX_BIOS_SIZE));
+    assert(ram && bios && gpu_vram);
+    assert(psx_machine_init(&machine, ram, PSX_RAM_SIZE, bios, PSX_BIOS_SIZE,
+                            gpu_vram, PSX_GPU_VRAM_WIDTH * PSX_GPU_VRAM_HEIGHT));
     assert(machine.bus.initialized);
 
     /* CPU-facing bus reaches RAM and its KSEG aliases. */
