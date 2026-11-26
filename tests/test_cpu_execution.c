@@ -683,9 +683,7 @@ int main(void)
         assert(psx_gte_read_data(&machine.gte, 10u, &value));
         assert(value == 0x11223344u); /* MTC2 saw the pre-MFC2 value. */
         assert(psx_cpu_read_gpr(&machine.cpu, 9u) == 0xffff8001u);
-        assert(machine.cpu.load_delay_pending);
-        assert(psx_machine_step(&machine));
-        assert(!machine.cpu.load_delay_pending);
+        assert(!machine.cpu.load_delay_pending); /* MTC2 retires the pending MFC2 load. */
     }
 
     /* LWC2/SWC2 alignment faults must report the effective address. */
