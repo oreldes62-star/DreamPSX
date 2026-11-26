@@ -827,6 +827,23 @@ int main(void)
     assert(((machine.cop0_cause >> 2u) & 31u) ==
            PSX_EXCEPTION_COPROCESSOR_UNUSABLE);
 
+    /* A CU2 exception in a branch delay slot records Cause.BD and branch EPC. */
+    machine.cop0_status = 0u;
+    machine.cop0_cause = 0u;
+    machine.cpu.delay_slot_pending = false;
+    machine.cpu.load_delay_pending = false;
+    put_word(ram, 0x540u, 0x10000001u); /* BEQ zero,zero,+1 */
+    put_word(ram, 0x544u, 0x4b400006u); /* NCLIP in the delay slot */
+    machine.cpu.pc = 0x540u;
+    machine.cpu.next_pc = 0x544u;
+    assert(psx_machine_step(&machine)); /* branch */
+    assert(machine.cpu.delay_slot_pending);
+    assert(psx_machine_step(&machine)); /* COP2 exception in delay slot */
+    assert(machine.cop0_epc == 0x540u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_BD) != 0u);
+    assert(((machine.cop0_cause >> 2u) & 31u) ==
+           PSX_EXCEPTION_COPROCESSOR_UNUSABLE);
+
     free(bios); free(ram);
     puts("DreamPSX R3000A execution tests: OK");
     return 0;
