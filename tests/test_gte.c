@@ -843,6 +843,46 @@ int main(void)
     assert((value & (1u << 22u)) != 0u); /* IR3 saturation */
     assert((value & 0x80000000u) != 0u); /* FLAG summary */
 
+    /* Negative MVMVA results saturate at -32768 when lm=0. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 2u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 4u, 0x00001000u));
+    assert(psx_gte_write_data(&gte, 0u, 0x80008000u));
+    assert(psx_gte_write_data(&gte, 1u, 0x8000u));
+    assert(psx_gte_execute(&gte, 0x48006012u)); /* sf=0, lm=0 */
+    assert(psx_gte_read_data(&gte, 25u, &value) &&
+           value == (uint32_t)-134217728);
+    assert(psx_gte_read_data(&gte, 26u, &value) &&
+           value == (uint32_t)-134217728);
+    assert(psx_gte_read_data(&gte, 27u, &value) &&
+           value == (uint32_t)-134217728);
+    assert(psx_gte_read_data(&gte, 9u, &value) && value == 0xffff8000u);
+    assert(psx_gte_read_data(&gte, 10u, &value) && value == 0xffff8000u);
+    assert(psx_gte_read_data(&gte, 11u, &value) && value == 0xffff8000u);
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 24u)) != 0u);
+    assert((value & (1u << 23u)) != 0u);
+    assert((value & (1u << 22u)) != 0u);
+    assert((value & 0x80000000u) != 0u);
+
+    /* With lm=1, negative IR results clamp to zero and set the same flags. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 2u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 4u, 0x00001000u));
+    assert(psx_gte_write_data(&gte, 0u, 0xfffeffffu));
+    assert(psx_gte_write_data(&gte, 1u, 0xfffdu));
+    assert(psx_gte_execute(&gte, 0x48006412u)); /* sf=0, lm=1 */
+    assert(psx_gte_read_data(&gte, 9u, &value) && value == 0u);
+    assert(psx_gte_read_data(&gte, 10u, &value) && value == 0u);
+    assert(psx_gte_read_data(&gte, 11u, &value) && value == 0u);
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 24u)) != 0u);
+    assert((value & (1u << 23u)) != 0u);
+    assert((value & (1u << 22u)) != 0u);
+    assert((value & 0x80000000u) != 0u);
+
     /* Independent PCSX-Redux reference: RT rotation plus TR translation. */
     psx_gte_reset(&gte);
     assert(psx_gte_write_control(&gte, 0u, 0xf0000000u));
