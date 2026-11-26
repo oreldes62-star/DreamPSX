@@ -1603,10 +1603,10 @@ int main(void)
     assert(psx_gte_write_control(&gte, 2u, 0x00001000u));
     assert(psx_gte_write_control(&gte, 4u, 0x00001000u));
     assert(psx_gte_write_control(&gte, 26u, 200u)); /* H */
-    assert(psx_gte_write_control(&gte, 27u, 32767u)); /* DQA */
+    assert(psx_gte_write_control(&gte, 27u, 200u)); /* DQA */
     assert(psx_gte_write_control(&gte, 28u, 0u)); /* DQB */
     assert(psx_gte_write_data(&gte, 0u, 0u));
-    assert(psx_gte_write_data(&gte, 1u, 100u)); /* V0 Z: IR0 overflows */
+    assert(psx_gte_write_data(&gte, 1u, 101u)); /* V0 Z: IR0 overflows */
     assert(psx_gte_write_data(&gte, 2u, 0u));
     assert(psx_gte_write_data(&gte, 3u, 10000u)); /* V1 Z */
     assert(psx_gte_write_data(&gte, 4u, 0u));
