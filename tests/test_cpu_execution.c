@@ -373,7 +373,7 @@ int main(void)
     assert(psx_cpu_step(&machine.cpu, &machine.bus));
     assert(machine.cpu.load_delay_pending);
     assert(psx_cpu_step(&machine.cpu, &machine.bus));
-    assert(machine.cpu.next_pc == 0x588u); /* old negative $ra: not taken */
+    assert(machine.cpu.next_pc == 0x58cu); /* old negative $ra: not taken */
     assert(psx_cpu_read_gpr(&machine.cpu, 31u) == 0x58cu); /* link wins */
     assert(!machine.cpu.load_delay_pending);
     assert(machine.cpu.delay_slot_pending);
