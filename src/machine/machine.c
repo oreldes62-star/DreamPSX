@@ -4,11 +4,12 @@
 
 bool psx_machine_init(PsxMachine *machine,
                       uint8_t *ram, size_t ram_size,
-                      const uint8_t *bios, size_t bios_size)
+                      const uint8_t *bios, size_t bios_size,
+                      uint16_t *gpu_vram, size_t gpu_vram_pixels)
 {
     if (!machine || !psx_memory_init(&machine->memory, ram, ram_size,
                                      bios, bios_size)) return false;
-    if (!psx_gpu_init(&machine->gpu)) return false;
+    if (!psx_gpu_init(&machine->gpu, gpu_vram, gpu_vram_pixels)) return false;
     psx_machine_reset(machine);
     if (!psx_bus_init(&machine->bus, &machine->memory, &machine->irq,
                      &machine->gpu))
