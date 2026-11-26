@@ -2,7 +2,7 @@
 PlayStation emulator research and development for Sega Dreamcast.
 
 ## Development status
-Experimental project. The host-side CMake build and all 13 CTest targets passed in GitHub Actions on commit `93334f71f79239f8bd4333ceee65e511e47fc6bb`. This validates the host test suite only; the Dreamcast/KallistiOS target remains a separate future integration step.
+Experimental project. The host-side CMake build and all 13 CTest targets passed in GitHub Actions on commit `bb81107f865f693606cf387c2ab13c17c030e062`. This validates the host test suite only; the Dreamcast/KallistiOS target remains a separate future integration step.
 
 ## Current milestones
 - [COP2 CU2 milestone 1.2](docs/COP2-CU2-MILESTONE-1.2.md)
@@ -51,9 +51,10 @@ Experimental project. The host-side CMake build and all 13 CTest targets passed 
 - [GTE RTPT triple perspective transformation milestone 3.26](docs/GTE-RTPT-MILESTONE-3.26.md)
 - [GTE AVSZ3/AVSZ4 depth averaging milestone 3.27](docs/GTE-AVSZ3-AVSZ4-MILESTONE-3.27.md)
 - [GTE SQR register squaring milestone 3.28](docs/GTE-SQR-MILESTONE-3.28.md)
+- [GTE OP outer product milestone 3.29](docs/GTE-OP-MILESTONE-3.29.md)
 
 ## Target
 Sega Dreamcast with 16 MiB RAM. Long-term target: CDI test build for Flycast, then GDEMU.
 
 ## Limitations
-No Dreamcast/KallistiOS build, CDI image or playable game exists yet. CPU registers and BIOS instruction fetch are represented, and a growing subset of R3000A instructions plus the first GTE geometry commands (NCLIP, MVMVA, RTPS, RTPT, AVSZ3, AVSZ4 and SQR initial implementations) execute; instruction decoding/execution remains partial, and remaining hardware devices are not implemented. The host CMake/CTest suite passes in GitHub Actions, but it does not produce a Dreamcast binary or CDI image.
+No Dreamcast/KallistiOS build, CDI image or playable game exists yet. CPU registers and BIOS instruction fetch are represented, and a growing subset of R3000A instructions plus the first GTE geometry commands (NCLIP, MVMVA, RTPS, RTPT, AVSZ3, AVSZ4, SQR and OP initial implementations) execute; instruction decoding/execution remains partial, and remaining hardware devices are not implemented. The host CMake/CTest suite passes in GitHub Actions, but it does not produce a Dreamcast binary or CDI image.
