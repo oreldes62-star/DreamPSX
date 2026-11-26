@@ -271,6 +271,28 @@ int main(void)
     assert(psx_gte_read_data(&gte, 26u, &value) && value == 16u);
     assert(psx_gte_read_data(&gte, 27u, &value) && value == 10000u);
 
+    /* OP computes the IR cross-product scaled by RT diagonal entries. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 2u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 4u, 0x00001000u));
+    assert(psx_gte_write_data(&gte, 9u, 1u));
+    assert(psx_gte_write_data(&gte, 10u, 2u));
+    assert(psx_gte_write_data(&gte, 11u, 3u));
+    assert(psx_gte_execute(&gte, 0x4a08000cu)); /* OP, sf=1 */
+    assert(psx_gte_read_data(&gte, 25u, &value) && value == 1u);
+    assert(psx_gte_read_data(&gte, 26u, &value) && value == (uint32_t)-2);
+    assert(psx_gte_read_data(&gte, 27u, &value) && value == 1u);
+    assert(psx_gte_read_data(&gte, 9u, &value) && value == 1u);
+    assert(psx_gte_read_data(&gte, 10u, &value) && value == (uint32_t)-2);
+    assert(psx_gte_read_data(&gte, 11u, &value) && value == 1u);
+
+    /* OP sf=0 exposes the fixed-point cross-product before shifting. */
+    assert(psx_gte_execute(&gte, 0x4a00000cu)); /* OP, sf=0 */
+    assert(psx_gte_read_data(&gte, 25u, &value) && value == 4096u);
+    assert(psx_gte_read_data(&gte, 26u, &value) && value == (uint32_t)-8192);
+    assert(psx_gte_read_data(&gte, 27u, &value) && value == 4096u);
+
     /* MVMVA: identity rotation, V0 plus a translation vector. */
     psx_gte_reset(&gte);
     assert(psx_gte_write_control(&gte, 0u, 0x00001000u)); /* RT11=4096 */
