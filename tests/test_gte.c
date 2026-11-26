@@ -322,6 +322,37 @@ int main(void)
     assert(psx_gte_read_data(&gte, 26u, &value) && value == (uint32_t)-6);
     assert(psx_gte_read_data(&gte, 27u, &value) && value == 8u);
 
+    /* GPL adds IR0*IR to the previous MAC shifted by 12 bits. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_data(&gte, 8u, 0x1000u));
+    assert(psx_gte_write_data(&gte, 9u, 2u));
+    assert(psx_gte_write_data(&gte, 10u, (uint32_t)-3));
+    assert(psx_gte_write_data(&gte, 11u, 4u));
+    assert(psx_gte_write_data(&gte, 25u, 5u));
+    assert(psx_gte_write_data(&gte, 26u, (uint32_t)-6));
+    assert(psx_gte_write_data(&gte, 27u, 7u));
+    assert(psx_gte_execute(&gte, 0x4a08003eu)); /* GPL, sf=1 */
+    assert(psx_gte_read_data(&gte, 25u, &value) && value == 7u);
+    assert(psx_gte_read_data(&gte, 26u, &value) && value == (uint32_t)-9);
+    assert(psx_gte_read_data(&gte, 27u, &value) && value == 11u);
+    assert(psx_gte_read_data(&gte, 9u, &value) && value == 7u);
+    assert(psx_gte_read_data(&gte, 10u, &value) && value == (uint32_t)-9);
+    assert(psx_gte_read_data(&gte, 11u, &value) && value == 11u);
+
+    /* GPL sf=0 exposes the accumulated 44-bit MAC result. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_data(&gte, 8u, 0x1000u));
+    assert(psx_gte_write_data(&gte, 9u, 2u));
+    assert(psx_gte_write_data(&gte, 10u, (uint32_t)-3));
+    assert(psx_gte_write_data(&gte, 11u, 4u));
+    assert(psx_gte_write_data(&gte, 25u, 5u));
+    assert(psx_gte_write_data(&gte, 26u, (uint32_t)-6));
+    assert(psx_gte_write_data(&gte, 27u, 7u));
+    assert(psx_gte_execute(&gte, 0x4a00003eu)); /* GPL, sf=0 */
+    assert(psx_gte_read_data(&gte, 25u, &value) && value == 28672u);
+    assert(psx_gte_read_data(&gte, 26u, &value) && value == (uint32_t)-36864);
+    assert(psx_gte_read_data(&gte, 27u, &value) && value == 45056u);
+
     /* MVMVA: identity rotation, V0 plus a translation vector. */
     psx_gte_reset(&gte);
     assert(psx_gte_write_control(&gte, 0u, 0x00001000u)); /* RT11=4096 */
