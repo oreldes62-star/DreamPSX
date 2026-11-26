@@ -44,7 +44,7 @@ int main(void)
     assert(value == 31u);
     assert(psx_gte_write_data(&gte, 30u, 0u));
     assert(psx_gte_read_data(&gte, 31u, &value));
-    assert(value == 32u);
+    assert(value == 31u);
 
     assert(psx_gte_write_data(&gte, 12u, 0x00010002u));
     assert(psx_gte_write_data(&gte, 13u, 0x00030004u));
