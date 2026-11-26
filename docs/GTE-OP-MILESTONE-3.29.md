@@ -17,7 +17,7 @@ Tests use an identity diagonal rotation matrix and IR=(1,2,3) to verify the expe
 
 ## Validation
 
-GitHub Actions validation for the OP implementation and new tests is pending. The previous SQR milestone passed all 13 host test targets.
+GitHub Actions host build and CTest passed on commit `bb81107f865f693606cf387c2ab13c17c030e062`: all 13 test targets passed, including `test_gte` with both OP shift-mode cases.
 
 This is host-side validation only; it does not establish Dreamcast/KallistiOS buildability, PS1 hardware accuracy, BIOS boot, CDI generation or game compatibility.
 
