@@ -322,10 +322,10 @@ int main(void)
      */
     assert(psx_memory_write32(&machine.memory, 0x310u, 0xfacec0deu));
     assert(psx_memory_write32(&machine.memory, 0x1e0u, 0x10000001u)); /* BEQ zero,zero,+1 */
-    assert(psx_memory_write32(&machine.memory, 0x1e4u, 0x8d280000u)); /* LW t0,0(t1), delay slot */
+    assert(psx_memory_write32(&machine.memory, 0x1e4u, 0x8d480000u)); /* LW t0,0(t2), delay slot */
     assert(psx_memory_write32(&machine.memory, 0x1e8u, 0x21280001u)); /* ADDI t0,t1,1 */
     psx_cpu_write_gpr(&machine.cpu, 8u, 0x55555555u);
-    psx_cpu_write_gpr(&machine.cpu, 9u, 0x310u);
+    psx_cpu_write_gpr(&machine.cpu, 10u, 0x310u);
     machine.cpu.pc = 0x1e0u;
     machine.cpu.next_pc = 0x1e4u;
     machine.cpu.delay_slot_pending = false;
