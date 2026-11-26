@@ -686,6 +686,24 @@ int main(void)
         assert(!machine.cpu.load_delay_pending); /* MTC2 retires the pending MFC2 load. */
     }
 
+    /* CTC2/CFC2 preserve the signed 16-bit DQA control-register view. */
+    machine.cop0_status = 0x40000000u;
+    machine.cpu.delay_slot_pending = false;
+    machine.cpu.load_delay_pending = false;
+    psx_cpu_write_gpr(&machine.cpu, 8u, 0x12348001u);
+    psx_cpu_write_gpr(&machine.cpu, 9u, 0u);
+    put_word(ram, 0x54cu, (0x12u << 26) | (6u << 21) | (8u << 16) | (27u << 11)); /* CTC2 t0,C27 */
+    put_word(ram, 0x550u, (0x12u << 26) | (2u << 21) | (9u << 16) | (27u << 11)); /* CFC2 t1,C27 */
+    put_word(ram, 0x554u, 0u);
+    machine.cpu.pc = 0x54cu;
+    machine.cpu.next_pc = 0x550u;
+    assert(psx_machine_step(&machine));
+    assert(machine.gte.control[27u] == 0xffff8001u);
+    assert(psx_machine_step(&machine));
+    assert(psx_cpu_read_gpr(&machine.cpu, 9u) == 0u); /* CFC2 transfer delay */
+    assert(psx_machine_step(&machine));
+    assert(psx_cpu_read_gpr(&machine.cpu, 9u) == 0xffff8001u);
+
     /* LWC2/SWC2 alignment faults must report the effective address. */
     machine.cop0_status = 0x40000000u;
     machine.cop0_cause = 0u;
