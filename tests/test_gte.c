@@ -716,6 +716,46 @@ int main(void)
     assert(psx_gte_read_data(&gte, 25u, &value) && value == (uint32_t)-1);
     assert(psx_gte_read_data(&gte, 9u, &value) && value == 0u);
 
+    /* Independent PCSX-Redux cases: V2 plus BK, light matrix, and
+     * light-color matrix with IR input plus BK translation. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 2u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 4u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 13u, 1000u));
+    assert(psx_gte_write_control(&gte, 14u, 2000u));
+    assert(psx_gte_write_control(&gte, 15u, 3000u));
+    assert(psx_gte_write_data(&gte, 4u, 0x00c80064u)); /* V2=(100,200,300) */
+    assert(psx_gte_write_data(&gte, 5u, 300u));
+    assert(psx_gte_execute(&gte, 0x4809a012u)); /* sf=1, RT, V2, BK */
+    assert(psx_gte_read_data(&gte, 25u, &value) && value == 1100u);
+    assert(psx_gte_read_data(&gte, 26u, &value) && value == 2200u);
+    assert(psx_gte_read_data(&gte, 27u, &value) && value == 3300u);
+
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 12u, 0x00001000u)); /* LL33 */
+    assert(psx_gte_write_data(&gte, 0u, 0x00c80064u)); /* V0=(100,200,4096) */
+    assert(psx_gte_write_data(&gte, 1u, 0x1000u));
+    assert(psx_gte_execute(&gte, 0x480a6012u)); /* sf=1, LL, V0, no translation */
+    assert(psx_gte_read_data(&gte, 25u, &value) && value == 0u);
+    assert(psx_gte_read_data(&gte, 26u, &value) && value == 0u);
+    assert(psx_gte_read_data(&gte, 27u, &value) && value == 0x1000u);
+
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 16u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 18u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 20u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 13u, 100u));
+    assert(psx_gte_write_control(&gte, 14u, 200u));
+    assert(psx_gte_write_control(&gte, 15u, 300u));
+    assert(psx_gte_write_data(&gte, 9u, 0x1000u));
+    assert(psx_gte_write_data(&gte, 10u, 0x1000u));
+    assert(psx_gte_write_data(&gte, 11u, 0x1000u));
+    assert(psx_gte_execute(&gte, 0x480da012u)); /* sf=1, LC, IR, BK */
+    assert(psx_gte_read_data(&gte, 25u, &value) && value == 4196u);
+    assert(psx_gte_read_data(&gte, 26u, &value) && value == 4296u);
+    assert(psx_gte_read_data(&gte, 27u, &value) && value == 4396u);
+
     /* MVMVA reserved matrix selector 3: reproduce the documented
      * hardware "garbage matrix" result from an independent PCSX-Redux test. */
     psx_gte_reset(&gte);
