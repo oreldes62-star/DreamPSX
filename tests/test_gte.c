@@ -1353,7 +1353,7 @@ int main(void)
 
     /* IR2 and IR3 upper boundaries are inclusive at +32767. */
     psx_gte_reset(&gte);
-    assert(psx_gte_write_control(&gte, 2u, 1u)); /* RT[1][1] */
+    assert(psx_gte_write_control(&gte, 2u, 0x00010000u)); /* RT[1][1] */
     assert(psx_gte_write_control(&gte, 4u, 1u)); /* RT[2][2] */
     assert(psx_gte_write_data(&gte, 0u, 0x7fff0000u)); /* V0.y */
     assert(psx_gte_write_data(&gte, 1u, 0x00007fffu)); /* V0.z */
@@ -1364,7 +1364,7 @@ int main(void)
 
     /* IR2 and IR3 independently clamp one unit above their upper limits. */
     psx_gte_reset(&gte);
-    assert(psx_gte_write_control(&gte, 2u, 2u));
+    assert(psx_gte_write_control(&gte, 2u, 0x00020000u));
     assert(psx_gte_write_control(&gte, 4u, 2u));
     assert(psx_gte_write_data(&gte, 0u, 0x40000000u)); /* V0.y=16384 */
     assert(psx_gte_write_data(&gte, 1u, 16384u)); /* V0.z=16384 */
