@@ -49,6 +49,7 @@ int main(void)
 
     psx_cpu_write_gpr(&machine.cpu, 8u, 0x180u);
     psx_cpu_write_gpr(&machine.cpu, 9u, 0xfeed1234u);
+    psx_cpu_write_gpr(&machine.cpu, 10u, 0u);
     put_word(ram, 0x11cu, 0xad090000u); /* SW t1,0(t0) */
     put_word(ram, 0x120u, 0x8d0a0000u); /* LW t2,0(t0) */
     machine.cpu.pc = 0x11cu;
