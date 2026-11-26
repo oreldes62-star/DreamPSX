@@ -6,7 +6,7 @@
 
 #define PSX_GTE_REGISTER_COUNT 32u
 
-typedef struct {
+typedef struct PsxGte {
     uint32_t data[PSX_GTE_REGISTER_COUNT];
     uint32_t control[PSX_GTE_REGISTER_COUNT];
 } PsxGte;
