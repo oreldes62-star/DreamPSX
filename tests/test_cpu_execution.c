@@ -669,6 +669,18 @@ int main(void)
         assert(value == 0x89abcdefu);
     }
 
+    /* COP2 is unavailable when Status.CU2 is clear. */
+    machine.cop0_status = 0u;
+    machine.cop0_cause = 0u;
+    machine.cpu.delay_slot_pending = false;
+    machine.cpu.load_delay_pending = false;
+    put_word(ram, 0x530u, (0x12u << 26) | (9u << 16) | (9u << 11)); /* MFC2 t1,D9 */
+    machine.cpu.pc = 0x530u; machine.cpu.next_pc = 0x534u;
+    assert(psx_machine_step(&machine));
+    assert(machine.cop0_epc == 0x530u);
+    assert(((machine.cop0_cause >> 2u) & 31u) ==
+           PSX_EXCEPTION_COPROCESSOR_UNUSABLE);
+
     free(bios); free(ram);
     puts("DreamPSX R3000A execution tests: OK");
     return 0;
