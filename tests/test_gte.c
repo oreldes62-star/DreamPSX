@@ -482,6 +482,27 @@ int main(void)
     assert(psx_gte_read_data(&gte, 21u, &value) && value == 0xab445566u);
     assert(psx_gte_read_data(&gte, 22u, &value) && value == 0xab778899u);
 
+    /* DCPL: light/color transform, RGBC modulation and far-color cue. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 8u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 10u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 12u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 16u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 18u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 20u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 21u, 0x1000u));
+    assert(psx_gte_write_control(&gte, 22u, 0x1000u));
+    assert(psx_gte_write_control(&gte, 23u, 0x1000u));
+    assert(psx_gte_write_data(&gte, 0u, 0x02000100u));
+    assert(psx_gte_write_data(&gte, 1u, 768u));
+    assert(psx_gte_write_data(&gte, 6u, 0xab404040u));
+    assert(psx_gte_write_data(&gte, 8u, 0x0800u));
+    assert(psx_gte_execute(&gte, 0x4a080029u)); /* DCPL, sf=1 */
+    assert(psx_gte_read_data(&gte, 25u, &value) && value == 2080u);
+    assert(psx_gte_read_data(&gte, 26u, &value) && value == 2112u);
+    assert(psx_gte_read_data(&gte, 27u, &value) && value == 2144u);
+    assert(psx_gte_read_data(&gte, 22u, &value) && value == 0xab868482u);
+
     /* MVMVA: identity rotation, V0 plus a translation vector. */
     psx_gte_reset(&gte);
     assert(psx_gte_write_control(&gte, 0u, 0x00001000u)); /* RT11=4096 */
