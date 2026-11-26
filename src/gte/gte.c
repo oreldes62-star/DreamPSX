@@ -319,9 +319,9 @@ static void gte_execute_rtps(PsxGte *gte, uint32_t instruction,\n               
     int64_t mac0;
     unsigned i, j;
 
-    v[0] = gte_signed16(gte->data[0]);
-    v[1] = gte_signed16(gte->data[0] >> 16u);
-    v[2] = gte_signed16(gte->data[1]);
+    v[0] = gte_signed16(gte->data[vertex * 2u]);
+    v[1] = gte_signed16(gte->data[vertex * 2u] >> 16u);
+    v[2] = gte_signed16(gte->data[vertex * 2u + 1u]);
 
     for (i = 0u; i < 3u; ++i) {
         mac[i] = (int64_t)(int32_t)gte->control[5u + i] * 4096;
@@ -395,8 +395,17 @@ static void gte_execute_rtps(PsxGte *gte, uint32_t instruction,\n               
         gte->data[8] = (uint32_t)ir0;
     }
 
-    if (flags & 0x7f87e000u) flags |= 0x80000000u;
-    gte->control[31] = flags;
+    *accumulated_flags |= flags;
+    if (*accumulated_flags & 0x7f87e000u) *accumulated_flags |= 0x80000000u;
+    gte->control[31] = *accumulated_flags;
+}
+
+static void gte_execute_rtpt(PsxGte *gte, uint32_t instruction)
+{
+    uint32_t accumulated_flags = 0u;
+    unsigned vertex;
+    for (vertex = 0u; vertex < 3u; ++vertex)
+        gte_execute_rtps(gte, instruction, vertex, &accumulated_flags);
 }
 
 bool psx_gte_execute(PsxGte *gte, uint32_t instruction)
