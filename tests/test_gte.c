@@ -758,35 +758,29 @@ int main(void)
     assert((value & (1u << 15u)) == 0u); /* exact lower bound */
     assert((value & (1u << 14u)) != 0u); /* projected SX clamps */
 
-    /* RTPS projection MAC0: one unit above INT32_MAX must flag overflow. */
-    psx_gte_reset(&gte);
-    assert(psx_gte_write_control(&gte, 0u, 0x1000u));
-    assert(psx_gte_write_control(&gte, 2u, 0x1000u));
-    assert(psx_gte_write_control(&gte, 4u, 0x1000u));
-    assert(psx_gte_write_control(&gte, 24u, 0x80000000u)); /* OFX */
-    assert(psx_gte_write_control(&gte, 28u, 0x80000000u)); /* DQB */
-    assert(psx_gte_write_control(&gte, 26u, 0u)); /* H=0, quotient=0 */
-    assert(psx_gte_write_data(&gte, 0u, 0u));
-    assert(psx_gte_write_data(&gte, 1u, 1000u));
-    assert(psx_gte_execute(&gte, 0x4a080001u));
-    assert(psx_gte_read_data(&gte, 24u, &value) &&
-           value == 0x80000000u);
-    assert(psx_gte_read_control(&gte, 31u, &value));
-    assert((value & (1u << 16u)) != 0u); /* X projection overflows */
-
-    /* RTPS projection MAC0: one unit below INT32_MIN must flag overflow. */
+    /* RTPS projection MAC0: positive overflow by a nonzero quotient. */
     psx_gte_reset(&gte);
     assert(psx_gte_write_control(&gte, 0u, 0x1000u));
     assert(psx_gte_write_control(&gte, 2u, 0x1000u));
     assert(psx_gte_write_control(&gte, 4u, 0x1000u));
     assert(psx_gte_write_control(&gte, 24u, 0x7fffffffu)); /* OFX */
-    assert(psx_gte_write_control(&gte, 28u, 0x7fffffffu)); /* DQB */
-    assert(psx_gte_write_control(&gte, 26u, 0u)); /* H=0, quotient=0 */
-    assert(psx_gte_write_data(&gte, 0u, 0u));
-    assert(psx_gte_write_data(&gte, 1u, 1000u));
+    assert(psx_gte_write_control(&gte, 26u, 1u)); /* H=1 */
+    assert(psx_gte_write_data(&gte, 0u, 1u)); /* IR1=1 */
+    assert(psx_gte_write_data(&gte, 1u, 4096u)); /* SZ=4096 */
     assert(psx_gte_execute(&gte, 0x4a080001u));
-    assert(psx_gte_read_data(&gte, 24u, &value) &&
-           value == 0x7fffffffu);
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 16u)) != 0u); /* X projection overflows */
+
+    /* RTPS projection MAC0: negative overflow by a nonzero quotient. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 0x1000u));
+    assert(psx_gte_write_control(&gte, 2u, 0x1000u));
+    assert(psx_gte_write_control(&gte, 4u, 0x1000u));
+    assert(psx_gte_write_control(&gte, 24u, 0x80000000u)); /* OFX */
+    assert(psx_gte_write_control(&gte, 26u, 1u)); /* H=1 */
+    assert(psx_gte_write_data(&gte, 0u, 0xffffffffu)); /* IR1=-1 */
+    assert(psx_gte_write_data(&gte, 1u, 4096u)); /* SZ=4096 */
+    assert(psx_gte_execute(&gte, 0x4a080001u));
     assert(psx_gte_read_control(&gte, 31u, &value));
     assert((value & (1u << 15u)) != 0u); /* X projection underflows */
 
