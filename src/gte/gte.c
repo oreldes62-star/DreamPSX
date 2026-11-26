@@ -39,11 +39,21 @@ bool psx_gte_read_data(const PsxGte *gte, uint8_t index, uint32_t *value)
     if (!gte || !value || index >= PSX_GTE_REGISTER_COUNT) return false;
 
     switch (index) {
+    case 1u:
+    case 3u:
+    case 5u:
     case 8u:
     case 9u:
     case 10u:
     case 11u:
         result = sign_extend_16(gte->data[index]);
+        break;
+    case 7u:
+    case 16u:
+    case 17u:
+    case 18u:
+    case 19u:
+        result = gte->data[index] & 0xffffu;
         break;
     case 15u:
         result = gte->data[14u];
@@ -73,11 +83,21 @@ bool psx_gte_write_data(PsxGte *gte, uint8_t index, uint32_t value)
     if (!gte || index >= PSX_GTE_REGISTER_COUNT) return false;
 
     switch (index) {
+    case 1u:
+    case 3u:
+    case 5u:
     case 8u:
     case 9u:
     case 10u:
     case 11u:
         gte->data[index] = sign_extend_16(value);
+        break;
+    case 7u:
+    case 16u:
+    case 17u:
+    case 18u:
+    case 19u:
+        gte->data[index] = value & 0xffffu;
         break;
     case 15u:
         gte->data[12u] = gte->data[13u];
