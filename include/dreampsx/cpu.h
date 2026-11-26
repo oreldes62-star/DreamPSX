@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "dreampsx/bus.h"
+#include "dreampsx/gte.h"
 
 #define PSX_CPU_RESET_PC 0xbfc00000u
 
@@ -47,6 +48,9 @@ bool psx_cpu_fetch_instruction(const PsxCpu *cpu, const PsxBus *bus,
 PsxCpuStepResult psx_cpu_step_result_with_cop0(
     PsxCpu *cpu, PsxBus *bus, uint32_t *status, uint32_t *cause,
     uint32_t *epc, uint32_t *badvaddr);
+PsxCpuStepResult psx_cpu_step_result_with_cop0_gte(
+    PsxCpu *cpu, PsxBus *bus, uint32_t *status, uint32_t *cause,
+    uint32_t *epc, uint32_t *badvaddr, PsxGte *gte);
 /* Compatibility wrappers: true only when an instruction executed. */
 bool psx_cpu_step(PsxCpu *cpu, PsxBus *bus);
 bool psx_cpu_step_with_cop0(PsxCpu *cpu, PsxBus *bus,
