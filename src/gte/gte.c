@@ -119,7 +119,7 @@ bool psx_gte_write_control(PsxGte *gte, uint8_t index, uint32_t value)
     if (!gte || index >= PSX_GTE_REGISTER_COUNT) return false;
     if (index == 31u) value &= 0x7ffff000u;
     gte->control[index] = value;
-    if (index == 31u && (value & 0x7ffff000u) != 0u)
+    if (index == 31u && (value & 0x7f87e000u) != 0u)
         gte->control[index] |= 0x80000000u;
     return true;
 }
