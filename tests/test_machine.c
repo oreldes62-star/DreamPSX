@@ -80,6 +80,11 @@ int main(void)
     psx_cpu_write_gpr(&machine.cpu, 9u, 0x7fffffffu);
     machine.cop0_status = 0u;
     assert(psx_machine_step(&machine));
+    fprintf(stderr, "DEBUG machine pc=%08x next=%08x epc=%08x cause=%08x status=%08x t1=%08x delay=%u\n",
+            machine.cpu.pc, machine.cpu.next_pc, machine.cop0_epc,
+            machine.cop0_cause, machine.cop0_status,
+            psx_cpu_read_gpr(&machine.cpu, 9u),
+            machine.cpu.delay_slot_pending ? 1u : 0u);
     assert(machine.cop0_epc == 0x100u);
     assert((machine.cop0_cause & PSX_COP0_CAUSE_EXCCODE) ==
            ((uint32_t)PSX_EXCEPTION_OVERFLOW << PSX_COP0_CAUSE_EXCCODE_SHIFT));
