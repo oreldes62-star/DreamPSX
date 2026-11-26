@@ -14,6 +14,9 @@ typedef struct PsxGte {
 /* Reset the GTE register file to its deterministic power-on state. */
 void psx_gte_reset(PsxGte *gte);
 
+/* Execute one COP2 command word. Returns false for unsupported commands. */
+bool psx_gte_execute(PsxGte *gte, uint32_t instruction);
+
 /* Read/write a GTE data or control register by its architectural index. */
 bool psx_gte_read_data(const PsxGte *gte, uint8_t index, uint32_t *value);
 bool psx_gte_write_data(PsxGte *gte, uint8_t index, uint32_t value);
