@@ -2,7 +2,7 @@
 PlayStation emulator research and development for Sega Dreamcast.
 
 ## Development status
-Experimental project. The host-side CMake build and all 12 CTest tests passed in GitHub Actions on commit `0d942667d473339401bc7966e6aab68811f42263`. This validates the current host test suite only; the Dreamcast/KallistiOS target remains a separate future integration step.
+Experimental project. The host-side CMake build and all 12 CTest tests passed in GitHub Actions on commit `c9023576967a38a5ef0fc67da45d6e0e4da6720a`. This validates the current host test suite only; the Dreamcast/KallistiOS target remains a separate future integration step.
 
 ## Current milestones
 - [COP2 CU2 milestone 1.2](docs/COP2-CU2-MILESTONE-1.2.md)
@@ -39,6 +39,8 @@ Experimental project. The host-side CMake build and all 12 CTest tests passed in
 - [R3000A delayed-load/link/exception milestone 3.14](docs/R3000A-DELAYED-LOAD-EXCEPTION-INTERACTIONS-MILESTONE-3.14.md)
 - [R3000A SWL/SWR partial-word store milestone 3.15](docs/R3000A-SWL-SWR-MILESTONE-3.15.md)
 - [R3000A variable shifts milestone 3.16](docs/R3000A-VARIABLE-SHIFTS-MILESTONE-3.16.md)
+- [R3000A multiply/divide edge-case tests milestone 3.17](docs/R3000A-MULTIPLY-DIVIDE-VALIDATION-MILESTONE-3.17.md)
+- [R3000A conditional trap instructions milestone 3.18](docs/R3000A-TRAP-INSTRUCTIONS-MILESTONE-3.18.md)
 
 ## Target
 Sega Dreamcast with 16 MiB RAM. Long-term target: CDI test build for Flycast, then GDEMU.
