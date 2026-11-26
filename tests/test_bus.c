@@ -12,11 +12,12 @@ int main(void)
     PsxIrqController irq;
     PsxBus bus = {0};
     PsxGpu gpu;
+    static uint16_t gpu_vram[PSX_GPU_VRAM_WIDTH * PSX_GPU_VRAM_HEIGHT];
     uint32_t word = 0;
     uint16_t half = 0;
 
     psx_irq_reset(&irq);
-    assert(psx_gpu_init(&gpu));
+    assert(psx_gpu_init(&gpu, gpu_vram, PSX_GPU_VRAM_WIDTH * PSX_GPU_VRAM_HEIGHT));
     assert(psx_memory_init(&memory, ram, sizeof(ram), bios, sizeof(bios)));
     assert(psx_bus_init(&bus, &memory, &irq, &gpu));
 
