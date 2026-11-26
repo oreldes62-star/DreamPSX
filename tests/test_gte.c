@@ -117,6 +117,22 @@ int main(void)
     assert(psx_gte_read_data(&gte, 10u, &value) && value == (uint32_t)-18);
     assert(psx_gte_read_data(&gte, 11u, &value) && value == 33u);
 
+    /* MVMVA FC translation quirk: first column is discarded from MAC,
+     * while the remaining columns produce the final result. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 2u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 4u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 21u, 0x1000u));
+    assert(psx_gte_write_control(&gte, 22u, 0x2000u));
+    assert(psx_gte_write_control(&gte, 23u, 0x3000u));
+    assert(psx_gte_write_data(&gte, 0u, 0x02000100u));
+    assert(psx_gte_write_data(&gte, 1u, 0x300u));
+    assert(psx_gte_execute(&gte, 0x48084012u)); /* sf=1, RT, V0, FC */
+    assert(psx_gte_read_data(&gte, 25u, &value) && value == 0u);
+    assert(psx_gte_read_data(&gte, 26u, &value) && value == 512u);
+    assert(psx_gte_read_data(&gte, 27u, &value) && value == 768u);
+
     /* Negative MAC1 overflow must set FLAG bit 27 (not bit 29). */
     psx_gte_reset(&gte);
     assert(psx_gte_write_control(&gte, 0u, 0x00007fffu)); /* RT11=32767 */
