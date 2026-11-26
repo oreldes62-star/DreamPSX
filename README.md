@@ -64,9 +64,10 @@ Experimental project. The host-side CMake build and all 13 CTest targets passed 
 - [GTE NCDS and NCDT milestone 3.39](docs/GTE-NCDS-NCDT-MILESTONE-3.39.md)
 - [GTE CDP milestone 3.40](docs/GTE-CDP-MILESTONE-3.40.md)
 - [GTE CC milestone 3.41](docs/GTE-CC-MILESTONE-3.41.md)
+- [GPU foundation milestone 3.42](docs/GPU-FOUNDATION-MILESTONE-3.42.md)
 
 ## Target
 Sega Dreamcast with 16 MiB RAM. Long-term target: CDI test build for Flycast, then GDEMU.
 
 ## Limitations
-No Dreamcast/KallistiOS build, CDI image or playable game exists yet. CPU registers and BIOS instruction fetch are represented, and a growing subset of R3000A instructions plus the first GTE geometry commands (NCLIP, MVMVA, RTPS, RTPT, AVSZ3, AVSZ4, SQR, OP, GPF, GPL, NCS and NCCS initial implementations) execute; instruction decoding/execution remains partial, and remaining hardware devices are not implemented. The host CMake/CTest suite passes in GitHub Actions, but it does not produce a Dreamcast binary or CDI image.
+No Dreamcast/KallistiOS build, CDI image or playable game exists yet. CPU registers and BIOS instruction fetch are represented, and a growing subset of R3000A instructions plus the first GTE geometry commands (NCLIP, MVMVA, RTPS, RTPT, AVSZ3, AVSZ4, SQR, OP, GPF, GPL, NCS and NCCS initial implementations) execute; instruction decoding/execution remains partial, and the GPU now has an initial host-side VRAM/fill-rectangle core, but GPU bus mapping, display output, DMA, CD-ROM, timers and other hardware devices remain incomplete. The host CMake/CTest suite passes in GitHub Actions, but it does not produce a Dreamcast binary or CDI image.
