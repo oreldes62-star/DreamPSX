@@ -644,6 +644,7 @@ int main(void)
 
         /* Control-register transfers share the same delayed MFC/CFC path. */
         psx_cpu_write_gpr(&machine.cpu, 8u, 0x12345678u);
+        psx_cpu_write_gpr(&machine.cpu, 11u, 0u);
         put_word(ram, 0x510u, (0x12u << 26) | (6u << 21) | (8u << 16) | (31u << 11)); /* CTC2 t0,C31 */
         put_word(ram, 0x514u, (0x12u << 26) | (2u << 21) | (11u << 16) | (31u << 11)); /* CFC2 t3,C31 */
         put_word(ram, 0x518u, 0u);
