@@ -559,6 +559,7 @@ int main(void)
     assert((machine.cop0_cause & PSX_COP0_CAUSE_EXCCODE) !=
            ((uint32_t)PSX_EXCEPTION_TRAP << PSX_COP0_CAUSE_EXCCODE_SHIFT));
 
+    free(gpu_vram);
     free(bios);
     free(ram);
     puts("DreamPSX machine-state tests: OK");
