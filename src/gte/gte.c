@@ -210,7 +210,7 @@ static void gte_execute_mvmva(PsxGte *gte, uint32_t instruction)
         if (accumulator > INT64_C(0x7ffffffffff))
             flags |= 1u << (30u - i * 2u);
         if (accumulator < -INT64_C(0x80000000000))
-            flags |= 1u << (29u - i * 2u);
+            flags |= 1u << (27u - i * 2u);
         shifted = gte_shift_mac(accumulator, shift);
         gte->data[25u + i] = (uint32_t)shifted;
         if (shifted > 32767) {
