@@ -439,6 +439,34 @@ int main(void)
     assert(psx_gte_read_data(&gte, 0u, &value) && value == 0x02000100u);
     assert(psx_gte_read_data(&gte, 1u, &value) && value == 768u);
 
+    /* DPCS: interpolate the input RGB color halfway toward far color. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 21u, 0x1000u));
+    assert(psx_gte_write_control(&gte, 22u, 0x1000u));
+    assert(psx_gte_write_control(&gte, 23u, 0x1000u));
+    assert(psx_gte_write_data(&gte, 6u, 0x00808080u));
+    assert(psx_gte_write_data(&gte, 8u, 0x0800u));
+    assert(psx_gte_execute(&gte, 0x4a080010u)); /* DPCS, sf=1 */
+    assert(psx_gte_read_data(&gte, 25u, &value) && value == 3072u);
+    assert(psx_gte_read_data(&gte, 26u, &value) && value == 3072u);
+    assert(psx_gte_read_data(&gte, 27u, &value) && value == 3072u);
+    assert(psx_gte_read_data(&gte, 22u, &value) && value == 0x00c0c0c0u);
+
+    /* INTPL: interpolate IR vector halfway toward far color. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 21u, 0x1000u));
+    assert(psx_gte_write_control(&gte, 22u, 0x1000u));
+    assert(psx_gte_write_control(&gte, 23u, 0x1000u));
+    assert(psx_gte_write_data(&gte, 9u, 0u));
+    assert(psx_gte_write_data(&gte, 10u, 0u));
+    assert(psx_gte_write_data(&gte, 11u, 0u));
+    assert(psx_gte_write_data(&gte, 8u, 0x0800u));
+    assert(psx_gte_execute(&gte, 0x4a080011u)); /* INTPL, sf=1 */
+    assert(psx_gte_read_data(&gte, 25u, &value) && value == 2048u);
+    assert(psx_gte_read_data(&gte, 26u, &value) && value == 2048u);
+    assert(psx_gte_read_data(&gte, 27u, &value) && value == 2048u);
+    assert(psx_gte_read_data(&gte, 22u, &value) && value == 0x00808080u);
+
     /* MVMVA: identity rotation, V0 plus a translation vector. */
     psx_gte_reset(&gte);
     assert(psx_gte_write_control(&gte, 0u, 0x00001000u)); /* RT11=4096 */
