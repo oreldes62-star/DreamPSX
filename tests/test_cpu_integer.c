@@ -53,6 +53,7 @@ int main(void)
     execute_at(&m, ram, 0x11cu, 0x810a0000u); /* LB t2,0(t0) */
     execute_at(&m, ram, 0x120u, 0x910b0000u); /* LBU t3,0(t0) */
     assert(psx_cpu_read_gpr(&m.cpu, 10u) == 0xffffff80u);
+    execute_at(&m, ram, 0x13cu, 0x00000000u); /* NOP: retire LBU */
     assert(psx_cpu_read_gpr(&m.cpu, 11u) == 0x80u);
 
     psx_cpu_write_gpr(&m.cpu, 9u, 0x8001u);
@@ -60,6 +61,7 @@ int main(void)
     execute_at(&m, ram, 0x128u, 0x850c0002u); /* LH t4,2(t0) */
     execute_at(&m, ram, 0x12cu, 0x950d0002u); /* LHU t5,2(t0) */
     assert(psx_cpu_read_gpr(&m.cpu, 12u) == 0xffff8001u);
+    execute_at(&m, ram, 0x140u, 0x00000000u); /* NOP: retire LHU */
     assert(psx_cpu_read_gpr(&m.cpu, 13u) == 0x8001u);
 
     /* Division by zero follows the R3000A quotient/remainder convention. */
