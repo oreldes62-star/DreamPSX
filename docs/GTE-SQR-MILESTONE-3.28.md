@@ -19,7 +19,7 @@ The host GTE tests verify:
 
 ## Validation
 
-The source and tests are committed. GitHub Actions validation for commit `93334f71f79239f8bd4333ceee65e511e47fc6bb` is pending at the time this document was added. The previous AVSZ3/AVSZ4 milestone passed all 13 host test targets.
+GitHub Actions host build and CTest passed on commit `93334f71f79239f8bd4333ceee65e511e47fc6bb`: all 13 test targets passed, including `test_gte` with the new SQR cases.
 
 This is host-side development only; no Dreamcast/KallistiOS build, BIOS boot, CDI or game compatibility is claimed.
 
