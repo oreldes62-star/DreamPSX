@@ -20,6 +20,8 @@ void psx_machine_reset(PsxMachine *machine)
     psx_irq_reset(&machine->irq);
     psx_cpu_reset(&machine->cpu);
     psx_gte_reset(&machine->gte);
+    if (!machine->gpu.initialized) (void)psx_gpu_init(&machine->gpu);
+    else psx_gpu_reset(&machine->gpu);
     machine->cop0_status = 0u;
     machine->cop0_cause = 0u;
     machine->cop0_epc = 0u;
