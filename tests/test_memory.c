@@ -43,10 +43,16 @@ int main(void)
     assert(!psx_memory_read8(&memory, 0x1f801000u, &b));
     assert(psx_memory_write8(&memory, PSX_SCRATCH_BASE +
                              PSX_SCRATCH_SIZE - 1u, 0x33u));
-    assert(!psx_memory_write16(&memory, PSX_SCRATCH_BASE +
-                               PSX_SCRATCH_SIZE - 2u, 0x7788u));
+    /* The final aligned halfword is wholly inside scratchpad and is valid. */
+    assert(psx_memory_write16(&memory, PSX_SCRATCH_BASE +
+                              PSX_SCRATCH_SIZE - 2u, 0x7788u));
+    assert(psx_memory_read16(&memory, PSX_SCRATCH_BASE +
+                             PSX_SCRATCH_SIZE - 2u, &h) && h == 0x7788u);
+    /* The first byte after scratchpad is unmapped. */
+    assert(!psx_memory_write8(&memory, PSX_SCRATCH_BASE +
+                              PSX_SCRATCH_SIZE, 0x99u));
     assert(psx_memory_read8(&memory, PSX_SCRATCH_BASE +
-                            PSX_SCRATCH_SIZE - 1u, &b) && b == 0x33u);
+                            PSX_SCRATCH_SIZE - 1u, &b) && b == 0x88u);
 
     free(bios);
     free(ram);
