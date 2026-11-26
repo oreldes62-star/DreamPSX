@@ -851,6 +851,39 @@ int main(void)
     assert(psx_gte_read_data(&gte, 26u, &value) && value == 250u);
     assert(psx_gte_read_data(&gte, 27u, &value) && value == 800u);
 
+    /* Independent PCSX-Redux reference: RTPS sf=0 preserves the
+     * unshifted MAC3 while IR3 and SZ3 use their fixed-point paths. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 2u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 4u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 7u, 0x1000u)); /* TRZ */
+    assert(psx_gte_write_control(&gte, 26u, 200u)); /* H */
+    assert(psx_gte_write_data(&gte, 0u, 0u));
+    assert(psx_gte_write_data(&gte, 1u, 0u));
+    assert(psx_gte_execute(&gte, 0x4a000001u)); /* RTPS, sf=0 */
+    assert(psx_gte_read_data(&gte, 27u, &value) && value == 16777216u);
+    assert(psx_gte_read_data(&gte, 11u, &value) && value == 0x7fffu);
+    assert(psx_gte_read_data(&gte, 19u, &value) && value == 4096u);
+    assert(psx_gte_read_control(&gte, 31u, &value) && value == 0u);
+
+    /* Independent PCSX-Redux reference: division overflow and screen
+     * coordinate saturation are both visible in the RTPS FLAG register. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 2u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 4u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 26u, 200u)); /* H */
+    assert(psx_gte_write_data(&gte, 0u, 0x00007fffu)); /* VX=32767 */
+    assert(psx_gte_write_data(&gte, 1u, 100u)); /* VZ=100 */
+    assert(psx_gte_execute(&gte, 0x4a080001u)); /* RTPS, sf=1 */
+    assert(psx_gte_read_data(&gte, 14u, &value));
+    assert((value & 0xffffu) == 0x03ffu); /* SX saturation */
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 17u)) != 0u); /* division overflow */
+    assert((value & (1u << 14u)) != 0u); /* SX saturation */
+    assert((value & 0x80000000u) != 0u); /* FLAG summary */
+
     assert(!psx_gte_execute(&gte, 0x4b400007u));
     assert(!psx_gte_execute(0, 0x4b400006u));
 
