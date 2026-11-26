@@ -228,7 +228,7 @@ int main(void)
     assert(psx_gte_write_control(&gte, 2u, 0x00001000u));
     assert(psx_gte_write_control(&gte, 4u, 0x00001000u));
     assert(psx_gte_write_control(&gte, 26u, 200u)); /* H */
-    assert(psx_gte_write_data(&gte, 0u, 0u));       /* V0=(0,0,0) */
+    assert(psx_gte_write_data(&gte, 0u, 0x00007fffu)); /* V0=(32767,0,0) */
     assert(psx_gte_write_data(&gte, 1u, 0u));
     assert(psx_gte_write_data(&gte, 2u, 0u));       /* V1=(0,0,1000) */
     assert(psx_gte_write_data(&gte, 3u, 1000u));
@@ -238,6 +238,8 @@ int main(void)
     assert(psx_gte_read_data(&gte, 19u, &value) && value == 1000u);
     assert(psx_gte_read_control(&gte, 31u, &value));
     assert((value & (1u << 17u)) != 0u); /* V0 divide overflow retained */
+    assert((value & (1u << 16u)) != 0u); /* V0 MAC0 positive overflow */
+    assert((value & (1u << 14u)) != 0u); /* V0 screen X saturation */
     assert((value & (1u << 31u)) != 0u); /* summary retained */
 
     /* AVSZ3 averages the last three SZ FIFO entries into OTZ. */
