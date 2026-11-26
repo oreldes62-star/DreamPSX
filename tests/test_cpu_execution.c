@@ -24,7 +24,7 @@ int main(void)
     put_word(ram, 0x100u, 0x24080005u); /* ADDIU t0,zero,5 */
     put_word(ram, 0x104u, 0x24090007u); /* ADDIU t1,zero,7 */
     put_word(ram, 0x108u, 0x01095021u); /* ADDU t2,t0,t1 */
-    put_word(ram, 0x10cu, 0x114a0001u); /* BEQ t2,t2,+1 */
+    put_word(ram, 0x10cu, 0x114a0002u); /* BEQ t2,t2,+2: target 0x118 */
     put_word(ram, 0x110u, 0x240b0009u); /* delay slot: t3=9 */
     put_word(ram, 0x114u, 0x240b0063u); /* skipped: t3=99 */
     put_word(ram, 0x118u, 0x240c000bu); /* target: t4=11 */
