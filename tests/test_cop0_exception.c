@@ -6,10 +6,12 @@
 int main(void)
 {
     PsxMachine machine;
+    static uint16_t gpu_vram[PSX_GPU_VRAM_WIDTH * PSX_GPU_VRAM_HEIGHT];
     uint8_t *ram = (uint8_t *)calloc(1u, PSX_RAM_SIZE);
     uint8_t *bios = (uint8_t *)calloc(1u, PSX_BIOS_SIZE);
     assert(ram && bios);
-    assert(psx_machine_init(&machine, ram, PSX_RAM_SIZE, bios, PSX_BIOS_SIZE));
+    assert(psx_machine_init(&machine, ram, PSX_RAM_SIZE, bios, PSX_BIOS_SIZE,
+                            gpu_vram, PSX_GPU_VRAM_WIDTH * PSX_GPU_VRAM_HEIGHT));
 
     machine.cpu.pc = 0x80001004u;
     machine.cpu.next_pc = 0x80001008u;
