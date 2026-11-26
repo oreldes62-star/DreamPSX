@@ -768,6 +768,27 @@ int main(void)
         assert(nclip_value == 10000u);
     }
 
+    /* COP2 must expose NCLIP MAC0 overflow and FLAG through the CPU path. */
+    assert(psx_gte_write_data(&machine.gte, 12u, 0x7fff7fffu));
+    assert(psx_gte_write_data(&machine.gte, 13u, 0x7fff8000u));
+    assert(psx_gte_write_data(&machine.gte, 14u, 0x80008000u));
+    put_word(ram, 0x52cu, 0x4b400006u); /* COP2 NCLIP: positive MAC0 overflow */
+    machine.cpu.pc = 0x52cu;
+    machine.cpu.next_pc = 0x530u;
+    machine.cpu.delay_slot_pending = false;
+    machine.cpu.load_delay_pending = false;
+    assert(psx_machine_step(&machine));
+    {
+        uint32_t mac0 = 0u;
+        uint32_t flags = 0u;
+        assert(psx_gte_read_data(&machine.gte, 24u, &mac0));
+        assert(mac0 == 0xfffe0001u);
+        assert(psx_gte_read_control(&machine.gte, 31u, &flags));
+        assert((flags & (1u << 16u)) != 0u);
+        assert((flags & (1u << 15u)) == 0u);
+        assert((flags & 0x80000000u) != 0u);
+    }
+
     /* COP2 is unavailable when Status.CU2 is clear. */
     machine.cop0_status = 0u;
     machine.cop0_cause = 0u;
