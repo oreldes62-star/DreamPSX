@@ -836,6 +836,21 @@ int main(void)
     assert(psx_gte_read_data(&gte, 26u, &value) && value == 600u);
     assert(psx_gte_read_data(&gte, 27u, &value) && value == 700u);
 
+    /* Independent PCSX-Redux reference: RTPS MAC output with translation. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 2u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 4u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 5u, 100u)); /* TRX */
+    assert(psx_gte_write_control(&gte, 6u, 200u)); /* TRY */
+    assert(psx_gte_write_control(&gte, 7u, 300u)); /* TRZ */
+    assert(psx_gte_write_data(&gte, 0u, 0x0032000au)); /* V0=(10,50,500) */
+    assert(psx_gte_write_data(&gte, 1u, 500u));
+    assert(psx_gte_execute(&gte, 0x4a080001u)); /* RTPS, sf=1 */
+    assert(psx_gte_read_data(&gte, 25u, &value) && value == 110u);
+    assert(psx_gte_read_data(&gte, 26u, &value) && value == 250u);
+    assert(psx_gte_read_data(&gte, 27u, &value) && value == 800u);
+
     assert(!psx_gte_execute(&gte, 0x4b400007u));
     assert(!psx_gte_execute(0, 0x4b400006u));
 
