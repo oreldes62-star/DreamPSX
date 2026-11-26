@@ -16,10 +16,12 @@ static void put_word(uint8_t *ram, unsigned address, uint32_t value)
 int main(void)
 {
     PsxMachine machine;
+    static uint16_t gpu_vram[PSX_GPU_VRAM_WIDTH * PSX_GPU_VRAM_HEIGHT];
     uint8_t *ram = (uint8_t *)calloc(1u, PSX_RAM_SIZE);
     uint8_t *bios = (uint8_t *)calloc(1u, PSX_BIOS_SIZE);
     assert(ram && bios);
-    assert(psx_machine_init(&machine, ram, PSX_RAM_SIZE, bios, PSX_BIOS_SIZE));
+    assert(psx_machine_init(&machine, ram, PSX_RAM_SIZE, bios, PSX_BIOS_SIZE,
+                            gpu_vram, PSX_GPU_VRAM_WIDTH * PSX_GPU_VRAM_HEIGHT));
 
     put_word(ram, 0x100u, 0x24080005u); /* ADDIU t0,zero,5 */
     put_word(ram, 0x104u, 0x24090007u); /* ADDIU t1,zero,7 */
@@ -545,7 +547,8 @@ int main(void)
                         (funct == 1u ? srl_expected[i] : sra_expected[i]));
                     uint32_t actual_value = psx_cpu_read_gpr(&machine.cpu, 10u);
                     if (actual_value != expected_value) {
-                        fprintf(stderr, "variable shift mismatch: amount=%u kind=%u got=%08x expected=%08x\\n",
+                        fprintf(stderr, "variable shift mismatch: amount=%u kind=%u got=%08x expected=%08x\
+",
                                 amounts[i], funct, actual_value, expected_value);
                     }
                     assert(actual_value == expected_value);
