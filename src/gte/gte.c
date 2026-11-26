@@ -425,15 +425,16 @@ static uint32_t gte_color_channel(int64_t mac)
 }
 
 static void gte_execute_interpolate(PsxGte *gte, uint32_t instruction,
-                                       bool from_rgb)
+                                       bool from_rgb, uint32_t source_rgb,
+                                       uint32_t *accumulated_flags)
 {
     unsigned shift = (instruction & (1u << 19u)) ? 12u : 0u;
     bool lm = (instruction & (1u << 10u)) != 0u;
     int32_t ir0 = gte_signed16(gte->data[8]);
     const uint32_t channels[3] = {
-        gte->data[6] & 0xffu,
-        (gte->data[6] >> 8u) & 0xffu,
-        (gte->data[6] >> 16u) & 0xffu
+        source_rgb & 0xffu,
+        (source_rgb >> 8u) & 0xffu,
+        (source_rgb >> 16u) & 0xffu
     };
     uint32_t flags = 0u;
     uint32_t rgb = gte->data[6] & 0xff000000u;
@@ -460,8 +461,30 @@ static void gte_execute_interpolate(PsxGte *gte, uint32_t instruction,
            (gte_color_channel(mac[1]) << 8u) |
            (gte_color_channel(mac[2]) << 16u);
     gte_push_rgb(gte, rgb);
-    if (flags & 0x7f87e000u) flags |= 0x80000000u;
-    gte->control[31] = flags;
+    if (accumulated_flags) {
+        *accumulated_flags |= flags;
+    } else {
+        if (flags & 0x7f87e000u) flags |= 0x80000000u;
+        gte->control[31] = flags;
+    }
+}
+
+static void gte_execute_dpct(PsxGte *gte, uint32_t instruction)
+{
+    uint32_t accumulated_flags = 0u;
+    unsigned i;
+
+    /* Each iteration consumes the current oldest RGB FIFO entry. The push
+     * shifts the next original color into RGB0 for the following iteration. */
+    for (i = 0u; i < 3u; ++i) {
+        uint32_t source_rgb = gte->data[20];
+        gte_execute_interpolate(gte, instruction, true, source_rgb,
+                                &accumulated_flags);
+    }
+
+    if (accumulated_flags & 0x7f87e000u)
+        accumulated_flags |= 0x80000000u;
+    gte->control[31] = accumulated_flags;
 }
 
 static void gte_execute_ncs(PsxGte *gte, uint32_t instruction)
@@ -792,11 +815,15 @@ bool psx_gte_execute(PsxGte *gte, uint32_t instruction)
         return true;
     }
     if (command == 0x10u) {
-        gte_execute_interpolate(gte, instruction, true);
+        gte_execute_interpolate(gte, instruction, true, gte->data[6], NULL);
         return true;
     }
     if (command == 0x11u) {
-        gte_execute_interpolate(gte, instruction, false);
+        gte_execute_interpolate(gte, instruction, false, 0u, NULL);
+        return true;
+    }
+    if (command == 0x2au) {
+        gte_execute_dpct(gte, instruction);
         return true;
     }
     if (command == 0x1eu) {
