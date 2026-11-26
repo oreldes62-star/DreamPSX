@@ -158,6 +158,19 @@ int main(void)
     assert(psx_gte_read_data(&gte, 14u, &value));
     assert((int16_t)(value & 0xffffu) == 1023);
 
+    /* UNR zero-depth corner: H=0 and SZ3=0 is not a divide overflow. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 2u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 4u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 26u, 0u)); /* H=0 */
+    assert(psx_gte_write_data(&gte, 0u, 0u));
+    assert(psx_gte_write_data(&gte, 1u, 0u));
+    assert(psx_gte_execute(&gte, 0x4a080001u));
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 17u)) == 0u);
+    assert(psx_gte_read_data(&gte, 19u, &value) && value == 0u);
+
     /* UNR divide boundary: H just below 2*SZ is valid. */
     psx_gte_reset(&gte);
     assert(psx_gte_write_control(&gte, 0u, 0x00001000u));
