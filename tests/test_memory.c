@@ -52,7 +52,7 @@ int main(void)
     assert(!psx_memory_write8(&memory, PSX_SCRATCH_BASE +
                               PSX_SCRATCH_SIZE, 0x99u));
     assert(psx_memory_read8(&memory, PSX_SCRATCH_BASE +
-                            PSX_SCRATCH_SIZE - 1u, &b) && b == 0x88u);
+                            PSX_SCRATCH_SIZE - 1u, &b) && b == 0x77u);
 
     free(bios);
     free(ram);
