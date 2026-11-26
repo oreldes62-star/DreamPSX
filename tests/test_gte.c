@@ -2,7 +2,6 @@
 
 #include <assert.h>
 #include <stdint.h>
-#include <stdio.h>
 
 int main(void)
 {
@@ -1050,9 +1049,9 @@ int main(void)
     assert(psx_gte_read_data(&gte, 25u, &value) && value == 256u);
     assert(psx_gte_read_data(&gte, 26u, &value) && value == 256u);
     assert(psx_gte_read_data(&gte, 27u, &value) && value == 192u);
-    assert(psx_gte_read_data(&gte, 20u, &value)); fprintf(stderr, "NCDT RGB0=%08x\\n", value); assert(value == 0x7f304040u);
-    assert(psx_gte_read_data(&gte, 21u, &value)); fprintf(stderr, "NCDT RGB1=%08x\\n", value); assert(value == 0x7f181820u);
-    assert(psx_gte_read_data(&gte, 22u, &value)); fprintf(stderr, "NCDT RGB2=%08x\\n", value); assert(value == 0x7f0c1010u);
+    assert(psx_gte_read_data(&gte, 20u, &value) && value == 0x7f304040u);
+    assert(psx_gte_read_data(&gte, 21u, &value) && value == 0x7f182020u);
+    assert(psx_gte_read_data(&gte, 22u, &value) && value == 0x7f0c1010u);
     assert(psx_gte_read_data(&gte, 0u, &value) && value == 0x08001000u);
     assert(psx_gte_read_data(&gte, 1u, &value) && value == 1024u);
     assert(psx_gte_read_control(&gte, 31u, &value) && value == 0u);
