@@ -74,6 +74,45 @@ int main(void)
     assert(((machine.cop0_cause & PSX_COP0_CAUSE_EXCCODE) >>
             PSX_COP0_CAUSE_EXCCODE_SHIFT) == PSX_EXCEPTION_BUS_DATA);
 
+    /* GTE bus faults in a branch delay slot set Cause.BD and branch EPC. */
+    machine.cop0_status = 0x40000000u; /* CU2 enabled */
+    machine.cop0_cause = 0u;
+    psx_cpu_write_gpr(&machine.cpu, 12u, 0x1f000000u);
+    assert(psx_bus_write32(&machine.bus, 0x220u, 0x10000001u)); /* BEQ zero,zero,+1 */
+    assert(psx_bus_write32(&machine.bus, 0x224u,
+                           (0x32u << 26) | (12u << 21))); /* LWC2 delay slot */
+    machine.cpu.pc = 0x220u;
+    machine.cpu.next_pc = 0x224u;
+    machine.cpu.delay_slot_pending = false;
+    machine.cpu.load_delay_pending = false;
+    assert(psx_machine_step(&machine));
+    assert(machine.cpu.delay_slot_pending);
+    assert(psx_machine_step(&machine));
+    assert(machine.cop0_epc == 0x220u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_BD) != 0u);
+    assert(machine.cop0_badvaddr == 0x1f000000u);
+    assert(((machine.cop0_cause & PSX_COP0_CAUSE_EXCCODE) >>
+            PSX_COP0_CAUSE_EXCCODE_SHIFT) == PSX_EXCEPTION_BUS_DATA);
+
+    machine.cop0_status = 0x40000000u;
+    machine.cop0_cause = 0u;
+    psx_cpu_write_gpr(&machine.cpu, 12u, 0x1f000000u);
+    assert(psx_bus_write32(&machine.bus, 0x228u, 0x10000001u)); /* BEQ zero,zero,+1 */
+    assert(psx_bus_write32(&machine.bus, 0x22cu,
+                           (0x3au << 26) | (12u << 21))); /* SWC2 delay slot */
+    machine.cpu.pc = 0x228u;
+    machine.cpu.next_pc = 0x22cu;
+    machine.cpu.delay_slot_pending = false;
+    machine.cpu.load_delay_pending = false;
+    assert(psx_machine_step(&machine));
+    assert(machine.cpu.delay_slot_pending);
+    assert(psx_machine_step(&machine));
+    assert(machine.cop0_epc == 0x228u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_BD) != 0u);
+    assert(machine.cop0_badvaddr == 0x1f000000u);
+    assert(((machine.cop0_cause & PSX_COP0_CAUSE_EXCCODE) >>
+            PSX_COP0_CAUSE_EXCCODE_SHIFT) == PSX_EXCEPTION_BUS_DATA);
+
     free(bios);
     free(ram);
     puts("DreamPSX machine-bus integration tests: OK");
