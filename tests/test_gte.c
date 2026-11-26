@@ -148,6 +148,12 @@ int main(void)
     assert((value & 0x80000000u) != 0u);
 
     /* sf=0 leaves the 12-bit fixed-point matrix scale unshifted. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 2u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 4u, 0x00001000u));
+    assert(psx_gte_write_data(&gte, 0u, 0x00020001u));
+    assert(psx_gte_write_data(&gte, 1u, 3u));
     assert(psx_gte_execute(&gte, 0x48006012u)); /* RT, V0, no translation */
     assert(psx_gte_read_data(&gte, 25u, &value) && value == 4096u);
     assert(psx_gte_read_data(&gte, 26u, &value) && value == 8192u);
