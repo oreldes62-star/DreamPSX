@@ -107,7 +107,7 @@ int main(void)
     assert(psx_cpu_step(&machine.cpu, &machine.bus));
     assert(psx_cpu_read_gpr(&machine.cpu, 14u) == 4u);
 
-    /* BLTZAL writes RA=PC+8 only when the condition is true. */
+    /* BLTZAL writes RA=PC+8 when taken. */
     put_word(ram, 0x440u, (0x01u << 26) | (8u << 21) | (16u << 16) | 1u);
     put_word(ram, 0x444u, 0u);
     psx_cpu_write_gpr(&machine.cpu, 8u, 0x80000000u);
@@ -119,7 +119,7 @@ int main(void)
     assert(machine.cpu.next_pc == 0x448u);
     assert(psx_cpu_step(&machine.cpu, &machine.bus));
 
-    /* BGEZAL also links on a taken branch; BLTZAL does not link when false. */
+    /* BGEZAL also links on a taken branch. */
     put_word(ram, 0x450u, (0x01u << 26) | (8u << 21) | (17u << 16) | 1u);
     put_word(ram, 0x454u, 0u);
     psx_cpu_write_gpr(&machine.cpu, 8u, 0u);
