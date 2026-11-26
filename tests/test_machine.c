@@ -470,6 +470,45 @@ int main(void)
            ((uint32_t)PSX_EXCEPTION_BUS_DATA <<
             PSX_COP0_CAUSE_EXCCODE_SHIFT));
 
+    /* R3000A trap instructions raise exception code 13 only when true. */
+    assert(psx_memory_write32(&machine.memory, 0x350u,
+                              (8u << 21) | (9u << 16) | 0x34u)); /* TEQ t0,t1 */
+    machine.cpu.pc = 0x350u;
+    machine.cpu.next_pc = 0x354u;
+    machine.cpu.delay_slot_pending = false;
+    machine.cpu.load_delay_pending = false;
+    psx_cpu_write_gpr(&machine.cpu, 8u, 0x12345678u);
+    psx_cpu_write_gpr(&machine.cpu, 9u, 0x12345678u);
+    machine.cop0_status = 0u;
+    assert(psx_machine_step(&machine));
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_EXCCODE) ==
+           ((uint32_t)PSX_EXCEPTION_TRAP << PSX_COP0_CAUSE_EXCCODE_SHIFT));
+    assert(machine.cop0_epc == 0x350u);
+
+    /* A false TNEI condition does not trap and advances normally. */
+    assert(psx_memory_write32(&machine.memory, 0x354u,
+                              (0x01u << 26) | (8u << 21) | (14u << 16) | 7u));
+    machine.cpu.pc = 0x354u;
+    machine.cpu.next_pc = 0x358u;
+    machine.cpu.delay_slot_pending = false;
+    machine.cop0_status = 0u;
+    psx_cpu_write_gpr(&machine.cpu, 8u, 7u);
+    assert(psx_machine_step(&machine));
+    assert(machine.cpu.pc == 0x358u);
+
+    /* Signed TLTI compares against the sign-extended immediate. */
+    assert(psx_memory_write32(&machine.memory, 0x358u,
+                              (0x01u << 26) | (8u << 21) | (10u << 16) | 0xffffu));
+    machine.cpu.pc = 0x358u;
+    machine.cpu.next_pc = 0x35cu;
+    machine.cpu.delay_slot_pending = false;
+    machine.cop0_status = 0u;
+    psx_cpu_write_gpr(&machine.cpu, 8u, 0xfffffffeu); /* -2 */
+    assert(psx_machine_step(&machine));
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_EXCCODE) ==
+           ((uint32_t)PSX_EXCEPTION_TRAP << PSX_COP0_CAUSE_EXCCODE_SHIFT));
+    assert(machine.cop0_epc == 0x358u);
+
     free(bios);
     free(ram);
     puts("DreamPSX machine-state tests: OK");
