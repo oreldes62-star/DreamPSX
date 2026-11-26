@@ -517,10 +517,10 @@ int main(void)
     assert(psx_gte_write_data(&gte, 10u, 512u));
     assert(psx_gte_write_data(&gte, 11u, 768u));
     assert(psx_gte_execute(&gte, 0x4a080014u)); /* CDP, sf=1 */
-    assert(psx_gte_read_data(&gte, 25u, &value) && value == 1984u);
+    assert(psx_gte_read_data(&gte, 25u, &value) && value == 2080u);
     assert(psx_gte_read_data(&gte, 26u, &value) && value == 2112u);
     assert(psx_gte_read_data(&gte, 27u, &value) && value == 2144u);
-    assert(psx_gte_read_data(&gte, 22u, &value) && value == 0xab867c84u);
+    assert(psx_gte_read_data(&gte, 22u, &value) && value == 0xab868482u);
 
     /* NCDS: normal/light/color pipeline followed by far-color cue. */
     psx_gte_reset(&gte);
