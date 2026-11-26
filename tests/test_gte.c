@@ -181,7 +181,7 @@ int main(void)
     assert(psx_gte_write_control(&gte, 25u, 120u << 16u));
     assert(psx_gte_write_control(&gte, 26u, 200u));
     assert(psx_gte_write_data(&gte, 0u, 0u));          /* V0=(0,0,1000) */
-    assert(psx_gte_write_data(&gte, 1u, 1000u);
+    assert(psx_gte_write_data(&gte, 1u, 1000u));
     assert(psx_gte_write_data(&gte, 2u, 100u));        /* V1=(100,0,1000) */
     assert(psx_gte_write_data(&gte, 3u, 1000u));
     assert(psx_gte_write_data(&gte, 4u, 0x00640000u)); /* V2=(0,100,1000) */
