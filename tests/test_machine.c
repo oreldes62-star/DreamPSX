@@ -68,6 +68,9 @@ int main(void)
     psx_irq_write_stat(&machine.irq, (uint16_t)~(1u << 2));
     psx_irq_write_mask(&machine.irq, 0u);
     psx_machine_refresh_interrupts(&machine);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) == 0u);
+    /* Start the synchronous-fault suite from a clean CPU/COP0/IRQ state. */
+    psx_machine_reset(&machine);
 
     /* Synchronous CPU faults are translated into architectural exceptions. */
     assert(psx_memory_write32(&machine.memory, 0x100u, 0x20280001u)); /* ADDI t0,t1,1 */
