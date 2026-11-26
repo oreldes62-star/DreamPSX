@@ -26,7 +26,8 @@ typedef struct {
 
 bool psx_machine_init(PsxMachine *machine,
                       uint8_t *ram, size_t ram_size,
-                      const uint8_t *bios, size_t bios_size);
+                      const uint8_t *bios, size_t bios_size,
+                      uint16_t *gpu_vram, size_t gpu_vram_pixels);
 void psx_machine_reset(PsxMachine *machine);
 void psx_machine_refresh_interrupts(PsxMachine *machine);
 bool psx_machine_interrupt_eligible(const PsxMachine *machine);
