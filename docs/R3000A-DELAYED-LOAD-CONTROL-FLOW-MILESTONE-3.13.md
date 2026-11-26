@@ -8,9 +8,9 @@
 
 ## Validation
 
-GitHub Actions configured CMake, built the core and test executables, and passed all 12 CTest tests on commit `0666f71390e686b91d0082b2e72e0aacebac70c5`.
+GitHub Actions configured CMake, built the core and test executables, and passed all 12 CTest tests on commit `8c477ad9927b41184060bfdfe24df76e8abd5b65`.
 
-Run: https://github.com/oreldes62-star/DreamPSX/actions/runs/45768948246
+Run: https://github.com/oreldes62-star/DreamPSX/actions/runs/45769031928
 
 This confirms host-side behavior covered by the current tests. It does not yet validate a Dreamcast/KallistiOS build, BIOS boot, CDI image, or gameplay.
 
