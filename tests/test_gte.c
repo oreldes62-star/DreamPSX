@@ -842,6 +842,40 @@ int main(void)
     assert((value & (1u << 13u)) != 0u); /* SY saturation */
     assert((value & (1u << 16u)) == 0u); /* no MAC0 overflow */
 
+    /* RTPS negative screen X clamp reaches -1024 without MAC0 overflow. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 0x1000u));
+    assert(psx_gte_write_control(&gte, 2u, 0x1000u));
+    assert(psx_gte_write_control(&gte, 4u, 0x1000u));
+    assert(psx_gte_write_control(&gte, 24u, (uint32_t)(-1025 * 65536))); /* OFX */
+    assert(psx_gte_write_control(&gte, 26u, 0u)); /* H=0 */
+    assert(psx_gte_write_control(&gte, 28u, (uint32_t)(-1025 * 65536))); /* DQB */
+    assert(psx_gte_write_data(&gte, 0u, 0u));
+    assert(psx_gte_write_data(&gte, 1u, 4096u));
+    assert(psx_gte_execute(&gte, 0x4a080001u));
+    assert(psx_gte_read_data(&gte, 14u, &value) &&
+           (int16_t)(value & 0xffffu) == -1024);
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 14u)) != 0u); /* SX saturation */
+    assert((value & (1u << 15u)) == 0u); /* no MAC0 overflow */
+
+    /* RTPS negative screen Y clamp reaches -1024 without MAC0 overflow. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 0x1000u));
+    assert(psx_gte_write_control(&gte, 2u, 0x1000u));
+    assert(psx_gte_write_control(&gte, 4u, 0x1000u));
+    assert(psx_gte_write_control(&gte, 25u, (uint32_t)(-1025 * 65536)); /* OFY */
+    assert(psx_gte_write_control(&gte, 26u, 0u)); /* H=0 */
+    assert(psx_gte_write_control(&gte, 28u, (uint32_t)(-1025 * 65536)); /* DQB */
+    assert(psx_gte_write_data(&gte, 0u, 0u));
+    assert(psx_gte_write_data(&gte, 1u, 4096u));
+    assert(psx_gte_execute(&gte, 0x4a080001u));
+    assert(psx_gte_read_data(&gte, 14u, &value) &&
+           (int16_t)(value >> 16u) == -1024);
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 13u)) != 0u); /* SY saturation */
+    assert((value & (1u << 15u)) == 0u); /* no MAC0 overflow */
+
     /* The signed 44-bit MAC boundary is inclusive at both ends.
      * TRX*4096 is 0x7ffffffff000; adding 4095 reaches the
      * largest representable value without raising MAC1 overflow. */
