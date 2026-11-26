@@ -130,6 +130,103 @@ static int32_t gte_signed16(uint32_t value)
     return (low & 0x8000u) ? (int32_t)(low - 0x10000u) : (int32_t)low;
 }
 
+static int32_t gte_matrix_element(const PsxGte *gte, unsigned matrix,
+                                    unsigned row, unsigned column)
+{
+    static const unsigned bases[3] = {0u, 8u, 16u};
+    unsigned base = bases[matrix];
+    unsigned pair = row * 3u + column;
+    uint32_t packed = gte->control[base + pair / 2u];
+    return gte_signed16((pair & 1u) ? (packed >> 16u) : packed);
+}
+
+static int64_t gte_shift_mac(int64_t value, unsigned shift)
+{
+    if (shift == 0u) return value;
+    if (value >= 0) return value / (INT64_C(1) << shift);
+    return -(((-value) + ((INT64_C(1) << shift) - 1)) /
+             (INT64_C(1) << shift));
+}
+
+static void gte_execute_mvmva(PsxGte *gte, uint32_t instruction)
+{
+    unsigned matrix = (instruction >> 17u) & 3u;
+    unsigned vector = (instruction >> 15u) & 3u;
+    unsigned translation = (instruction >> 13u) & 3u;
+    unsigned shift = (instruction & (1u << 19u)) ? 12u : 0u;
+    bool lm = (instruction & (1u << 10u)) != 0u;
+    int32_t v[3], m[3][3], t[3];
+    uint32_t flags = 0u;
+    unsigned i, j;
+
+    for (i = 0u; i < 3u; ++i) {
+        if (vector == 3u)
+            v[i] = gte_signed16(gte->data[9u + i]);
+        else
+            v[i] = gte_signed16(gte->data[vector * 2u + (i == 2u ? 1u : 0u)] >>
+                                ((i == 1u) ? 16u : 0u));
+    }
+
+    for (i = 0u; i < 3u; ++i) {
+        for (j = 0u; j < 3u; ++j) {
+            if (matrix == 3u) {
+                int32_t red = (int32_t)(gte->data[6u] & 0xffu) << 4u;
+                if (i == 0u && j == 0u) m[i][j] = -red;
+                else if (i == 0u && j == 1u) m[i][j] = red;
+                else if (i == 0u && j == 2u) m[i][j] = gte_signed16(gte->data[8u]);
+                else if (i == 1u) m[i][j] = gte_matrix_element(gte, 0u, 0u, 2u);
+                else m[i][j] = gte_matrix_element(gte, 0u, 1u, 1u);
+            } else {
+                m[i][j] = gte_matrix_element(gte, matrix, i, j);
+            }
+        }
+    }
+
+    for (i = 0u; i < 3u; ++i) {
+        if (translation == 0u) t[i] = (int32_t)gte->control[5u + i];
+        else if (translation == 1u) t[i] = (int32_t)gte->control[13u + i];
+        else if (translation == 2u) t[i] = (int32_t)gte->control[21u + i];
+        else t[i] = 0;
+    }
+
+    for (i = 0u; i < 3u; ++i) {
+        int64_t accumulator;
+        int64_t shifted;
+        if (translation == 2u) {
+            /* Hardware FC translation bug: the first product contributes to
+             * overflow flags but is discarded from the final MAC result. */
+            int64_t discarded = (int64_t)t[i] * 4096 + (int64_t)m[i][0] * v[0];
+            if (discarded > INT64_C(0x7ffffffffff) ||
+                discarded < -INT64_C(0x80000000000))
+                flags |= 1u << (30u - i * 2u);
+            accumulator = (int64_t)m[i][1] * v[1] +
+                          (int64_t)m[i][2] * v[2];
+        } else {
+            accumulator = (int64_t)t[i] * 4096 +
+                          (int64_t)m[i][0] * v[0] +
+                          (int64_t)m[i][1] * v[1] +
+                          (int64_t)m[i][2] * v[2];
+        }
+        if (accumulator > INT64_C(0x7ffffffffff))
+            flags |= 1u << (30u - i * 2u);
+        if (accumulator < -INT64_C(0x80000000000))
+            flags |= 1u << (29u - i * 2u);
+        shifted = gte_shift_mac(accumulator, shift);
+        gte->data[25u + i] = (uint32_t)shifted;
+        if (shifted > 32767) {
+            flags |= 1u << (24u - i);
+            gte->data[9u + i] = lm ? 32767u : 32767u;
+        } else if (shifted < (lm ? 0 : -32768)) {
+            flags |= 1u << (24u - i);
+            gte->data[9u + i] = lm ? 0u : 0xffff8000u;
+        } else {
+            gte->data[9u + i] = (uint32_t)(int32_t)shifted;
+        }
+    }
+    if (flags & 0x7f800000u) flags |= 0x80000000u;
+    gte->control[31] = flags;
+}
+
 bool psx_gte_execute(PsxGte *gte, uint32_t instruction)
 {
     uint32_t command;
@@ -138,6 +235,10 @@ bool psx_gte_execute(PsxGte *gte, uint32_t instruction)
 
     if (!gte) return false;
     command = instruction & 0x3fu;
+    if (command == 0x12u) {
+        gte_execute_mvmva(gte, instruction);
+        return true;
+    }
     if (command != 0x06u) return false; /* NCLIP */
 
     /* SXY registers pack signed SX in bits 0..15 and SY in bits 16..31. */
