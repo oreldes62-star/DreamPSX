@@ -626,6 +626,7 @@ int main(void)
         machine.cpu.delay_slot_pending = false;
         machine.cpu.load_delay_pending = false;
         psx_cpu_write_gpr(&machine.cpu, 8u, 0x00008001u);
+        psx_cpu_write_gpr(&machine.cpu, 9u, 0u);
         put_word(ram, 0x500u, (0x12u << 26) | (4u << 21) | (8u << 16) | (9u << 11)); /* MTC2 t0, D9 */
         put_word(ram, 0x504u, (0x12u << 26) | (9u << 16) | (9u << 11)); /* MFC2 t1, D9 */
         put_word(ram, 0x508u, (0x09u << 26) | (9u << 21) | (10u << 16)); /* ADDIU t2,t1,0 */
