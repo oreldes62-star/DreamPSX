@@ -117,6 +117,33 @@ int main(void)
     assert(psx_cpu_read_gpr(&m.cpu, 16u) == 0xffffffffu);
     assert(psx_cpu_read_gpr(&m.cpu, 17u) == 0x87654321u);
 
+    /* Signed multiply writes the two's-complement 64-bit product to HI/LO. */
+    psx_cpu_write_gpr(&m.cpu, 8u, 0xfffffffeu); /* -2 */
+    psx_cpu_write_gpr(&m.cpu, 9u, 3u);
+    execute_at(&m, ram, 0x180u, 0x01090018u); /* MULT t0,t1 */
+    execute_at(&m, ram, 0x184u, 0x00008012u); /* MFLO t8 */
+    execute_at(&m, ram, 0x188u, 0x00008810u); /* MFHI t9 */
+    assert(psx_cpu_read_gpr(&m.cpu, 16u) == 0xfffffffau);
+    assert(psx_cpu_read_gpr(&m.cpu, 17u) == 0xffffffffu);
+
+    /* R3000A signed DIV by zero: negative dividend produces quotient 1. */
+    psx_cpu_write_gpr(&m.cpu, 8u, 0x87654321u);
+    psx_cpu_write_gpr(&m.cpu, 9u, 0u);
+    execute_at(&m, ram, 0x18cu, 0x0109001au); /* DIV t0,t1 */
+    execute_at(&m, ram, 0x190u, 0x00008012u);
+    execute_at(&m, ram, 0x194u, 0x00008810u);
+    assert(psx_cpu_read_gpr(&m.cpu, 16u) == 1u);
+    assert(psx_cpu_read_gpr(&m.cpu, 17u) == 0x87654321u);
+
+    /* Positive dividend divided by zero produces quotient -1. */
+    psx_cpu_write_gpr(&m.cpu, 8u, 0x12345678u);
+    psx_cpu_write_gpr(&m.cpu, 9u, 0u);
+    execute_at(&m, ram, 0x198u, 0x0109001au);
+    execute_at(&m, ram, 0x19cu, 0x00008012u);
+    execute_at(&m, ram, 0x1a0u, 0x00008810u);
+    assert(psx_cpu_read_gpr(&m.cpu, 16u) == 0xffffffffu);
+    assert(psx_cpu_read_gpr(&m.cpu, 17u) == 0x12345678u);
+
     free(bios);
     free(ram);
     return 0;
