@@ -54,6 +54,8 @@ int main(void)
     machine.cpu.next_pc = 0x120u;
     assert(psx_cpu_step(&machine.cpu, &machine.bus));
     assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(psx_cpu_read_gpr(&machine.cpu, 10u) == 0u); /* load delay */
+    assert(psx_cpu_step(&machine.cpu, &machine.bus)); /* retire LW */
     assert(psx_cpu_read_gpr(&machine.cpu, 10u) == 0xfeed1234u);
 
 
