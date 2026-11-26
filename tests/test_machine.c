@@ -281,6 +281,42 @@ int main(void)
     psx_irq_write_mask(&machine.irq, 0u);
     psx_machine_refresh_interrupts(&machine);
 
+    /* An IRQ must wait until a branch delay-slot load has executed.
+     * Once the slot completes, the pending load retires before IRQ entry;
+     * EPC then identifies the branch target, not the delay-slot address.
+     */
+    assert(psx_memory_write32(&machine.memory, 0x30cu, 0xcafebabeu));
+    assert(psx_memory_write32(&machine.memory, 0x1d0u, 0x10000001u)); /* BEQ zero,zero,+1 */
+    assert(psx_memory_write32(&machine.memory, 0x1d4u, 0x8d280000u)); /* LW t0,0(t1), delay slot */
+    psx_cpu_write_gpr(&machine.cpu, 8u, 0x44444444u);
+    psx_cpu_write_gpr(&machine.cpu, 9u, 0x30cu);
+    machine.cpu.pc = 0x1d0u;
+    machine.cpu.next_pc = 0x1d4u;
+    machine.cpu.delay_slot_pending = false;
+    machine.cpu.load_delay_pending = false;
+    machine.cop0_status = 0u;
+    assert(psx_machine_step(&machine));
+    assert(machine.cpu.delay_slot_pending);
+    psx_irq_set_line(&machine.irq, 2u, true);
+    psx_irq_write_mask(&machine.irq, (uint16_t)(1u << 2));
+    machine.cop0_status = PSX_COP0_STATUS_IEC | PSX_COP0_CAUSE_IP2;
+    assert(psx_machine_step(&machine)); /* IRQ deferred; execute delay slot */
+    assert(!machine.cpu.delay_slot_pending);
+    assert(machine.cpu.load_delay_pending);
+    assert(psx_cpu_read_gpr(&machine.cpu, 8u) == 0x44444444u);
+    assert(psx_machine_step(&machine)); /* IRQ now accepted */
+    assert(psx_cpu_read_gpr(&machine.cpu, 8u) == 0xcafebabeu);
+    assert(!machine.cpu.load_delay_pending);
+    assert(machine.cop0_epc == 0x1d8u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_BD) == 0u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_EXCCODE) ==
+           ((uint32_t)PSX_EXCEPTION_INTERRUPT <<
+            PSX_COP0_CAUSE_EXCCODE_SHIFT));
+    psx_irq_set_line(&machine.irq, 2u, false);
+    psx_irq_write_stat(&machine.irq, (uint16_t)~(1u << 2));
+    psx_irq_write_mask(&machine.irq, 0u);
+    psx_machine_refresh_interrupts(&machine);
+
     /* Halfword loads/stores and word stores report alignment faults with
      * the original effective address in BadVAddr.
      */
