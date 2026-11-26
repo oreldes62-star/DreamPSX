@@ -229,6 +229,95 @@ int main(void)
     assert((value & (1u << 14u)) != 0u);
     assert((value & 0x80000000u) != 0u);
 
+    /* Screen X upper boundary is inclusive: +1023 does not saturate. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 2u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 4u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 7u, 1000u));
+    assert(psx_gte_write_control(&gte, 24u, 67043328u));
+    assert(psx_gte_write_control(&gte, 26u, 200u));
+    assert(psx_gte_execute(&gte, 0x4a080001u));
+    assert(psx_gte_read_data(&gte, 14u, &value));
+    assert((int16_t)(value & 0xffffu) == 1023);
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 14u)) == 0u);
+
+    /* One unit above the upper X boundary clamps to +1023 and sets FLAG.14. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 2u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 4u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 7u, 1000u));
+    assert(psx_gte_write_control(&gte, 24u, 67108864u));
+    assert(psx_gte_write_control(&gte, 26u, 200u));
+    assert(psx_gte_execute(&gte, 0x4a080001u));
+    assert(psx_gte_read_data(&gte, 14u, &value));
+    assert((int16_t)(value & 0xffffu) == 1023);
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 14u)) != 0u);
+    assert((value & 0x80000000u) != 0u);
+
+    /* Screen Y upper boundary is inclusive, then saturates above +1023. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 2u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 4u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 7u, 1000u));
+    assert(psx_gte_write_control(&gte, 25u, 67043328u));
+    assert(psx_gte_write_control(&gte, 26u, 200u));
+    assert(psx_gte_execute(&gte, 0x4a080001u));
+    assert(psx_gte_read_data(&gte, 14u, &value));
+    assert((int16_t)(value >> 16u) == 1023);
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 13u)) == 0u);
+
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 2u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 4u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 7u, 1000u));
+    assert(psx_gte_write_control(&gte, 25u, 67108864u));
+    assert(psx_gte_write_control(&gte, 26u, 200u));
+    assert(psx_gte_execute(&gte, 0x4a080001u));
+    assert(psx_gte_read_data(&gte, 14u, &value));
+    assert((int16_t)(value >> 16u) == 1023);
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 13u)) != 0u);
+    assert((value & 0x80000000u) != 0u);
+
+    /* Positive MAC0 overflow during RTPS projection is reported separately. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 2u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 4u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 7u, 1000u));
+    assert(psx_gte_write_control(&gte, 24u, 0x70000000u));
+    assert(psx_gte_write_control(&gte, 26u, 200u));
+    assert(psx_gte_write_data(&gte, 0u, 0x00007fffu));
+    assert(psx_gte_write_data(&gte, 1u, 1000u));
+    assert(psx_gte_execute(&gte, 0x4a080001u));
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 16u)) != 0u);
+    assert((value & (1u << 14u)) != 0u);
+    assert((value & 0x80000000u) != 0u);
+
+    /* Negative MAC0 overflow during RTPS projection is reported separately. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 2u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 4u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 7u, 1000u));
+    assert(psx_gte_write_control(&gte, 24u, 0x90000000u));
+    assert(psx_gte_write_control(&gte, 26u, 200u));
+    assert(psx_gte_write_data(&gte, 0u, 0x00008000u));
+    assert(psx_gte_write_data(&gte, 1u, 1000u));
+    assert(psx_gte_execute(&gte, 0x4a080001u));
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 15u)) != 0u);
+    assert((value & (1u << 14u)) != 0u);
+    assert((value & 0x80000000u) != 0u);
+
     /* RTPS near-plane divide overflow and screen-coordinate saturation. */
     psx_gte_reset(&gte);
     assert(psx_gte_write_control(&gte, 0u, 0x00001000u));
