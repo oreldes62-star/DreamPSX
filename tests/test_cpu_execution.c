@@ -153,6 +153,32 @@ int main(void)
     assert(machine.cpu.next_pc == 0x498u);
     assert(psx_cpu_step(&machine.cpu, &machine.bus));
 
+    /* Link-register aliasing: the branch condition must use the OLD $ra.
+     * BLTZAL with negative $ra takes the branch, then replaces $ra with PC+8.
+     */
+    put_word(ram, 0x4a0u, (0x01u << 26) | (31u << 21) | (16u << 16) | 3u);
+    put_word(ram, 0x4a4u, 0u);
+    psx_cpu_write_gpr(&machine.cpu, 31u, 0xffffffffu);
+    machine.cpu.pc = 0x4a0u; machine.cpu.next_pc = 0x4a4u;
+    machine.cpu.delay_slot_pending = false;
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(machine.cpu.next_pc == 0x4b0u); /* taken using old negative $ra */
+    assert(psx_cpu_read_gpr(&machine.cpu, 31u) == 0x4a8u);
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+
+    /* BGEZAL with negative $ra is NOT taken, but still links.
+     * A premature link write would incorrectly make the branch taken.
+     */
+    put_word(ram, 0x4c0u, (0x01u << 26) | (31u << 21) | (17u << 16) | 3u);
+    put_word(ram, 0x4c4u, 0u);
+    psx_cpu_write_gpr(&machine.cpu, 31u, 0xffffffffu);
+    machine.cpu.pc = 0x4c0u; machine.cpu.next_pc = 0x4c4u;
+    machine.cpu.delay_slot_pending = false;
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(machine.cpu.next_pc == 0x4c8u); /* not taken using old negative $ra */
+    assert(psx_cpu_read_gpr(&machine.cpu, 31u) == 0x4c8u);
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+
     /* Unsupported REGIMM sub-op encodings are reserved instructions. */
     put_word(ram, 0x460u, (0x01u << 26) | (8u << 21) | (2u << 16));
     machine.cpu.pc = 0x460u; machine.cpu.next_pc = 0x464u;
