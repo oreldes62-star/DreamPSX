@@ -12,11 +12,13 @@ static uint32_t physical_address(uint32_t address)
     return address;
 }
 
-bool psx_bus_init(PsxBus *bus, PsxMemory *memory, PsxIrqController *irq,\n                  PsxGpu *gpu)
+bool psx_bus_init(PsxBus *bus, PsxMemory *memory, PsxIrqController *irq,
+                  PsxGpu *gpu)
 {
     if (!bus || !memory || !memory->initialized || !irq || !gpu || !gpu->initialized) return false;
     bus->memory = memory;
-    bus->irq = irq;\n    bus->gpu = gpu;
+    bus->irq = irq;
+    bus->gpu = gpu;
     bus->initialized = true;
     return true;
 }
@@ -41,7 +43,9 @@ bool psx_bus_read32(const PsxBus *bus, uint32_t address, uint32_t *value)
 {
     if (!bus || !bus->initialized || !value) return false;
     address = physical_address(address);
-    if (address == PSX_GPU_GP1_ADDR)\n        return psx_gpu_read_status(bus->gpu, value);\n    if (psx_irq_mmio_read32(bus->irq, address, value)) return true;
+    if (address == PSX_GPU_GP1_ADDR)
+        return psx_gpu_read_status(bus->gpu, value);
+    if (psx_irq_mmio_read32(bus->irq, address, value)) return true;
     return psx_memory_read32(bus->memory, address, value);
 }
 
@@ -65,6 +69,10 @@ bool psx_bus_write32(PsxBus *bus, uint32_t address, uint32_t value)
 {
     if (!bus || !bus->initialized) return false;
     address = physical_address(address);
-    if (address == PSX_GPU_GP0_ADDR)\n        return psx_gpu_gp0_write(bus->gpu, value);\n    if (address == PSX_GPU_GP1_ADDR)\n        return psx_gpu_gp1_write(bus->gpu, value);\n    if (psx_irq_mmio_write32(bus->irq, address, value)) return true;
+    if (address == PSX_GPU_GP0_ADDR)
+        return psx_gpu_gp0_write(bus->gpu, value);
+    if (address == PSX_GPU_GP1_ADDR)
+        return psx_gpu_gp1_write(bus->gpu, value);
+    if (psx_irq_mmio_write32(bus->irq, address, value)) return true;
     return psx_memory_write32(bus->memory, address, value);
 }
