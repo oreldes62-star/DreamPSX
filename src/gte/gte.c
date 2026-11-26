@@ -543,6 +543,30 @@ static void gte_execute_nccs(PsxGte *gte, uint32_t instruction)
     gte->control[31] = flags;
 }
 
+static void gte_execute_nct(PsxGte *gte, uint32_t instruction)
+{
+    uint32_t saved_v0 = gte->data[0];
+    uint32_t saved_v0z = gte->data[1];
+    uint32_t accumulated_flags = 0u;
+    unsigned vertex;
+
+    /* NCT applies the NCS lighting/color pipeline to V0, V1 and V2. */
+    for (vertex = 0u; vertex < 3u; ++vertex) {
+        uint32_t flags;
+        gte->data[0] = gte->data[vertex * 2u];
+        gte->data[1] = gte->data[vertex * 2u + 1u];
+        gte_execute_ncs(gte, instruction);
+        flags = gte->control[31];
+        accumulated_flags |= flags & 0x7fffffffu;
+    }
+
+    gte->data[0] = saved_v0;
+    gte->data[1] = saved_v0z;
+    if (accumulated_flags & 0x7f87e000u)
+        accumulated_flags |= 0x80000000u;
+    gte->control[31] = accumulated_flags;
+}
+
 static void gte_execute_ncct(PsxGte *gte, uint32_t instruction)
 {
     uint32_t saved_v0 = gte->data[0];
@@ -733,6 +757,10 @@ bool psx_gte_execute(PsxGte *gte, uint32_t instruction)
     }
     if (command == 0x1bu) {
         gte_execute_nccs(gte, instruction);
+        return true;
+    }
+    if (command == 0x20u) {
+        gte_execute_nct(gte, instruction);
         return true;
     }
     if (command == 0x3fu) {
