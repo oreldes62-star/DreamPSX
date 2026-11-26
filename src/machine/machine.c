@@ -135,6 +135,10 @@ bool psx_machine_step(PsxMachine *machine)
             psx_machine_raise_exception(machine, PSX_EXCEPTION_BREAKPOINT,
                                         0u, in_delay_slot, branch_pc);
             return true;
+        case PSX_CPU_STEP_TRAP:
+            psx_machine_raise_exception(machine, PSX_EXCEPTION_TRAP,
+                                        0u, in_delay_slot, branch_pc);
+            return true;
         case PSX_CPU_STEP_RESERVED_INSTRUCTION:
         case PSX_CPU_STEP_UNPREDICTABLE:
             psx_machine_raise_exception(machine,
