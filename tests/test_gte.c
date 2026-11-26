@@ -122,6 +122,7 @@ int main(void)
     assert(psx_gte_write_control(&gte, 0u, 0x00007fffu)); /* RT11=32767 */
     assert(psx_gte_write_control(&gte, 2u, 0x00001000u));
     assert(psx_gte_write_control(&gte, 4u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 5u, 0x80000000u)); /* TRX=INT32_MIN */
     assert(psx_gte_write_data(&gte, 0u, 0xffff8000u)); /* V0.x=-32768 */
     assert(psx_gte_write_data(&gte, 1u, 0u));
     assert(psx_gte_execute(&gte, 0x48000012u)); /* sf=0, RT, V0, no TR */
