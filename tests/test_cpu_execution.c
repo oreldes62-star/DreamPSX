@@ -627,7 +627,7 @@ int main(void)
         machine.cpu.load_delay_pending = false;
         psx_cpu_write_gpr(&machine.cpu, 8u, 0x00008001u);
         put_word(ram, 0x500u, (0x12u << 26) | (4u << 21) | (8u << 16) | (9u << 11)); /* MTC2 t0, D9 */
-        put_word(ram, 0x504u, (0x12u << 26) | (8u << 16) | (9u << 11)); /* MFC2 t1, D9 */
+        put_word(ram, 0x504u, (0x12u << 26) | (9u << 16) | (9u << 11)); /* MFC2 t1, D9 */
         put_word(ram, 0x508u, (0x09u << 26) | (9u << 21) | (10u << 16)); /* ADDIU t2,t1,0 */
         put_word(ram, 0x50cu, 0u); /* NOP retires MFC2 result */
         machine.cpu.pc = 0x500u; machine.cpu.next_pc = 0x504u;
