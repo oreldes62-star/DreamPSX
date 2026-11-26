@@ -13,7 +13,7 @@ static uint32_t leading_sign_bits(uint32_t value)
 {
     uint32_t count = 0u;
     bool sign = (value & 0x80000000u) != 0u;
-    for (uint32_t bit = 0x40000000u; bit != 0u; bit >>= 1u) {
+    for (uint32_t bit = 0x80000000u; bit != 0u; bit >>= 1u) {
         if (((value & bit) != 0u) != sign) break;
         ++count;
     }
