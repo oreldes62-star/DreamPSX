@@ -41,10 +41,27 @@ int main(void)
     assert(value == 7u);
     assert(psx_gte_write_data(&gte, 30u, 0xffffffffu));
     assert(psx_gte_read_data(&gte, 31u, &value));
-    assert(value == 31u);
+    assert(value == 32u);
     assert(psx_gte_write_data(&gte, 30u, 0u));
     assert(psx_gte_read_data(&gte, 31u, &value));
-    assert(value == 31u);
+    assert(value == 32u);
+    assert(psx_gte_write_data(&gte, 30u, 0x00000001u));
+    assert(psx_gte_read_data(&gte, 31u, &value) && value == 31u);
+    assert(psx_gte_write_data(&gte, 30u, 0x7fffffffu));
+    assert(psx_gte_read_data(&gte, 31u, &value) && value == 1u);
+    assert(psx_gte_write_data(&gte, 30u, 0x80000000u));
+    assert(psx_gte_read_data(&gte, 31u, &value) && value == 1u);
+    assert(psx_gte_write_data(&gte, 30u, 0x00008000u));
+    assert(psx_gte_read_data(&gte, 31u, &value) && value == 16u);
+    assert(psx_gte_write_data(&gte, 30u, 0xffff7fffu));
+    assert(psx_gte_read_data(&gte, 31u, &value) && value == 16u);
+    assert(psx_gte_write_data(&gte, 30u, 0x12345678u));
+    assert(psx_gte_read_data(&gte, 31u, &value) && value == 3u);
+    assert(psx_gte_write_data(&gte, 30u, 0xf0000000u));
+    assert(psx_gte_read_data(&gte, 31u, &value) && value == 4u);
+    /* LZCR is read-only; writes must not change the calculated result. */
+    assert(psx_gte_write_data(&gte, 31u, 5u));
+    assert(psx_gte_read_data(&gte, 31u, &value) && value == 4u);
 
     assert(psx_gte_write_data(&gte, 12u, 0x00010002u));
     assert(psx_gte_write_data(&gte, 13u, 0x00030004u));
