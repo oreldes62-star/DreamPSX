@@ -221,15 +221,17 @@ int main(void)
     psx_cpu_write_gpr(&machine.cpu, 8u, 0x00000055u);
     assert(psx_machine_step(&machine));
     assert(machine.cop0_status == 0x55u);
-    assert(psx_machine_step(&machine));
-    assert(psx_cpu_read_gpr(&machine.cpu, 9u) == 0x55u);
-    assert(psx_machine_step(&machine));
+    assert(psx_machine_step(&machine)); /* MFC0 queues t1 */
+    assert(psx_cpu_read_gpr(&machine.cpu, 9u) == 0u);
+    assert(psx_machine_step(&machine)); /* MTC0 retires t1 after reading t0 */
     assert(machine.cop0_epc == 0x55u);
-    assert(psx_machine_step(&machine));
-    assert(psx_cpu_read_gpr(&machine.cpu, 10u) == 0x55u);
+    assert(psx_cpu_read_gpr(&machine.cpu, 9u) == 0x55u);
+    assert(psx_machine_step(&machine)); /* MFC0 queues t2 */
+    assert(psx_cpu_read_gpr(&machine.cpu, 10u) == 0u);
     machine.cop0_status = 0x0000003cu;
-    assert(psx_machine_step(&machine));
+    assert(psx_machine_step(&machine)); /* RFE; t2 retires */
     assert(machine.cop0_status == 0x0000003fu);
+    assert(psx_cpu_read_gpr(&machine.cpu, 10u) == 0x55u);
 
     /* COP0 is rejected while the current mode is user mode. */
     machine.cop0_status = PSX_COP0_STATUS_KUC;
