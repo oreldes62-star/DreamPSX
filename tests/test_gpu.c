@@ -14,7 +14,7 @@ int main(void)
     assert(status == 0x14802000u);
 
     /* GP0(02h): fill a 16-pixel-aligned VRAM rectangle. */
-    assert(psx_gpu_gp0_write(&gpu, 0x02ff0000u)); /* Red */
+    assert(psx_gpu_gp0_write(&gpu, 0x020000ffu)); /* Red */
     assert(psx_gpu_gp0_write(&gpu, 3u | (4u << 16u))); /* XY */
     assert(psx_gpu_gp0_write(&gpu, 1u | (2u << 16u))); /* WH */
     assert(psx_gpu_vram_read(&gpu, 0u, 4u, &pixel));
