@@ -73,7 +73,7 @@ int main(void)
     psx_machine_reset(&machine);
 
     /* Synchronous CPU faults are translated into architectural exceptions. */
-    assert(psx_memory_write32(&machine.memory, 0x100u, 0x20280001u)); /* ADDI t0,t1,1 */
+    assert(psx_memory_write32(&machine.memory, 0x100u, 0x21280001u)); /* ADDI t0,t1,1 */
     machine.cpu.pc = 0x100u;
     machine.cpu.next_pc = 0x104u;
     machine.cpu.delay_slot_pending = false;
@@ -162,7 +162,7 @@ int main(void)
 
     /* Overflow in a branch delay slot must report EPC=branch PC and Cause.BD. */
     assert(psx_memory_write32(&machine.memory, 0x160u, 0x10000001u)); /* BEQ zero,zero,+1 */
-    assert(psx_memory_write32(&machine.memory, 0x164u, 0x20280001u)); /* ADDI delay slot */
+    assert(psx_memory_write32(&machine.memory, 0x164u, 0x21280001u)); /* ADDI delay slot */
     machine.cpu.pc = 0x160u;
     machine.cpu.next_pc = 0x164u;
     machine.cpu.delay_slot_pending = false;
