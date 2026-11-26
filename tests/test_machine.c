@@ -22,6 +22,11 @@ int main(void)
     assert(psx_irq_read_mask(&machine.irq) == 0u);
     assert(machine.cop0_status == 0u);
     assert(machine.cop0_cause == 0u);
+    {
+        uint32_t gte_value = 1u;
+        assert(psx_gte_read_data(&machine.gte, 0u, &gte_value));
+        assert(gte_value == 0u);
+    }
     assert(!psx_machine_interrupt_eligible(&machine));
 
     /* Raise a source while masked: Cause.IP2 stays low. */
