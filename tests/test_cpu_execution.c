@@ -1042,6 +1042,28 @@ int main(void)
     assert(((machine.cop0_cause >> 2u) & 31u) ==
            PSX_EXCEPTION_COPROCESSOR_UNUSABLE);
 
+    /* CU2-unusable in a LWC2 delay slot preserves BadVAddr and GTE state. */
+    machine.cop0_status = 0u;
+    machine.cop0_cause = 0u;
+    machine.cop0_badvaddr = 0xcafebabeu;
+    machine.gte.data[0u] = 0x2468ace0u;
+    psx_cpu_write_gpr(&machine.cpu, 12u, 0x601u);
+    put_word(ram, 0x564u, 0x10000001u); /* BEQ zero,zero,+1 */
+    put_word(ram, 0x568u, (0x32u << 26) | (12u << 21)); /* LWC2 D0, misaligned */
+    machine.cpu.pc = 0x564u;
+    machine.cpu.next_pc = 0x568u;
+    machine.cpu.delay_slot_pending = false;
+    machine.cpu.load_delay_pending = false;
+    assert(psx_machine_step(&machine));
+    assert(machine.cpu.delay_slot_pending);
+    assert(psx_machine_step(&machine));
+    assert(machine.cop0_epc == 0x564u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_BD) != 0u);
+    assert(((machine.cop0_cause >> 2u) & 31u) ==
+           PSX_EXCEPTION_COPROCESSOR_UNUSABLE);
+    assert(machine.cop0_badvaddr == 0xcafebabeu);
+    assert(machine.gte.data[0u] == 0x2468ace0u);
+
     free(bios); free(ram);
     puts("DreamPSX R3000A execution tests: OK");
     return 0;
