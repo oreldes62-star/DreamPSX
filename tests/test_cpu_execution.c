@@ -656,11 +656,11 @@ int main(void)
         /* LWC2/SWC2 move GTE data registers through the main bus. */
         put_word(ram, 0x600u, 0x89abcdefu);
         psx_cpu_write_gpr(&machine.cpu, 12u, 0x600u);
-        put_word(ram, 0x520u, (0x32u << 26) | (12u << 21) | (10u << 16)); /* LWC2 D10,0(t4) */
-        put_word(ram, 0x524u, (0x3au << 26) | (12u << 21) | (10u << 16) | 4u); /* SWC2 D10,4(t4) */
+        put_word(ram, 0x520u, (0x32u << 26) | (12u << 21) | (7u << 16)); /* LWC2 D7,0(t4) */
+        put_word(ram, 0x524u, (0x3au << 26) | (12u << 21) | (7u << 16) | 4u); /* SWC2 D7,4(t4) */
         machine.cpu.pc = 0x520u; machine.cpu.next_pc = 0x524u;
         assert(psx_machine_step(&machine));
-        assert(psx_gte_read_data(&machine.gte, 10u, &value));
+        assert(psx_gte_read_data(&machine.gte, 7u, &value));
         assert(value == 0x89abcdefu);
         assert(psx_machine_step(&machine));
         assert(psx_memory_read32(&machine.memory, 0x604u, &value));
