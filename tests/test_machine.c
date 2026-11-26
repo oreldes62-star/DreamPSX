@@ -176,6 +176,26 @@ int main(void)
     assert((machine.cop0_cause & PSX_COP0_CAUSE_EXCCODE) ==
            ((uint32_t)PSX_EXCEPTION_OVERFLOW << PSX_COP0_CAUSE_EXCCODE_SHIFT));
 
+    /* A REGIMM control transfer in a branch delay slot is rejected and
+     * retains the original branch PC in EPC with Cause.BD set.
+     */
+    assert(psx_memory_write32(&machine.memory, 0x190u, 0x10000001u)); /* BEQ zero,zero,+1 */
+    assert(psx_memory_write32(&machine.memory, 0x194u,
+                              (0x01u << 26) | (8u << 21) | 1u)); /* BLTZ t0,+1 */
+    machine.cpu.pc = 0x190u;
+    machine.cpu.next_pc = 0x194u;
+    machine.cpu.delay_slot_pending = false;
+    psx_cpu_write_gpr(&machine.cpu, 8u, 0xffffffffu);
+    machine.cop0_status = 0u;
+    assert(psx_machine_step(&machine));
+    assert(machine.cpu.delay_slot_pending);
+    assert(psx_machine_step(&machine));
+    assert(machine.cop0_epc == 0x190u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_BD) != 0u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_EXCCODE) ==
+           ((uint32_t)PSX_EXCEPTION_RESERVED_INSTRUCTION <<
+            PSX_COP0_CAUSE_EXCCODE_SHIFT));
+
     /* A pending load is retired before a synchronous exception enters
      * the handler; the faulting instruction itself is not retired.
      */
