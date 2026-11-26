@@ -284,6 +284,8 @@ static uint32_t gte_unr_divide(uint16_t h, uint16_t sz, uint32_t *flags)
     while (z < 16u && ((uint32_t)sz << z) < 0x8000u) ++z;
     n = (uint32_t)h << z;
     d = (uint32_t)sz << z;
+    /* A zero divisor is normalized as 0x8000 for the UNR table lookup. */
+    d |= 0x8000u;
     index = (d - 0x7fc0u) >> 7u;
     table = 0x40000u / (index + 0x100u);
     table = (table + 1u) / 2u;
