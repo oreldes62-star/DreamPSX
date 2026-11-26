@@ -669,6 +669,19 @@ int main(void)
         assert(value == 0x89abcdefu);
     }
 
+    /* COP2 NCLIP command executes through the CPU command path. */
+    machine.cop0_status = 0x40000000u;
+    assert(psx_gte_write_data(&machine.gte, 12u, 0x00000000u));
+    assert(psx_gte_write_data(&machine.gte, 13u, 0x00000064u));
+    assert(psx_gte_write_data(&machine.gte, 14u, 0x00640000u));
+    put_word(ram, 0x528u, 0x4b400006u); /* COP2 NCLIP */
+    machine.cpu.pc = 0x528u; machine.cpu.next_pc = 0x52cu;
+    machine.cpu.delay_slot_pending = false;
+    machine.cpu.load_delay_pending = false;
+    assert(psx_machine_step(&machine));
+    assert(psx_gte_read_data(&machine.gte, 24u, &value));
+    assert(value == 10000u);
+
     /* COP2 is unavailable when Status.CU2 is clear. */
     machine.cop0_status = 0u;
     machine.cop0_cause = 0u;
