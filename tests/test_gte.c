@@ -69,6 +69,10 @@ int main(void)
     assert(psx_gte_read_control(&gte, 31u, &value) && value == 0u);
     assert(psx_gte_write_control(&gte, 31u, 0x00000fffu));
     assert(psx_gte_read_control(&gte, 31u, &value) && value == 0u);
+    /* IR0 saturation (FLAG bit 12) is writable but does not contribute
+     * to the hardware FLAG summary bit. */
+    assert(psx_gte_write_control(&gte, 31u, 0x00001000u));
+    assert(psx_gte_read_control(&gte, 31u, &value) && value == 0x00001000u);
     assert(psx_gte_write_control(&gte, 31u, 0x40001001u));
     assert(psx_gte_read_control(&gte, 31u, &value) &&
            value == 0xc0001000u);
