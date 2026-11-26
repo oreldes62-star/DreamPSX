@@ -97,6 +97,55 @@ int main(void)
     assert((value & (1u << 15)) != 0u);
     assert((value & (1u << 31)) != 0u);
 
+    /* RTPS: identity projection, screen offsets and SZ FIFO output. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 2u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 4u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 7u, 1000u)); /* TRZ */
+    assert(psx_gte_write_control(&gte, 24u, 160u << 16u)); /* OFX */
+    assert(psx_gte_write_control(&gte, 25u, 120u << 16u)); /* OFY */
+    assert(psx_gte_write_control(&gte, 26u, 200u)); /* H */
+    assert(psx_gte_write_data(&gte, 0u, 0u));
+    assert(psx_gte_write_data(&gte, 1u, 0u));
+    assert(psx_gte_execute(&gte, 0x4a080001u)); /* RTPS, sf=1 */
+    assert(psx_gte_read_data(&gte, 19u, &value) && value == 1000u);
+    assert(psx_gte_read_data(&gte, 14u, &value));
+    assert((int16_t)(value & 0xffffu) == 160);
+    assert((int16_t)(value >> 16u) == 120);
+
+    /* RTPS projects an offset vertex using H/SZ3. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 2u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 4u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 24u, 160u << 16u));
+    assert(psx_gte_write_control(&gte, 25u, 120u << 16u));
+    assert(psx_gte_write_control(&gte, 26u, 200u));
+    assert(psx_gte_write_data(&gte, 0u, 0x00320064u)); /* V0=(100,50,500) */
+    assert(psx_gte_write_data(&gte, 1u, 500u));
+    assert(psx_gte_execute(&gte, 0x4a080001u));
+    assert(psx_gte_read_data(&gte, 19u, &value) && value == 500u);
+    assert(psx_gte_read_data(&gte, 14u, &value));
+    assert((int16_t)(value & 0xffffu) == 199);
+    assert((int16_t)(value >> 16u) == 139);
+
+    /* RTPS near-plane divide overflow and screen-coordinate saturation. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 2u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 4u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 26u, 200u));
+    assert(psx_gte_write_data(&gte, 0u, 0x7fffu));
+    assert(psx_gte_write_data(&gte, 1u, 100u));
+    assert(psx_gte_execute(&gte, 0x4a080001u));
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 17u)) != 0u);
+    assert((value & (1u << 14u)) != 0u);
+    assert((value & (1u << 31u)) != 0u);
+    assert(psx_gte_read_data(&gte, 14u, &value));
+    assert((int16_t)(value & 0xffffu) == 1023);
+
     /* MVMVA: identity rotation, V0 plus a translation vector. */
     psx_gte_reset(&gte);
     assert(psx_gte_write_control(&gte, 0u, 0x00001000u)); /* RT11=4096 */
