@@ -268,35 +268,29 @@ PsxCpuStepResult psx_cpu_step_result_with_cop0(PsxCpu *cpu, PsxBus *bus,
         }
         break;
     }
-    case 0x01u: { /* REGIMM: BLTZ, BGEZ and link variants */
+    case 0x01u: { /* REGIMM: branches and conditional traps */
         bool negative = (a & 0x80000000u) != 0u;
-        bool take_branch;
-        control_transfer = true;
+        bool take_branch = false;
+        bool is_branch = true;
+        uint32_t immediate = sign_extend_16(imm);
         switch (rt) {
-        case 0u:  /* BLTZ */
-            take_branch = negative;
-            break;
-        case 1u:  /* BGEZ */
-            take_branch = !negative;
-            break;
-        case 8u:  if (signed_less(a, sign_extend_16(imm)) == 0u) return PSX_CPU_STEP_TRAP; break;
-        case 9u:  if (a >= sign_extend_16(imm)) return PSX_CPU_STEP_TRAP; break;
-        case 10u: if (signed_less(a, sign_extend_16(imm)) != 0u) return PSX_CPU_STEP_TRAP; break;
-        case 11u: if (a < sign_extend_16(imm)) return PSX_CPU_STEP_TRAP; break;
-        case 12u: if (a == sign_extend_16(imm)) return PSX_CPU_STEP_TRAP; break;
-        case 14u: if (a != sign_extend_16(imm)) return PSX_CPU_STEP_TRAP; break;
-        case 16u: /* BLTZAL */
-            take_branch = negative;
-            break;
-        case 17u: /* BGEZAL */
-            take_branch = !negative;
-            break;
-        default:
-            return PSX_CPU_STEP_RESERVED_INSTRUCTION;
+        case 0u:  take_branch = negative; break; /* BLTZ */
+        case 1u:  take_branch = !negative; break; /* BGEZ */
+        case 8u:  is_branch = false; if (signed_less(a, immediate) == 0u) return PSX_CPU_STEP_TRAP; break; /* TGEI */
+        case 9u:  is_branch = false; if (a >= immediate) return PSX_CPU_STEP_TRAP; break; /* TGEIU */
+        case 10u: is_branch = false; if (signed_less(a, immediate) != 0u) return PSX_CPU_STEP_TRAP; break; /* TLTI */
+        case 11u: is_branch = false; if (a < immediate) return PSX_CPU_STEP_TRAP; break; /* TLTIU */
+        case 12u: is_branch = false; if (a == immediate) return PSX_CPU_STEP_TRAP; break; /* TEQI */
+        case 14u: is_branch = false; if (a != immediate) return PSX_CPU_STEP_TRAP; break; /* TNEI */
+        case 16u: take_branch = negative; break; /* BLTZAL */
+        case 17u: take_branch = !negative; break; /* BGEZAL */
+        default: return PSX_CPU_STEP_RESERVED_INSTRUCTION;
         }
+        if (!is_branch) break;
+        control_transfer = true;
         if (take_branch) {
             branch = true;
-            branch_target = old_pc + 4u + (sign_extend_16(imm) << 2);
+            branch_target = old_pc + 4u + (immediate << 2);
         }
         /* R3000A link variants write RA whether or not the condition matches. */
         if (rt == 16u || rt == 17u) {
