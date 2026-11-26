@@ -137,6 +137,44 @@ int main(void)
     assert(((machine.cop0_cause & PSX_COP0_CAUSE_EXCCODE) >>
             PSX_COP0_CAUSE_EXCCODE_SHIFT) == PSX_EXCEPTION_BUS_DATA);
 
+    /* Misaligned LWC2 in a branch delay slot reports AdEL with BD/EPC. */
+    machine.cop0_status = 0x40000000u;
+    machine.cop0_cause = 0u;
+    psx_cpu_write_gpr(&machine.cpu, 12u, 0x601u);
+    assert(psx_bus_write32(&machine.bus, 0x240u, 0x10000001u)); /* BEQ zero,zero,+1 */
+    assert(psx_bus_write32(&machine.bus, 0x244u,
+                           (0x32u << 26) | (12u << 21))); /* LWC2 delay slot */
+    machine.cpu.pc = 0x240u;
+    machine.cpu.next_pc = 0x244u;
+    machine.cpu.delay_slot_pending = false;
+    machine.cpu.load_delay_pending = false;
+    assert(psx_machine_step(&machine));
+    assert(psx_machine_step(&machine));
+    assert(machine.cop0_epc == 0x240u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_BD) != 0u);
+    assert(machine.cop0_badvaddr == 0x601u);
+    assert(((machine.cop0_cause & PSX_COP0_CAUSE_EXCCODE) >>
+            PSX_COP0_CAUSE_EXCCODE_SHIFT) == PSX_EXCEPTION_ADDRESS_LOAD);
+
+    /* Misaligned SWC2 in a branch delay slot reports AdES with BD/EPC. */
+    machine.cop0_status = 0x40000000u;
+    machine.cop0_cause = 0u;
+    psx_cpu_write_gpr(&machine.cpu, 12u, 0x603u);
+    assert(psx_bus_write32(&machine.bus, 0x248u, 0x10000001u)); /* BEQ zero,zero,+1 */
+    assert(psx_bus_write32(&machine.bus, 0x24cu,
+                           (0x3au << 26) | (12u << 21))); /* SWC2 delay slot */
+    machine.cpu.pc = 0x248u;
+    machine.cpu.next_pc = 0x24cu;
+    machine.cpu.delay_slot_pending = false;
+    machine.cpu.load_delay_pending = false;
+    assert(psx_machine_step(&machine));
+    assert(psx_machine_step(&machine));
+    assert(machine.cop0_epc == 0x248u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_BD) != 0u);
+    assert(machine.cop0_badvaddr == 0x603u);
+    assert(((machine.cop0_cause & PSX_COP0_CAUSE_EXCCODE) >>
+            PSX_COP0_CAUSE_EXCCODE_SHIFT) == PSX_EXCEPTION_ADDRESS_STORE);
+
     free(bios);
     free(ram);
     puts("DreamPSX machine-bus integration tests: OK");
