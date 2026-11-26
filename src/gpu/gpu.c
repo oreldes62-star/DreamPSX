@@ -39,6 +39,72 @@ static void execute_fill_rectangle(PsxGpu *gpu)
     }
 }
 
+
+static int sign_extend_11(uint32_t value)
+{
+    const unsigned bits = value & 0x7ffu;
+    return (bits & 0x400u) != 0u ? (int)bits - 0x800 : (int)bits;
+}
+
+static int64_t triangle_edge(int ax, int ay, int bx, int by,
+                             int px2, int py2)
+{
+    return (int64_t)(px2 - 2 * ax) * (2 * by - 2 * ay) -
+           (int64_t)(py2 - 2 * ay) * (2 * bx - 2 * ax);
+}
+
+static void execute_flat_triangle(PsxGpu *gpu)
+{
+    const uint32_t xy0 = gpu->parameters[0];
+    const uint32_t xy1 = gpu->parameters[1];
+    const uint32_t xy2 = gpu->parameters[2];
+    const int x0 = sign_extend_11(xy0);
+    const int y0 = sign_extend_11(xy0 >> 16u);
+    const int x1 = sign_extend_11(xy1);
+    const int y1 = sign_extend_11(xy1 >> 16u);
+    const int x2 = sign_extend_11(xy2);
+    const int y2 = sign_extend_11(xy2 >> 16u);
+    const int min_x = (x0 < x1 ? (x0 < x2 ? x0 : x2) :
+                                      (x1 < x2 ? x1 : x2));
+    const int max_x = (x0 > x1 ? (x0 > x2 ? x0 : x2) :
+                                      (x1 > x2 ? x1 : x2));
+    const int min_y = (y0 < y1 ? (y0 < y2 ? y0 : y2) :
+                                      (y1 < y2 ? y1 : y2));
+    const int max_y = (y0 > y1 ? (y0 > y2 ? y0 : y2) :
+                                      (y1 > y2 ? y1 : y2));
+    const int64_t area = triangle_edge(x0, y0, x1, y1, 2 * x2, 2 * y2);
+    const uint16_t color = rgb24_to_rgb15(gpu->command);
+    int start_x, end_x, start_y, end_y;
+
+    if (area == 0 || max_x < 0 || max_y < 0 ||
+        min_x >= (int)PSX_GPU_VRAM_WIDTH ||
+        min_y >= (int)PSX_GPU_VRAM_HEIGHT)
+        return;
+
+    start_x = min_x < 0 ? 0 : min_x;
+    end_x = max_x >= (int)PSX_GPU_VRAM_WIDTH ?
+            (int)PSX_GPU_VRAM_WIDTH - 1 : max_x;
+    start_y = min_y < 0 ? 0 : min_y;
+    end_y = max_y >= (int)PSX_GPU_VRAM_HEIGHT ?
+            (int)PSX_GPU_VRAM_HEIGHT - 1 : max_y;
+
+    for (int y = start_y; y <= end_y; ++y) {
+        for (int x = start_x; x <= end_x; ++x) {
+            const int px2 = 2 * x + 1;
+            const int py2 = 2 * y + 1;
+            const int64_t e0 = triangle_edge(x0, y0, x1, y1, px2, py2);
+            const int64_t e1 = triangle_edge(x1, y1, x2, y2, px2, py2);
+            const int64_t e2 = triangle_edge(x2, y2, x0, y0, px2, py2);
+            const bool inside = area < 0 ?
+                (e0 <= 0 && e1 <= 0 && e2 <= 0) :
+                (e0 >= 0 && e1 >= 0 && e2 >= 0);
+            if (inside)
+                gpu->vram[(unsigned)y * PSX_GPU_VRAM_WIDTH +
+                          (unsigned)x] = color;
+        }
+    }
+}
+
 static void begin_image_transfer(PsxGpu *gpu, PsxGpuTransferMode mode)
 {
     const uint32_t xy = gpu->parameters[0];
@@ -92,6 +158,7 @@ void psx_gpu_reset(PsxGpu *gpu)
     gpu->command = 0u;
     gpu->parameters[0] = 0u;
     gpu->parameters[1] = 0u;
+    gpu->parameters[2] = 0u;
     gpu->parameter_count = 0u;
     gpu->parameter_expected = 0u;
     gpu->transfer_mode = PSX_GPU_TRANSFER_IDLE;
@@ -124,6 +191,8 @@ bool psx_gpu_gp0_write(PsxGpu *gpu, uint32_t value)
                 begin_image_transfer(gpu, PSX_GPU_TRANSFER_CPU_TO_VRAM);
             else if (opcode == 0xc0u)
                 begin_image_transfer(gpu, PSX_GPU_TRANSFER_VRAM_TO_CPU);
+            else if (opcode == 0x20u)
+                execute_flat_triangle(gpu);
             gpu->parameter_count = 0u;
             gpu->parameter_expected = 0u;
         }
@@ -132,6 +201,10 @@ bool psx_gpu_gp0_write(PsxGpu *gpu, uint32_t value)
 
     gpu->command = value;
     switch (value >> 24u) {
+    case 0x20u: /* Flat-shaded triangle */
+        gpu->parameter_expected = 3u;
+        gpu->parameter_count = 0u;
+        break;
     case 0x02u: /* Fill rectangle */
     case 0xa0u: /* Copy image from CPU to VRAM */
     case 0xc0u: /* Copy image from VRAM to CPU */
