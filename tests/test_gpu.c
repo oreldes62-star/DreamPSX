@@ -54,6 +54,16 @@ int main(void)
       assert(psx_gpu_read_data(&gpu, &data) && data == 0x00003333u);
       assert(psx_gpu_read_data(&gpu, &data) && data == 0u); }
 
+    /* GP0 20h rasterizes a flat-shaded triangle at pixel centers. */
+    assert(psx_gpu_gp0_write(&gpu, 0x2000ff00u)); /* Green */
+    assert(psx_gpu_gp0_write(&gpu, 100u | (100u << 16u)));
+    assert(psx_gpu_gp0_write(&gpu, 104u | (100u << 16u)));
+    assert(psx_gpu_gp0_write(&gpu, 100u | (104u << 16u)));
+    assert(psx_gpu_vram_read(&gpu, 101u, 101u, &pixel));
+    assert(pixel == 0x03e0u);
+    assert(psx_gpu_vram_read(&gpu, 103u, 103u, &pixel));
+    assert(pixel == 0u);
+
     /* GPU reset preserves VRAM but restores status and parser state. */
     assert(psx_gpu_gp1_write(&gpu, 0x00000000u));
     assert(psx_gpu_read_status(&gpu, &status));
