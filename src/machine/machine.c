@@ -124,9 +124,12 @@ bool psx_machine_step(PsxMachine *machine)
                                         0u, in_delay_slot, branch_pc);
             return true;
         case PSX_CPU_STEP_COPROCESSOR_UNUSABLE:
+            /* This exception does not report a bad virtual address. Preserve
+             * the previous BadVAddr value instead of replacing it with zero. */
             psx_machine_raise_exception(machine,
                                         PSX_EXCEPTION_COPROCESSOR_UNUSABLE,
-                                        0u, in_delay_slot, branch_pc);
+                                        machine->cop0_badvaddr,
+                                        in_delay_slot, branch_pc);
             return true;
         case PSX_CPU_STEP_SYSCALL:
             psx_machine_raise_exception(machine, PSX_EXCEPTION_SYSCALL,
