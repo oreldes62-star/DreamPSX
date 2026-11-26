@@ -70,9 +70,11 @@ PsxCpuStepResult psx_cpu_step_result_with_cop0(PsxCpu *cpu, PsxBus *bus,
     bool control_transfer = false;
     bool was_delay_slot;
     bool is_load = false;
+    bool is_merge_load = false;
     uint32_t previous_load_value = 0u;
     unsigned previous_load_register = 0u;
     bool previous_load_pending = false;
+    bool previous_load_mergeable = false;
     uint32_t branch_target = 0u;
     uint8_t byte_value;
     uint16_t half_value;
@@ -91,6 +93,7 @@ PsxCpuStepResult psx_cpu_step_result_with_cop0(PsxCpu *cpu, PsxBus *bus,
     old_pc = cpu->pc;
     was_delay_slot = cpu->delay_slot_pending;
     previous_load_pending = cpu->load_delay_pending;
+    previous_load_mergeable = cpu->load_delay_mergeable;
     previous_load_register = cpu->load_delay_register;
     previous_load_value = cpu->load_delay_value;
     /* Branches in a delay slot are architecturally unpredictable on R3000A. */
@@ -110,6 +113,12 @@ PsxCpuStepResult psx_cpu_step_result_with_cop0(PsxCpu *cpu, PsxBus *bus,
     imm = (uint16_t)instruction;
     a = psx_cpu_read_gpr(cpu, rs);
     b = psx_cpu_read_gpr(cpu, rt);
+    /* MIPS I special case: adjacent LWL/LWR to the same rt merge through
+     * the pending load value instead of the stale architectural GPR value.
+     */
+    if ((op == 0x22u || op == 0x26u) && previous_load_pending &&
+        previous_load_mergeable && previous_load_register == rt)
+        b = previous_load_value;
 
     switch (op) {
     case 0x00u:
@@ -286,6 +295,19 @@ PsxCpuStepResult psx_cpu_step_result_with_cop0(PsxCpu *cpu, PsxBus *bus,
         if (!psx_bus_read16(bus, address, &half_value)) { cpu->fault_address = address; return PSX_CPU_STEP_DATA_BUS_ERROR; }
         result = (half_value & 0x8000u) ? (0xffff0000u | half_value) : half_value;
         write_result = true; is_load = true; break;
+    case 0x22u: /* LWL — Load Word Left, little-endian */
+        address = a + sign_extend_16(imm);
+        if (!psx_bus_read32(bus, address & ~3u, &result)) {
+            cpu->fault_address = address;
+            return PSX_CPU_STEP_DATA_BUS_ERROR;
+        }
+        switch (address & 3u) {
+        case 0u: result = (b & 0x00ffffffu) | (result << 24); break;
+        case 1u: result = (b & 0x0000ffffu) | (result << 16); break;
+        case 2u: result = (b & 0x000000ffu) | (result << 8); break;
+        default: break;
+        }
+        write_result = true; is_load = true; is_merge_load = true; break;
     case 0x23u: /* LW */
         address = a + sign_extend_16(imm);
         if ((address & 3u) != 0u) { cpu->fault_address = address; return PSX_CPU_STEP_ADDRESS_ERROR_LOAD; }
@@ -300,6 +322,19 @@ PsxCpuStepResult psx_cpu_step_result_with_cop0(PsxCpu *cpu, PsxBus *bus,
         if ((address & 1u) != 0u) { cpu->fault_address = address; return PSX_CPU_STEP_ADDRESS_ERROR_LOAD; }
         if (!psx_bus_read16(bus, address, &half_value)) { cpu->fault_address = address; return PSX_CPU_STEP_DATA_BUS_ERROR; }
         result = half_value; write_result = true; is_load = true; break;
+    case 0x26u: /* LWR — Load Word Right, little-endian */
+        address = a + sign_extend_16(imm);
+        if (!psx_bus_read32(bus, address & ~3u, &result)) {
+            cpu->fault_address = address;
+            return PSX_CPU_STEP_DATA_BUS_ERROR;
+        }
+        switch (address & 3u) {
+        case 0u: break;
+        case 1u: result = (b & 0xff000000u) | (result >> 8); break;
+        case 2u: result = (b & 0xffff0000u) | (result >> 16); break;
+        default: result = (b & 0xffffff00u) | (result >> 24); break;
+        }
+        write_result = true; is_load = true; is_merge_load = true; break;
     case 0x28u: /* SB */
         address = a + sign_extend_16(imm);
         if (!psx_bus_write8(bus, address, (uint8_t)b)) { cpu->fault_address = address; return PSX_CPU_STEP_DATA_BUS_ERROR; }
@@ -339,9 +374,14 @@ PsxCpuStepResult psx_cpu_step_result_with_cop0(PsxCpu *cpu, PsxBus *bus,
                 cpu->load_delay_register = (uint8_t)current_register;
                 cpu->load_delay_value = result;
                 cpu->load_delay_pending = true;
+                cpu->load_delay_mergeable = is_merge_load;
+            } else {
+                cpu->load_delay_mergeable = false;
             }
-        } else if (write_result) {
-            psx_cpu_write_gpr(cpu, current_register, result);
+        } else {
+            cpu->load_delay_mergeable = false;
+            if (write_result)
+                psx_cpu_write_gpr(cpu, current_register, result);
         }
     }
     cpu->pc = sequential_pc;
