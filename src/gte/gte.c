@@ -310,7 +310,8 @@ static void gte_push_sz(PsxGte *gte, uint32_t value)
     gte->data[19] = value & 0xffffu;
 }
 
-static void gte_execute_rtps(PsxGte *gte, uint32_t instruction,\n                             unsigned vertex, uint32_t *accumulated_flags)
+static void gte_execute_rtps(PsxGte *gte, uint32_t instruction,
+                             unsigned vertex, uint32_t *accumulated_flags)
 {
     unsigned shift = (instruction & (1u << 19u)) ? 12u : 0u;
     int32_t v[3], ir[3];
