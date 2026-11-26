@@ -28,6 +28,7 @@ Experimental project. The complete source snapshot is distributed as a ZIP; this
 - [R3000A SYSCALL, BREAK and encoding validation milestone 3.3](docs/R3000A-SYSCALL-BREAK-VALIDATION-MILESTONE-3.3.md)
 - [R3000A load delay slot milestone 3.4](docs/R3000A-LOAD-DELAY-MILESTONE-3.4.md)
 - [R3000A LWL/LWR unaligned load milestone 3.5](docs/R3000A-LWL-LWR-MILESTONE-3.5.md)
+- [R3000A memory access validation milestone 3.6](docs/R3000A-MEMORY-ACCESS-VALIDATION-MILESTONE-3.6.md)
 
 ## Target
 Sega Dreamcast with 16 MiB RAM. Long-term target: CDI test build for Flycast, then GDEMU.
