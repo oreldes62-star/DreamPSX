@@ -432,6 +432,8 @@ int main(void)
     assert(psx_gte_read_data(&gte, 14u, &value));
     assert((int16_t)(value & 0xffffu) == 160);
     assert((int16_t)(value >> 16u) == 139);
+    /* SXYP is the readable alias of the newest SXY FIFO entry. */
+    assert(psx_gte_read_data(&gte, 15u, &value) && value == 0x008b00a0u);
     assert(psx_gte_read_data(&gte, 17u, &value) && value == 1000u);
     assert(psx_gte_read_data(&gte, 18u, &value) && value == 1000u);
     assert(psx_gte_read_data(&gte, 19u, &value) && value == 1000u);
