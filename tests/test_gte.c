@@ -221,6 +221,25 @@ int main(void)
     assert(psx_gte_read_data(&gte, 10u, &value) && value == 100u);
     assert(psx_gte_read_data(&gte, 11u, &value) && value == 1000u);
 
+    /* RTPT must retain exceptions raised by earlier vertices even when
+     * the final vertex completes without a divide overflow. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 2u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 4u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 26u, 200u); /* H */
+    assert(psx_gte_write_data(&gte, 0u, 0u));       /* V0=(0,0,0) */
+    assert(psx_gte_write_data(&gte, 1u, 0u));
+    assert(psx_gte_write_data(&gte, 2u, 0u));       /* V1=(0,0,1000) */
+    assert(psx_gte_write_data(&gte, 3u, 1000u));
+    assert(psx_gte_write_data(&gte, 4u, 0u));       /* V2=(0,0,1000) */
+    assert(psx_gte_write_data(&gte, 5u, 1000u));
+    assert(psx_gte_execute(&gte, 0x4a080030u)); /* RTPT, sf=1 */
+    assert(psx_gte_read_data(&gte, 19u, &value) && value == 1000u);
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 17u)) != 0u); /* V0 divide overflow retained */
+    assert((value & (1u << 31u)) != 0u); /* summary retained */
+
     /* AVSZ3 averages the last three SZ FIFO entries into OTZ. */
     psx_gte_reset(&gte);
     assert(psx_gte_write_control(&gte, 29u, 0x1000u)); /* ZSF3=1.0 */
