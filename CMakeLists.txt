@@ -15,6 +15,7 @@ add_library(dreampsx_core STATIC
     src/cpu/cop0_irq.c
     src/cpu/cpu.c
     src/gte/gte.c
+    src/gpu/gpu.c
     src/machine/machine.c
 )
 
@@ -44,6 +45,7 @@ set(DREAMPSX_TESTS
     test_irq_cop0_integration
     test_irq_mmio
     test_gte
+    test_gpu
     test_machine
     test_machine_bus
     test_memory
