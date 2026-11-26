@@ -196,6 +196,39 @@ int main(void)
     assert(psx_gte_read_control(&gte, 31u, &value));
     assert((value & (1u << 17u)) == 0u);
 
+    /* Screen X lower boundary is inclusive: -1024 does not saturate. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 2u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 4u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 7u, 1000u));
+    assert(psx_gte_write_control(&gte, 24u, (uint32_t)(-67108864)));
+    assert(psx_gte_write_control(&gte, 26u, 200u));
+    assert(psx_gte_write_data(&gte, 0u, 0u));
+    assert(psx_gte_write_data(&gte, 1u, 0u));
+    assert(psx_gte_execute(&gte, 0x4a080001u));
+    assert(psx_gte_read_data(&gte, 14u, &value));
+    assert((int16_t)(value & 0xffffu) == -1024);
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 14u)) == 0u);
+
+    /* One unit below the lower boundary clamps to -1024 and sets FLAG.14. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 2u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 4u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 7u, 1000u));
+    assert(psx_gte_write_control(&gte, 24u, (uint32_t)(-67174400)));
+    assert(psx_gte_write_control(&gte, 26u, 200u));
+    assert(psx_gte_write_data(&gte, 0u, 0u));
+    assert(psx_gte_write_data(&gte, 1u, 0u));
+    assert(psx_gte_execute(&gte, 0x4a080001u));
+    assert(psx_gte_read_data(&gte, 14u, &value));
+    assert((int16_t)(value & 0xffffu) == -1024);
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 14u)) != 0u);
+    assert((value & 0x80000000u) != 0u);
+
     /* RTPS near-plane divide overflow and screen-coordinate saturation. */
     psx_gte_reset(&gte);
     assert(psx_gte_write_control(&gte, 0u, 0x00001000u));
