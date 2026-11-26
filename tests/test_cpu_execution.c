@@ -704,6 +704,24 @@ int main(void)
     assert(psx_machine_step(&machine));
     assert(psx_cpu_read_gpr(&machine.cpu, 9u) == 0xffff8001u);
 
+    /* CTC2 applies the unsigned H width and FLAG write mask via CPU. */
+    machine.cop0_status = 0x40000000u;
+    machine.cpu.delay_slot_pending = false;
+    machine.cpu.load_delay_pending = false;
+    psx_cpu_write_gpr(&machine.cpu, 8u, 0x12345678u);
+    put_word(ram, 0x558u, (0x12u << 26) | (6u << 21) | (8u << 16) | (26u << 11)); /* CTC2 t0,H */
+    machine.cpu.pc = 0x558u;
+    machine.cpu.next_pc = 0x55cu;
+    assert(psx_machine_step(&machine));
+    assert(machine.gte.control[26u] == 0x5678u);
+
+    psx_cpu_write_gpr(&machine.cpu, 8u, 0xffffffffu);
+    put_word(ram, 0x55cu, (0x12u << 26) | (6u << 21) | (8u << 16) | (31u << 11)); /* CTC2 t0,FLAG */
+    machine.cpu.pc = 0x55cu;
+    machine.cpu.next_pc = 0x560u;
+    assert(psx_machine_step(&machine));
+    assert(machine.gte.control[31u] == 0xfffff000u);
+
     /* LWC2/SWC2 alignment faults must report the effective address. */
     machine.cop0_status = 0x40000000u;
     machine.cop0_cause = 0u;
