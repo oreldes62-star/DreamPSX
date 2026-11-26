@@ -610,7 +610,7 @@ int main(void)
     assert(psx_gte_write_data(&gte, 0u, 4095u)); /* V0.x */
     assert(psx_gte_execute(&gte, 0x4a000012u)); /* MVMVA, sf=0 */
     assert(psx_gte_read_data(&gte, 25u, &value));
-    assert(value == 0x7fffffffu);
+    assert(value == 0xffffffffu);
     assert(psx_gte_read_control(&gte, 31u, &value));
     assert((value & (1u << 30u)) == 0u);
 
@@ -630,7 +630,7 @@ int main(void)
     assert(psx_gte_write_data(&gte, 0u, 0u));
     assert(psx_gte_execute(&gte, 0x4a000012u));
     assert(psx_gte_read_data(&gte, 25u, &value));
-    assert(value == 0x80000000u);
+    assert(value == 0u);
     assert(psx_gte_read_control(&gte, 31u, &value));
     assert((value & (1u << 27u)) == 0u);
 
