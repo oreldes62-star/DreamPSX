@@ -248,6 +248,29 @@ int main(void)
     assert((value & (1u << 18u)) != 0u);
     assert((value & (1u << 31u)) != 0u);
 
+    /* SQR squares IR1-IR3, with sf=1 shifting the MAC by 12. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_data(&gte, 9u, 3u));
+    assert(psx_gte_write_data(&gte, 10u, (uint32_t)-4));
+    assert(psx_gte_write_data(&gte, 11u, 100u));
+    assert(psx_gte_execute(&gte, 0x4a080028u)); /* SQR, sf=1 */
+    assert(psx_gte_read_data(&gte, 25u, &value) && value == 0u);
+    assert(psx_gte_read_data(&gte, 26u, &value) && value == 0u);
+    assert(psx_gte_read_data(&gte, 27u, &value) && value == 2u);
+    assert(psx_gte_read_data(&gte, 9u, &value) && value == 0u);
+    assert(psx_gte_read_data(&gte, 10u, &value) && value == 0u);
+    assert(psx_gte_read_data(&gte, 11u, &value) && value == 2u);
+
+    /* SQR sf=0 leaves the unshifted squared values in MAC1-3. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_data(&gte, 9u, 3u));
+    assert(psx_gte_write_data(&gte, 10u, (uint32_t)-4));
+    assert(psx_gte_write_data(&gte, 11u, 100u));
+    assert(psx_gte_execute(&gte, 0x4a000028u)); /* SQR, sf=0 */
+    assert(psx_gte_read_data(&gte, 25u, &value) && value == 9u);
+    assert(psx_gte_read_data(&gte, 26u, &value) && value == 16u);
+    assert(psx_gte_read_data(&gte, 27u, &value) && value == 10000u);
+
     /* MVMVA: identity rotation, V0 plus a translation vector. */
     psx_gte_reset(&gte);
     assert(psx_gte_write_control(&gte, 0u, 0x00001000u)); /* RT11=4096 */
