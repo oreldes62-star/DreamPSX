@@ -156,6 +156,8 @@ PsxCpuStepResult psx_cpu_step_result_with_cop0(PsxCpu *cpu, PsxBus *bus,
             if (shamt != 0u) return PSX_CPU_STEP_RESERVED_INSTRUCTION;
             break;
         case 0x0cu: case 0x0du: /* SYSCALL/BREAK code field is variable. */
+        case 0x30u: case 0x31u: case 0x32u:
+        case 0x33u: case 0x34u: case 0x36u: /* Trap code field is variable. */
             break;
         default:
             break;
@@ -170,6 +172,12 @@ PsxCpuStepResult psx_cpu_step_result_with_cop0(PsxCpu *cpu, PsxBus *bus,
         case 0x08u: control_transfer = true; branch = true; branch_target = a; break; /* JR */
         case 0x0cu: return PSX_CPU_STEP_SYSCALL;
         case 0x0du: return PSX_CPU_STEP_BREAKPOINT;
+        case 0x30u: if (signed_less(a, b) == 0u) return PSX_CPU_STEP_TRAP; break;
+        case 0x31u: if (a >= b) return PSX_CPU_STEP_TRAP; break;
+        case 0x32u: if (signed_less(a, b) != 0u) return PSX_CPU_STEP_TRAP; break;
+        case 0x33u: if (a < b) return PSX_CPU_STEP_TRAP; break;
+        case 0x34u: if (a == b) return PSX_CPU_STEP_TRAP; break;
+        case 0x36u: if (a != b) return PSX_CPU_STEP_TRAP; break;
         case 0x09u: /* JALR */
             result = old_pc + 8u;
             write_result = true;
@@ -271,6 +279,12 @@ PsxCpuStepResult psx_cpu_step_result_with_cop0(PsxCpu *cpu, PsxBus *bus,
         case 1u:  /* BGEZ */
             take_branch = !negative;
             break;
+        case 8u:  if (signed_less(a, sign_extend_16(imm)) == 0u) return PSX_CPU_STEP_TRAP; break;
+        case 9u:  if (a >= sign_extend_16(imm)) return PSX_CPU_STEP_TRAP; break;
+        case 10u: if (signed_less(a, sign_extend_16(imm)) != 0u) return PSX_CPU_STEP_TRAP; break;
+        case 11u: if (a < sign_extend_16(imm)) return PSX_CPU_STEP_TRAP; break;
+        case 12u: if (a == sign_extend_16(imm)) return PSX_CPU_STEP_TRAP; break;
+        case 14u: if (a != sign_extend_16(imm)) return PSX_CPU_STEP_TRAP; break;
         case 16u: /* BLTZAL */
             take_branch = negative;
             break;
