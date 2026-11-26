@@ -503,6 +503,24 @@ int main(void)
     assert(psx_gte_read_data(&gte, 27u, &value) && value == 2144u);
     assert(psx_gte_read_data(&gte, 22u, &value) && value == 0xab868482u);
 
+    /* CC: color matrix followed by RGBC modulation. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 16u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 18u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 20u, 0x00001000u));
+    assert(psx_gte_write_data(&gte, 6u, 0x00808080u));
+    assert(psx_gte_write_data(&gte, 9u, 0x1000u));
+    assert(psx_gte_write_data(&gte, 10u, 0x0800u));
+    assert(psx_gte_write_data(&gte, 11u, 0x0400u));
+    assert(psx_gte_execute(&gte, 0x4a08001cu)); /* CC, sf=1, lm=1 */
+    assert(psx_gte_read_data(&gte, 25u, &value) && value == 2048u);
+    assert(psx_gte_read_data(&gte, 26u, &value) && value == 1024u);
+    assert(psx_gte_read_data(&gte, 27u, &value) && value == 512u);
+    assert(psx_gte_read_data(&gte, 9u, &value) && value == 2048u);
+    assert(psx_gte_read_data(&gte, 10u, &value) && value == 1024u);
+    assert(psx_gte_read_data(&gte, 11u, &value) && value == 512u);
+    assert(psx_gte_read_data(&gte, 22u, &value) && value == 0x00204080u);
+
     /* CDP: color matrix, RGBC modulation and far-color interpolation. */
     psx_gte_reset(&gte);
     assert(psx_gte_write_control(&gte, 16u, 0x00001000u));
