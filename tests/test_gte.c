@@ -794,6 +794,48 @@ int main(void)
     assert((value & (1u << 22u)) != 0u); /* IR3 saturation */
     assert((value & 0x80000000u) != 0u); /* FLAG summary */
 
+    /* Independent PCSX-Redux reference: RT rotation plus TR translation. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 0xf0000000u));
+    assert(psx_gte_write_control(&gte, 1u, 0x10000000u));
+    assert(psx_gte_write_control(&gte, 2u, 0u));
+    assert(psx_gte_write_control(&gte, 3u, 0u));
+    assert(psx_gte_write_control(&gte, 4u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 5u, 10u));
+    assert(psx_gte_write_control(&gte, 6u, 20u));
+    assert(psx_gte_write_control(&gte, 7u, 30u));
+    assert(psx_gte_write_data(&gte, 0u, 0x00c80064u)); /* V0=(100,200,300) */
+    assert(psx_gte_write_data(&gte, 1u, 300u));
+    assert(psx_gte_execute(&gte, 0x48080012u)); /* sf=1, RT, V0, TR */
+    assert(psx_gte_read_data(&gte, 25u, &value) && value == (uint32_t)-190);
+    assert(psx_gte_read_data(&gte, 26u, &value) && value == 120u);
+    assert(psx_gte_read_data(&gte, 27u, &value) && value == 330u);
+
+    /* Independent PCSX-Redux reference: V1 with zero translation. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 2u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 4u, 0x00001000u));
+    assert(psx_gte_write_data(&gte, 2u, 0x0028001eu)); /* V1=(30,40,50) */
+    assert(psx_gte_write_data(&gte, 3u, 50u));
+    assert(psx_gte_execute(&gte, 0x4800e012u)); /* sf=1, RT, V1, zero */
+    assert(psx_gte_read_data(&gte, 25u, &value) && value == 30u);
+    assert(psx_gte_read_data(&gte, 26u, &value) && value == 40u);
+    assert(psx_gte_read_data(&gte, 27u, &value) && value == 50u);
+
+    /* Independent PCSX-Redux reference: IR vector with zero translation. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 2u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 4u, 0x00001000u));
+    assert(psx_gte_write_data(&gte, 9u, 500u));
+    assert(psx_gte_write_data(&gte, 10u, 600u));
+    assert(psx_gte_write_data(&gte, 11u, 700u));
+    assert(psx_gte_execute(&gte, 0x4801e012u)); /* sf=1, RT, IR, zero */
+    assert(psx_gte_read_data(&gte, 25u, &value) && value == 500u);
+    assert(psx_gte_read_data(&gte, 26u, &value) && value == 600u);
+    assert(psx_gte_read_data(&gte, 27u, &value) && value == 700u);
+
     assert(!psx_gte_execute(&gte, 0x4b400007u));
     assert(!psx_gte_execute(0, 0x4b400006u));
 
