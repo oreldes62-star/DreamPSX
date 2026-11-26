@@ -667,7 +667,72 @@ int main(void)
         assert(psx_machine_step(&machine));
         assert(psx_memory_read32(&machine.memory, 0x604u, &value));
         assert(value == 0x89abcdefu);
+
+        /* MFC2's one-instruction delay also applies when the consumer is
+         * MTC2: the GTE receives the old GPR value, then the load retires. */
+        psx_cpu_write_gpr(&machine.cpu, 9u, 0x11223344u);
+        put_word(ram, 0x540u, (0x12u << 26) | (9u << 16) | (9u << 11)); /* MFC2 t1,D9 */
+        put_word(ram, 0x544u, (0x12u << 26) | (4u << 21) | (9u << 16) | (10u << 11)); /* MTC2 t1,D10 */
+        put_word(ram, 0x548u, 0u);
+        machine.cpu.pc = 0x540u;
+        machine.cpu.next_pc = 0x544u;
+        machine.cpu.delay_slot_pending = false;
+        machine.cpu.load_delay_pending = false;
+        assert(psx_machine_step(&machine));
+        assert(psx_machine_step(&machine));
+        assert(psx_gte_read_data(&machine.gte, 10u, &value));
+        assert(value == 0x11223344u); /* MTC2 saw the pre-MFC2 value. */
+        assert(psx_cpu_read_gpr(&machine.cpu, 9u) == 0xffff8001u);
+        assert(machine.cpu.load_delay_pending);
+        assert(psx_machine_step(&machine));
+        assert(!machine.cpu.load_delay_pending);
     }
+
+    /* LWC2/SWC2 alignment faults must report the effective address. */
+    machine.cop0_status = 0x40000000u;
+    machine.cop0_cause = 0u;
+    psx_cpu_write_gpr(&machine.cpu, 12u, 0x601u);
+    put_word(ram, 0x550u, (0x32u << 26) | (12u << 21) | (7u << 16)); /* LWC2 D7,0(t4) */
+    machine.cpu.pc = 0x550u;
+    machine.cpu.next_pc = 0x554u;
+    machine.cpu.delay_slot_pending = false;
+    machine.cpu.load_delay_pending = false;
+    assert(psx_machine_step(&machine));
+    assert(machine.cop0_badvaddr == 0x601u);
+    assert(((machine.cop0_cause >> 2u) & 31u) == PSX_EXCEPTION_ADDRESS_LOAD);
+
+    psx_cpu_write_gpr(&machine.cpu, 12u, 0x603u);
+    put_word(ram, 0x554u, (0x3au << 26) | (12u << 21) | (7u << 16)); /* SWC2 D7,0(t4) */
+    machine.cpu.pc = 0x554u;
+    machine.cpu.next_pc = 0x558u;
+    machine.cpu.delay_slot_pending = false;
+    machine.cpu.load_delay_pending = false;
+    assert(psx_machine_step(&machine));
+    assert(machine.cop0_badvaddr == 0x603u);
+    assert(((machine.cop0_cause >> 2u) & 31u) == PSX_EXCEPTION_ADDRESS_STORE);
+
+    /* CU2 gates memory transfers as well as register transfers/commands. */
+    machine.cop0_status = 0u;
+    machine.cop0_cause = 0u;
+    psx_cpu_write_gpr(&machine.cpu, 12u, 0x600u);
+    put_word(ram, 0x558u, (0x32u << 26) | (12u << 21) | (7u << 16)); /* LWC2 D7,0(t4) */
+    machine.cpu.pc = 0x558u;
+    machine.cpu.next_pc = 0x55cu;
+    machine.cpu.delay_slot_pending = false;
+    machine.cpu.load_delay_pending = false;
+    assert(psx_machine_step(&machine));
+    assert(machine.cop0_epc == 0x558u);
+    assert(((machine.cop0_cause >> 2u) & 31u) == PSX_EXCEPTION_COPROCESSOR_UNUSABLE);
+
+    machine.cop0_cause = 0u;
+    put_word(ram, 0x55cu, (0x3au << 26) | (12u << 21) | (7u << 16)); /* SWC2 D7,0(t4) */
+    machine.cpu.pc = 0x55cu;
+    machine.cpu.next_pc = 0x560u;
+    machine.cpu.delay_slot_pending = false;
+    machine.cpu.load_delay_pending = false;
+    assert(psx_machine_step(&machine));
+    assert(machine.cop0_epc == 0x55cu);
+    assert(((machine.cop0_cause >> 2u) & 31u) == PSX_EXCEPTION_COPROCESSOR_UNUSABLE);
 
     /* COP2 NCLIP command executes through the CPU command path. */
     machine.cop0_status = 0x40000000u;
