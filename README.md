@@ -2,7 +2,7 @@
 PlayStation emulator research and development for Sega Dreamcast.
 
 ## Development status
-Experimental project. The repository now includes a host-side CMake build for the CPU, bus, memory, IRQ and machine core, plus a GitHub Actions workflow that compiles and runs the regression tests. The Dreamcast/KallistiOS target remains a separate future integration step.
+Experimental project. The repository includes a host-side CMake build configuration for the CPU, bus, memory, IRQ and machine core. A GitHub Actions workflow and successful automated test run have not yet been verified. The Dreamcast/KallistiOS target remains a separate future integration step.
 
 ## Current milestones
 - [COP2 CU2 milestone 1.2](docs/COP2-CU2-MILESTONE-1.2.md)
@@ -32,9 +32,10 @@ Experimental project. The repository now includes a host-side CMake build for th
 - [R3000A delayed-load exception milestone 3.7](docs/R3000A-DELAYED-LOAD-EXCEPTION-MILESTONE-3.7.md)
 - [Host build and automated test foundation milestone 3.8](docs/HOST-BUILD-MILESTONE-3.8.md)
 - [R3000A REGIMM branch instructions milestone 3.9](docs/R3000A-REGIMM-BRANCHES-MILESTONE-3.9.md)
+- [R3000A branch encoding validation milestone 3.10](docs/R3000A-BRANCH-ENCODING-MILESTONE-3.10.md)
 
 ## Target
 Sega Dreamcast with 16 MiB RAM. Long-term target: CDI test build for Flycast, then GDEMU.
 
 ## Limitations
-No Dreamcast/KallistiOS build, CDI image or playable game exists yet. CPU registers and BIOS instruction fetch are now represented, but instruction decoding/execution remains partial, and remaining hardware devices are not implemented. The host build covers the current core modules and regression tests; it does not yet produce a Dreamcast binary or CDI image.
+No Dreamcast/KallistiOS build, CDI image or playable game exists yet. CPU registers and BIOS instruction fetch are now represented, but instruction decoding/execution remains partial, and remaining hardware devices are not implemented. The CMake configuration describes host tests for the current core modules, but the suite has not yet been confirmed building and passing in CI; it does not produce a Dreamcast binary or CDI image.
