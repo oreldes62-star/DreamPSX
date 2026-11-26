@@ -230,6 +230,70 @@ int main(void)
     assert(psx_cpu_read_gpr(&machine.cpu, 8u) == 0x55443322u);
     machine.cpu.load_delay_pending = false;
 
+    /* Signed/unsigned byte and halfword loads, plus little-endian stores. */
+    assert(psx_memory_write8(&machine.memory, 0x3c0u, 0x80u));
+    assert(psx_memory_write16(&machine.memory, 0x3c2u, 0x8001u));
+    put_word(ram, 0x360u, (0x20u << 26) | (9u << 21) | (8u << 16)); /* LB */
+    put_word(ram, 0x364u, 0u);
+    put_word(ram, 0x368u, (0x24u << 26) | (9u << 21) | (8u << 16)); /* LBU */
+    put_word(ram, 0x36cu, 0u);
+    put_word(ram, 0x370u, (0x21u << 26) | (9u << 21) | (8u << 16)); /* LH */
+    put_word(ram, 0x374u, 0u);
+    put_word(ram, 0x378u, (0x25u << 26) | (9u << 21) | (8u << 16)); /* LHU */
+    put_word(ram, 0x37cu, 0u);
+
+    psx_cpu_write_gpr(&machine.cpu, 9u, 0x3c0u);
+    machine.cpu.pc = 0x360u; machine.cpu.next_pc = 0x364u;
+    machine.cpu.delay_slot_pending = false;
+    machine.cpu.load_delay_pending = false;
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(psx_cpu_read_gpr(&machine.cpu, 8u) == 0xffffff80u);
+
+    psx_cpu_write_gpr(&machine.cpu, 9u, 0x3c0u);
+    machine.cpu.pc = 0x368u; machine.cpu.next_pc = 0x36cu;
+    machine.cpu.load_delay_pending = false;
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(psx_cpu_read_gpr(&machine.cpu, 8u) == 0x80u);
+
+    psx_cpu_write_gpr(&machine.cpu, 9u, 0x3c2u);
+    machine.cpu.pc = 0x370u; machine.cpu.next_pc = 0x374u;
+    machine.cpu.load_delay_pending = false;
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(psx_cpu_read_gpr(&machine.cpu, 8u) == 0xffff8001u);
+
+    psx_cpu_write_gpr(&machine.cpu, 9u, 0x3c2u);
+    machine.cpu.pc = 0x378u; machine.cpu.next_pc = 0x37cu;
+    machine.cpu.load_delay_pending = false;
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(psx_cpu_read_gpr(&machine.cpu, 8u) == 0x8001u);
+
+    put_word(ram, 0x380u, (0x28u << 26) | (9u << 21) | (8u << 16)); /* SB */
+    put_word(ram, 0x384u, (0x29u << 26) | (9u << 21) | (8u << 16)); /* SH */
+    put_word(ram, 0x388u, (0x2bu << 26) | (9u << 21) | (8u << 16)); /* SW */
+    psx_cpu_write_gpr(&machine.cpu, 8u, 0xa1b2c3d4u);
+    psx_cpu_write_gpr(&machine.cpu, 9u, 0x3d0u);
+    machine.cpu.pc = 0x380u; machine.cpu.next_pc = 0x384u;
+    machine.cpu.delay_slot_pending = false;
+    machine.cpu.load_delay_pending = false;
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    {
+        uint8_t stored_byte = 0u;
+        uint16_t stored_half = 0u;
+        uint32_t stored_word = 0u;
+        assert(psx_memory_read8(&machine.memory, 0x3d0u, &stored_byte));
+        assert(psx_memory_read16(&machine.memory, 0x3d0u, &stored_half));
+        assert(psx_memory_read32(&machine.memory, 0x3d0u, &stored_word));
+        assert(stored_byte == 0xd4u);
+        assert(stored_half == 0xc3d4u);
+        assert(stored_word == 0xa1b2c3d4u);
+    }
+
     free(bios); free(ram);
     puts("DreamPSX R3000A execution tests: OK");
     return 0;
