@@ -137,7 +137,20 @@ int main(void)
     machine.cpu.pc = 0x460u; machine.cpu.next_pc = 0x464u;
     machine.cpu.delay_slot_pending = false;
     assert(psx_cpu_step(&machine.cpu, &machine.bus));
-    assert(psx_cpu_read_gpr(&machine.cpu, 31u) == 0x33333333u);
+    /* Link is written even when BLTZAL does not take its branch. */
+    assert(psx_cpu_read_gpr(&machine.cpu, 31u) == 0x468u);
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+
+    /* BGEZAL also writes RA when its condition is false. */
+    put_word(ram, 0x490u, (0x01u << 26) | (8u << 21) | (17u << 16) | 1u);
+    put_word(ram, 0x494u, 0u);
+    psx_cpu_write_gpr(&machine.cpu, 8u, 0xffffffffu);
+    psx_cpu_write_gpr(&machine.cpu, 31u, 0x44444444u);
+    machine.cpu.pc = 0x490u; machine.cpu.next_pc = 0x494u;
+    machine.cpu.delay_slot_pending = false;
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(psx_cpu_read_gpr(&machine.cpu, 31u) == 0x498u);
+    assert(machine.cpu.next_pc == 0x498u);
     assert(psx_cpu_step(&machine.cpu, &machine.bus));
 
     /* Unsupported REGIMM sub-op encodings are reserved instructions. */
