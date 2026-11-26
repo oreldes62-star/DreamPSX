@@ -896,6 +896,28 @@ int main(void)
     assert(!psx_gte_execute(&gte, 0x4b400007u));
     assert(!psx_gte_execute(0, 0x4b400006u));
 
+    /* RTPT must accumulate flags from earlier vertices, even when
+     * the final vertex itself does not overflow the depth FIFO. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 2u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 4u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 7u, 40000u)); /* TRZ */
+    assert(psx_gte_write_control(&gte, 26u, 200u)); /* H */
+    assert(psx_gte_write_data(&gte, 0u, 0u));
+    assert(psx_gte_write_data(&gte, 1u, 32767u)); /* V0 Z */
+    assert(psx_gte_write_data(&gte, 2u, 0u));
+    assert(psx_gte_write_data(&gte, 3u, 0xffff8000u)); /* V1 Z=-32768 */
+    assert(psx_gte_write_data(&gte, 4u, 0u));
+    assert(psx_gte_write_data(&gte, 5u, 0xffff8000u)); /* V2 Z=-32768 */
+    assert(psx_gte_execute(&gte, 0x4a080030u)); /* RTPT, sf=1 */
+    assert(psx_gte_read_data(&gte, 17u, &value) && value == 65535u);
+    assert(psx_gte_read_data(&gte, 18u, &value) && value == 7232u);
+    assert(psx_gte_read_data(&gte, 19u, &value) && value == 7232u);
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 18u)) != 0u); /* earlier SZ saturation retained */
+    assert((value & 0x80000000u) != 0u); /* summary retained */
+
     assert(!psx_gte_read_data(0, 0u, &value));
     assert(!psx_gte_write_control(0, 0u, 0u));
 
