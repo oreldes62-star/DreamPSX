@@ -773,6 +773,22 @@ int main(void)
     assert(psx_gte_read_data(&gte, 27u, &value) && value == 3840u);
     assert(psx_gte_read_control(&gte, 31u, &value) && value == 0u);
 
+    /* Independent PCSX-Redux reference: MVMVA sf=0 keeps the
+     * unshifted matrix-vector products in MAC1-MAC3. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 2u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 4u, 0x00001000u));
+    assert(psx_gte_write_data(&gte, 0u, 0x000a000au)); /* V0=(10,10,10) */
+    assert(psx_gte_write_data(&gte, 1u, 10u));
+    assert(psx_gte_execute(&gte, 0x48006012u)); /* sf=0, RT, V0, no translation */
+    assert(psx_gte_read_data(&gte, 25u, &value) && value == 40960u);
+    assert(psx_gte_read_data(&gte, 26u, &value) && value == 40960u);
+    assert(psx_gte_read_data(&gte, 27u, &value) && value == 40960u);
+    assert(psx_gte_read_data(&gte, 9u, &value) && value == 32767u);
+    assert(psx_gte_read_data(&gte, 10u, &value) && value == 32767u);
+    assert(psx_gte_read_data(&gte, 11u, &value) && value == 32767u);
+
     assert(!psx_gte_execute(&gte, 0x4b400007u));
     assert(!psx_gte_execute(0, 0x4b400006u));
 
