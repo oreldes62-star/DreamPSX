@@ -43,6 +43,8 @@ bool psx_bus_read32(const PsxBus *bus, uint32_t address, uint32_t *value)
 {
     if (!bus || !bus->initialized || !value) return false;
     address = physical_address(address);
+    if (address == PSX_GPU_GP0_ADDR)
+        return psx_gpu_read_data(bus->gpu, value);
     if (address == PSX_GPU_GP1_ADDR)
         return psx_gpu_read_status(bus->gpu, value);
     if (psx_irq_mmio_read32(bus->irq, address, value)) return true;
