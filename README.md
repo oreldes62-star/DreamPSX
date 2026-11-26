@@ -2,7 +2,7 @@
 PlayStation emulator research and development for Sega Dreamcast.
 
 ## Development status
-Experimental project. The host-side CMake build and all 12 CTest tests passed in GitHub Actions on commit `6359f4b4532058e967cdb521c6c3c187d19141d1`. This validates the current host test suite only; the Dreamcast/KallistiOS target remains a separate future integration step.
+Experimental project. The host-side CMake build and all 12 CTest tests passed in GitHub Actions on commit `a0866bf540d09a25dd534caca548ae904b39d7a2`. This validates the current host test suite only; the Dreamcast/KallistiOS target remains a separate future integration step.
 
 ## Current milestones
 - [COP2 CU2 milestone 1.2](docs/COP2-CU2-MILESTONE-1.2.md)
