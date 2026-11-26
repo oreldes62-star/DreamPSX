@@ -959,6 +959,30 @@ int main(void)
     assert((value & (1u << 24u)) != 0u); /* V0 saturation retained */
     assert((value & 0x80000000u) != 0u); /* FLAG summary retained */
 
+    /* NCDT must retain the first normal's saturation flag while
+     * executing the depth-cued lighting pipeline for V1 and V2. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 8u, 0x00007fffu));
+    assert(psx_gte_write_control(&gte, 10u, 0x00007fffu));
+    assert(psx_gte_write_control(&gte, 12u, 0x00007fffu));
+    assert(psx_gte_write_control(&gte, 16u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 18u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 20u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 21u, 0u));
+    assert(psx_gte_write_control(&gte, 22u, 0u));
+    assert(psx_gte_write_control(&gte, 23u, 0u));
+    assert(psx_gte_write_data(&gte, 6u, 0x00ffffffu)); /* RGBC */
+    assert(psx_gte_write_data(&gte, 0u, 0x00007fffu)); /* V0 normal */
+    assert(psx_gte_write_data(&gte, 1u, 0u));
+    assert(psx_gte_write_data(&gte, 2u, 0u));
+    assert(psx_gte_write_data(&gte, 3u, 0u));
+    assert(psx_gte_write_data(&gte, 4u, 0u));
+    assert(psx_gte_write_data(&gte, 5u, 0u));
+    assert(psx_gte_execute(&gte, 0x4a000416u)); /* NCDT, sf=0, lm=1 */
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 24u)) != 0u); /* V0 saturation retained */
+    assert((value & 0x80000000u) != 0u); /* FLAG summary retained */
+
     assert(!psx_gte_read_data(0, 0u, &value));
     assert(!psx_gte_write_control(0, 0u, 0u));
 
