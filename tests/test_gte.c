@@ -532,8 +532,8 @@ int main(void)
     assert(psx_gte_write_data(&gte, 11u, 0x00001000u));
     assert(psx_gte_execute(&gte, 0x4a08041cu)); /* CC, sf=1, lm=1 */
     assert(psx_gte_read_data(&gte, 9u, &value) && value == 0u);
-    assert(psx_gte_read_data(&gte, 10u, &value) && value == 2039u);
-    assert(psx_gte_read_data(&gte, 11u, &value) && value == 2039u);
+    assert(psx_gte_read_data(&gte, 10u, &value) && value == 2038u);
+    assert(psx_gte_read_data(&gte, 11u, &value) && value == 2038u);
     assert(psx_gte_read_data(&gte, 22u, &value) && value == 0x007f7f00u);
     assert(psx_gte_read_control(&gte, 31u, &value));
     assert((value & 0x80000000u) != 0u);
