@@ -680,6 +680,28 @@ int main(void)
     assert(psx_gte_read_control(&gte, 31u, &value));
     assert((value & (1u << 15u)) != 0u); /* negative MAC0 overflow */
 
+    /* AVSZ3 reaches INT32_MIN exactly without negative MAC0 overflow. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 29u, 0x8000u)); /* ZSF3=-32768 */
+    assert(psx_gte_write_data(&gte, 17u, 0xffffu));
+    assert(psx_gte_write_data(&gte, 18u, 1u));
+    assert(psx_gte_write_data(&gte, 19u, 0u));
+    assert(psx_gte_execute(&gte, 0x4a00002du));
+    assert(psx_gte_read_data(&gte, 24u, &value) &&
+           value == 0x80000000u);
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 15u)) == 0u); /* exact lower bound */
+
+    /* AVSZ3 crosses below INT32_MIN with one additional depth unit. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 29u, 0x8000u));
+    assert(psx_gte_write_data(&gte, 17u, 0xffffu));
+    assert(psx_gte_write_data(&gte, 18u, 2u));
+    assert(psx_gte_write_data(&gte, 19u, 0u));
+    assert(psx_gte_execute(&gte, 0x4a00002du));
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 15u)) != 0u); /* negative MAC0 overflow */
+
     /* The signed 44-bit MAC boundary is inclusive at both ends.
      * TRX*4096 is 0x7ffffffff000; adding 4095 reaches the
      * largest representable value without raising MAC1 overflow. */
