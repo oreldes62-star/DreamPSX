@@ -864,9 +864,9 @@ int main(void)
     assert(psx_gte_write_control(&gte, 0u, 0x1000u));
     assert(psx_gte_write_control(&gte, 2u, 0x1000u));
     assert(psx_gte_write_control(&gte, 4u, 0x1000u));
-    assert(psx_gte_write_control(&gte, 25u, (uint32_t)(-1025 * 65536)); /* OFY */
+    assert(psx_gte_write_control(&gte, 25u, (uint32_t)(-1025 * 65536))); /* OFY */
     assert(psx_gte_write_control(&gte, 26u, 0u)); /* H=0 */
-    assert(psx_gte_write_control(&gte, 28u, (uint32_t)(-1025 * 65536)); /* DQB */
+    assert(psx_gte_write_control(&gte, 28u, (uint32_t)(-1025 * 65536))); /* DQB */
     assert(psx_gte_write_data(&gte, 0u, 0u));
     assert(psx_gte_write_data(&gte, 1u, 4096u));
     assert(psx_gte_execute(&gte, 0x4a080001u));
