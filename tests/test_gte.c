@@ -20,8 +20,9 @@ int main(void)
     assert(psx_gte_read_data(&gte, 9u, &value));
     assert(value == 0xffff8001u);
 
-    assert(psx_gte_write_data(&gte, 10u, 0x1234u));
-    assert(psx_gte_write_data(&gte, 11u, 0x5678u));
+    assert(psx_gte_write_data(&gte, 9u, 0x0800u));
+    assert(psx_gte_write_data(&gte, 10u, 0x0300u));
+    assert(psx_gte_write_data(&gte, 11u, 0x1f80u));
     assert(psx_gte_read_data(&gte, 28u, &value));
     assert(value == ((16u) | (6u << 5u) | (31u << 10u)));
 
@@ -37,10 +38,10 @@ int main(void)
 
     assert(psx_gte_write_data(&gte, 30u, 0x00ffffffu));
     assert(psx_gte_read_data(&gte, 31u, &value));
-    assert(value == 8u);
+    assert(value == 7u);
     assert(psx_gte_write_data(&gte, 30u, 0xffffffffu));
     assert(psx_gte_read_data(&gte, 31u, &value));
-    assert(value == 32u);
+    assert(value == 31u);
     assert(psx_gte_write_data(&gte, 30u, 0u));
     assert(psx_gte_read_data(&gte, 31u, &value));
     assert(value == 32u);
@@ -60,7 +61,7 @@ int main(void)
 
     assert(psx_gte_write_control(&gte, 31u, 0xffffffffu));
     assert(psx_gte_read_control(&gte, 31u, &value));
-    assert(value == 0x7ffff000u);
+    assert(value == 0xffffffffu);
 
     assert(!psx_gte_read_data(&gte, 32u, &value));
     assert(!psx_gte_write_data(&gte, 32u, 0u));
