@@ -160,12 +160,18 @@ int main(void)
     assert(psx_gte_read_data(&gte, 26u, &value) && value == 11u);
     assert(psx_gte_read_data(&gte, 27u, &value) && value == 12u);
 
-    /* Matrix selector coverage: RT, light and color identity matrices. */
-    assert(psx_gte_execute(&gte, 0x480ce012u)); /* sf=1, light, IR, no TR */
+    /* Matrix selector coverage: light and color identity matrices. */
+    assert(psx_gte_write_control(&gte, 8u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 10u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 12u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 16u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 18u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 20u, 0x00001000u));
+    assert(psx_gte_execute(&gte, 0x480be012u)); /* sf=1, light, IR, no TR */
     assert(psx_gte_read_data(&gte, 25u, &value) && value == 10u);
     assert(psx_gte_read_data(&gte, 26u, &value) && value == 11u);
     assert(psx_gte_read_data(&gte, 27u, &value) && value == 12u);
-    assert(psx_gte_execute(&gte, 0x480ee012u)); /* sf=1, color, IR, no TR */
+    assert(psx_gte_execute(&gte, 0x480de012u)); /* sf=1, color, IR, no TR */
     assert(psx_gte_read_data(&gte, 25u, &value) && value == 10u);
     assert(psx_gte_read_data(&gte, 26u, &value) && value == 11u);
     assert(psx_gte_read_data(&gte, 27u, &value) && value == 12u);
