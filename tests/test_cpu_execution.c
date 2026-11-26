@@ -487,6 +487,30 @@ int main(void)
         }
     }
 
+    /* SWR/SWL pair stores an unaligned word spanning two aligned words. */
+    assert(psx_memory_write32(&machine.memory, 0x3e0u, 0xddccbbaau));
+    assert(psx_memory_write32(&machine.memory, 0x3e4u, 0x88776655u));
+    assert(psx_memory_write32(&machine.memory, 0x680u,
+                              (0x2eu << 26) | (9u << 21) |
+                              (8u << 16))); /* SWR t0,0(t1) */
+    assert(psx_memory_write32(&machine.memory, 0x684u,
+                              (0x2au << 26) | (9u << 21) |
+                              (8u << 16) | 3u)); /* SWL t0,3(t1) */
+    psx_cpu_write_gpr(&machine.cpu, 8u, 0x11223344u);
+    psx_cpu_write_gpr(&machine.cpu, 9u, 0x3e1u);
+    machine.cpu.pc = 0x680u; machine.cpu.next_pc = 0x684u;
+    machine.cpu.delay_slot_pending = false;
+    machine.cpu.load_delay_pending = false;
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    {
+        uint32_t first = 0u, second = 0u;
+        assert(psx_memory_read32(&machine.memory, 0x3e0u, &first));
+        assert(psx_memory_read32(&machine.memory, 0x3e4u, &second));
+        assert(first == 0x223344aau);
+        assert(second == 0xddccbb11u);
+    }
+
     /* Signed/unsigned byte and halfword loads, plus little-endian stores. */
     assert(psx_memory_write8(&machine.memory, 0x3c0u, 0x80u));
     assert(psx_memory_write16(&machine.memory, 0x3c2u, 0x8001u));
