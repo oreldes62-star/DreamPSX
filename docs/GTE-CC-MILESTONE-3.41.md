@@ -17,4 +17,4 @@ The host-side test uses an identity color matrix and distinct IR values (0x1000,
 
 ## Validation scope
 
-GitHub Actions host validation is pending. It does not constitute a Dreamcast/KallistiOS build, BIOS boot, CDI generation, Flycast gameplay test or GDEMU validation.
+GitHub Actions host validation passed on commit `2060670054ce10ef79b0126a2e8a7b174f391c99` (Configure, Build and Run tests all successful). It does not constitute a Dreamcast/KallistiOS build, BIOS boot, CDI generation, Flycast gameplay test or GDEMU validation.
