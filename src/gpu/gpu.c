@@ -27,15 +27,20 @@ static void execute_fill_rectangle(PsxGpu *gpu)
         for (unsigned column = 0; column < width; ++column) {
             const unsigned px = x + column;
             if (px >= PSX_GPU_VRAM_WIDTH) break;
-            gpu->vram[py][px] = color;
+            gpu->vram[py * PSX_GPU_VRAM_WIDTH + px] = color;
         }
     }
 }
 
-bool psx_gpu_init(PsxGpu *gpu)
+bool psx_gpu_init(PsxGpu *gpu, uint16_t *vram, size_t vram_pixels)
 {
-    if (!gpu) return false;
+    if (!gpu || !vram ||
+        vram_pixels != (size_t)PSX_GPU_VRAM_WIDTH * PSX_GPU_VRAM_HEIGHT)
+        return false;
     memset(gpu, 0, sizeof(*gpu));
+    gpu->vram = vram;
+    gpu->vram_pixels = vram_pixels;
+    memset(gpu->vram, 0, vram_pixels * sizeof(*gpu->vram));
     gpu->initialized = true;
     psx_gpu_reset(gpu);
     return true;
@@ -107,6 +112,6 @@ bool psx_gpu_vram_read(const PsxGpu *gpu, unsigned x, unsigned y,
     if (!gpu || !gpu->initialized || !value ||
         x >= PSX_GPU_VRAM_WIDTH || y >= PSX_GPU_VRAM_HEIGHT)
         return false;
-    *value = gpu->vram[y][x];
+    *value = gpu->vram[y * PSX_GPU_VRAM_WIDTH + x];
     return true;
 }
