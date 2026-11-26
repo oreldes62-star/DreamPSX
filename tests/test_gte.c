@@ -788,6 +788,11 @@ int main(void)
     assert(psx_gte_read_data(&gte, 9u, &value) && value == 32767u);
     assert(psx_gte_read_data(&gte, 10u, &value) && value == 32767u);
     assert(psx_gte_read_data(&gte, 11u, &value) && value == 32767u);
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 24u)) != 0u); /* IR1 saturation */
+    assert((value & (1u << 23u)) != 0u); /* IR2 saturation */
+    assert((value & (1u << 22u)) != 0u); /* IR3 saturation */
+    assert((value & 0x80000000u) != 0u); /* FLAG summary */
 
     assert(!psx_gte_execute(&gte, 0x4b400007u));
     assert(!psx_gte_execute(0, 0x4b400006u));
