@@ -43,6 +43,7 @@ int main(void)
 
     /* Acknowledge source; refresh deasserts IP2. */
     psx_irq_write_stat(&machine.irq, (uint16_t)~(1u << 2));
+    psx_irq_set_line(&machine.irq, 2u, false);
     psx_machine_refresh_interrupts(&machine);
     assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) == 0u);
 
