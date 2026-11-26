@@ -23,6 +23,12 @@ typedef struct {
     uint32_t status;
     uint32_t command;
     uint32_t parameters[3];
+    unsigned draw_area_left;
+    unsigned draw_area_top;
+    unsigned draw_area_right;
+    unsigned draw_area_bottom;
+    int draw_offset_x;
+    int draw_offset_y;
     unsigned parameter_count;
     unsigned parameter_expected;
     PsxGpuTransferMode transfer_mode;
