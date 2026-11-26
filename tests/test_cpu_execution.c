@@ -511,6 +511,45 @@ int main(void)
         assert(second == 0x88776611u);
     }
 
+    /* Variable shifts: low five bits of rs select the shift amount. */
+    {
+        static const uint32_t amounts[4] = {0u, 1u, 31u, 32u};
+        static const uint32_t sll_expected[4] = {
+            0x81234567u, 0x02468aceu, 0x80000000u, 0x81234567u
+        };
+        static const uint32_t srl_expected[4] = {
+            0x81234567u, 0x4091a2b3u, 0u, 0x81234567u
+        };
+        static const uint32_t sra_expected[4] = {
+            0x81234567u, 0xc091a2b3u, 0xffffffffu, 0x81234567u
+        };
+        unsigned i;
+        for (i = 0u; i < 4u; ++i) {
+            uint32_t pc = 0x700u + i * 12u;
+            uint32_t value = 0u;
+            unsigned funct;
+            const uint32_t *expected;
+            for (funct = 0u; funct < 3u; ++funct) {
+                uint32_t instruction = (9u << 21) | (8u << 16) |
+                                       (10u << 11) | (funct == 0u ? 0x04u :
+                                       (funct == 1u ? 0x06u : 0x07u));
+                assert(psx_memory_write32(&machine.memory, pc + funct * 4u,
+                                          instruction));
+                psx_cpu_write_gpr(&machine.cpu, 9u, amounts[i]);
+                psx_cpu_write_gpr(&machine.cpu, 8u, 0x81234567u);
+                machine.cpu.pc = pc + funct * 4u;
+                machine.cpu.next_pc = machine.cpu.pc + 4u;
+                machine.cpu.delay_slot_pending = false;
+                machine.cpu.load_delay_pending = false;
+                assert(psx_cpu_step(&machine.cpu, &machine.bus));
+                assert(psx_cpu_read_gpr(&machine.cpu, 10u) ==
+                       (funct == 0u ? sll_expected[i] :
+                       (funct == 1u ? srl_expected[i] : sra_expected[i])));
+            }
+        }
+        (void)amounts; (void)sll_expected; (void)srl_expected; (void)sra_expected;
+    }
+
     /* Signed/unsigned byte and halfword loads, plus little-endian stores. */
     assert(psx_memory_write8(&machine.memory, 0x3c0u, 0x80u));
     assert(psx_memory_write16(&machine.memory, 0x3c2u, 0x8001u));
