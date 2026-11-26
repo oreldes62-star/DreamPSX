@@ -276,11 +276,12 @@ PsxCpuStepResult psx_cpu_step_result_with_cop0(PsxCpu *cpu, PsxBus *bus,
         if (take_branch) {
             branch = true;
             branch_target = old_pc + 4u + (sign_extend_16(imm) << 2);
-            if (rt == 16u || rt == 17u) {
-                rt = 31u;
-                result = old_pc + 8u;
-                write_result = true;
-            }
+        }
+        /* R3000A link variants write RA whether or not the condition matches. */
+        if (rt == 16u || rt == 17u) {
+            rt = 31u;
+            result = old_pc + 8u;
+            write_result = true;
         }
         break;
     }
