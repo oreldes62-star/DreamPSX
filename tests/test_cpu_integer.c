@@ -57,7 +57,7 @@ int main(void)
     assert(psx_cpu_read_gpr(&m.cpu, 11u) == 0x80u);
 
     psx_cpu_write_gpr(&m.cpu, 9u, 0x8001u);
-    execute_at(&m, ram, 0x124u, 0xa1090002u); /* SH t1,2(t0) */
+    execute_at(&m, ram, 0x124u, 0xa5090002u); /* SH t1,2(t0) */
     execute_at(&m, ram, 0x128u, 0x850c0002u); /* LH t4,2(t0) */
     execute_at(&m, ram, 0x12cu, 0x950d0002u); /* LHU t5,2(t0) */
     assert(psx_cpu_read_gpr(&m.cpu, 12u) == 0xffff8001u);
