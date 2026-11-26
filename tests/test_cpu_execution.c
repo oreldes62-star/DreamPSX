@@ -445,6 +445,48 @@ int main(void)
     assert(psx_cpu_read_gpr(&machine.cpu, 8u) == 0x55443322u);
     machine.cpu.load_delay_pending = false;
 
+    /* SWL/SWR partial-word stores: every byte offset, little-endian lanes. */
+    {
+        static const uint32_t swl_expected[4] = {
+            0xaabbcc11u, 0xaabb1122u, 0xaa112233u, 0x11223344u
+        };
+        static const uint32_t swr_expected[4] = {
+            0x11223344u, 0x223344ddu, 0x3344ccddu, 0x44bbccddu
+        };
+        unsigned offset;
+        for (offset = 0u; offset < 4u; ++offset) {
+            uint32_t pc_swl = 0x600u + offset * 8u;
+            uint32_t pc_swr = 0x640u + offset * 8u;
+            uint32_t stored = 0u;
+            assert(psx_memory_write32(&machine.memory, 0x3e0u, 0xaabbccddu));
+            assert(psx_memory_write32(&machine.memory, pc_swl,
+                                      (0x2au << 26) | (9u << 21) |
+                                      (8u << 16) | offset));
+            assert(psx_memory_write32(&machine.memory, pc_swl + 4u, 0u));
+            psx_cpu_write_gpr(&machine.cpu, 8u, 0x11223344u);
+            psx_cpu_write_gpr(&machine.cpu, 9u, 0x3e0u);
+            machine.cpu.pc = pc_swl; machine.cpu.next_pc = pc_swl + 4u;
+            machine.cpu.delay_slot_pending = false;
+            machine.cpu.load_delay_pending = false;
+            assert(psx_cpu_step(&machine.cpu, &machine.bus));
+            assert(psx_memory_read32(&machine.memory, 0x3e0u, &stored));
+            assert(stored == swl_expected[offset]);
+
+            assert(psx_memory_write32(&machine.memory, 0x3e0u, 0xaabbccddu));
+            assert(psx_memory_write32(&machine.memory, pc_swr,
+                                      (0x2eu << 26) | (9u << 21) |
+                                      (8u << 16) | offset));
+            assert(psx_memory_write32(&machine.memory, pc_swr + 4u, 0u));
+            psx_cpu_write_gpr(&machine.cpu, 8u, 0x11223344u);
+            psx_cpu_write_gpr(&machine.cpu, 9u, 0x3e0u);
+            machine.cpu.pc = pc_swr; machine.cpu.next_pc = pc_swr + 4u;
+            machine.cpu.delay_slot_pending = false;
+            assert(psx_cpu_step(&machine.cpu, &machine.bus));
+            assert(psx_memory_read32(&machine.memory, 0x3e0u, &stored));
+            assert(stored == swr_expected[offset]);
+        }
+    }
+
     /* Signed/unsigned byte and halfword loads, plus little-endian stores. */
     assert(psx_memory_write8(&machine.memory, 0x3c0u, 0x80u));
     assert(psx_memory_write16(&machine.memory, 0x3c2u, 0x8001u));
