@@ -727,7 +727,7 @@ int main(void)
     assert(psx_gte_write_control(&gte, 15u, 3000u));
     assert(psx_gte_write_data(&gte, 4u, 0x00c80064u)); /* V2=(100,200,300) */
     assert(psx_gte_write_data(&gte, 5u, 300u));
-    assert(psx_gte_execute(&gte, 0x4809a012u)); /* sf=1, RT, V2, BK */
+    assert(psx_gte_execute(&gte, 0x48092012u)); /* sf=1, RT, V2, BK */
     assert(psx_gte_read_data(&gte, 25u, &value) && value == 1100u);
     assert(psx_gte_read_data(&gte, 26u, &value) && value == 2200u);
     assert(psx_gte_read_data(&gte, 27u, &value) && value == 3300u);
