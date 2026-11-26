@@ -297,6 +297,31 @@ int main(void)
     assert(psx_gte_read_data(&gte, 26u, &value) && value == (uint32_t)-8192);
     assert(psx_gte_read_data(&gte, 27u, &value) && value == 4096u);
 
+    /* GPF multiplies IR0 by each IR channel with fixed-point shift. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_data(&gte, 8u, 0x1000u)); /* IR0=1.0 */
+    assert(psx_gte_write_data(&gte, 9u, 2u));
+    assert(psx_gte_write_data(&gte, 10u, (uint32_t)-3));
+    assert(psx_gte_write_data(&gte, 11u, 4u));
+    assert(psx_gte_execute(&gte, 0x4a08003du)); /* GPF, sf=1 */
+    assert(psx_gte_read_data(&gte, 25u, &value) && value == 2u);
+    assert(psx_gte_read_data(&gte, 26u, &value) && value == (uint32_t)-3);
+    assert(psx_gte_read_data(&gte, 27u, &value) && value == 4u);
+    assert(psx_gte_read_data(&gte, 9u, &value) && value == 2u);
+    assert(psx_gte_read_data(&gte, 10u, &value) && value == (uint32_t)-3);
+    assert(psx_gte_read_data(&gte, 11u, &value) && value == 4u);
+
+    /* GPF sf=0 retains the raw product in MAC1-3. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_data(&gte, 8u, 2u));
+    assert(psx_gte_write_data(&gte, 9u, 2u));
+    assert(psx_gte_write_data(&gte, 10u, (uint32_t)-3));
+    assert(psx_gte_write_data(&gte, 11u, 4u));
+    assert(psx_gte_execute(&gte, 0x4a00003du)); /* GPF, sf=0 */
+    assert(psx_gte_read_data(&gte, 25u, &value) && value == 4u);
+    assert(psx_gte_read_data(&gte, 26u, &value) && value == (uint32_t)-6);
+    assert(psx_gte_read_data(&gte, 27u, &value) && value == 8u);
+
     /* MVMVA: identity rotation, V0 plus a translation vector. */
     psx_gte_reset(&gte);
     assert(psx_gte_write_control(&gte, 0u, 0x00001000u)); /* RT11=4096 */
