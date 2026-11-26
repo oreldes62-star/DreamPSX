@@ -148,6 +148,30 @@ static int64_t gte_shift_mac(int64_t value, unsigned shift)
              (INT64_C(1) << shift));
 }
 
+static void gte_check_mac_overflow(int64_t value, unsigned component,
+                                   uint32_t *flags)
+{
+    if (value > INT64_C(0x7ffffffffff))
+        *flags |= 1u << (30u - component * 2u);
+    if (value < -INT64_C(0x80000000000))
+        *flags |= 1u << (27u - component * 2u);
+}
+
+static int32_t gte_saturate_ir(int64_t value, unsigned component, bool lm,
+                               uint32_t *flags)
+{
+    int64_t minimum = lm ? 0 : -32768;
+    if (value > 32767) {
+        *flags |= 1u << (24u - component);
+        return 32767;
+    }
+    if (value < minimum) {
+        *flags |= 1u << (24u - component);
+        return (int32_t)minimum;
+    }
+    return (int32_t)value;
+}
+
 static void gte_execute_mvmva(PsxGte *gte, uint32_t instruction)
 {
     unsigned matrix = (instruction >> 17u) & 3u;
@@ -193,35 +217,33 @@ static void gte_execute_mvmva(PsxGte *gte, uint32_t instruction)
         int64_t accumulator;
         int64_t shifted;
         if (translation == 2u) {
-            /* Hardware FC translation bug: the first product contributes to
-             * overflow flags but is discarded from the final MAC result. */
-            int64_t discarded = (int64_t)t[i] * 4096 + (int64_t)m[i][0] * v[0];
-            if (discarded > INT64_C(0x7ffffffffff) ||
-                discarded < -INT64_C(0x80000000000))
-                flags |= 1u << (30u - i * 2u);
-            accumulator = (int64_t)m[i][1] * v[1] +
-                          (int64_t)m[i][2] * v[2];
+            /* The FC hardware quirk performs an extra first-stage clamp.
+             * Its MAC is discarded, but its overflow and IR saturation flags
+             * remain observable after the final result overwrites IR. */
+            accumulator = (int64_t)t[i] * 4096;
+            accumulator += (int64_t)m[i][0] * v[0];
+            gte_check_mac_overflow(accumulator, i, &flags);
+            (void)gte_saturate_ir(gte_shift_mac(accumulator, shift), i,
+                                  lm, &flags);
+
+            accumulator = (int64_t)m[i][1] * v[1];
+            gte_check_mac_overflow(accumulator, i, &flags);
+            accumulator += (int64_t)m[i][2] * v[2];
+            gte_check_mac_overflow(accumulator, i, &flags);
         } else {
-            accumulator = (int64_t)t[i] * 4096 +
-                          (int64_t)m[i][0] * v[0] +
-                          (int64_t)m[i][1] * v[1] +
-                          (int64_t)m[i][2] * v[2];
+            accumulator = (int64_t)t[i] * 4096;
+            gte_check_mac_overflow(accumulator, i, &flags);
+            accumulator += (int64_t)m[i][0] * v[0];
+            gte_check_mac_overflow(accumulator, i, &flags);
+            accumulator += (int64_t)m[i][1] * v[1];
+            gte_check_mac_overflow(accumulator, i, &flags);
+            accumulator += (int64_t)m[i][2] * v[2];
+            gte_check_mac_overflow(accumulator, i, &flags);
         }
-        if (accumulator > INT64_C(0x7ffffffffff))
-            flags |= 1u << (30u - i * 2u);
-        if (accumulator < -INT64_C(0x80000000000))
-            flags |= 1u << (27u - i * 2u);
         shifted = gte_shift_mac(accumulator, shift);
         gte->data[25u + i] = (uint32_t)shifted;
-        if (shifted > 32767) {
-            flags |= 1u << (24u - i);
-            gte->data[9u + i] = lm ? 32767u : 32767u;
-        } else if (shifted < (lm ? 0 : -32768)) {
-            flags |= 1u << (24u - i);
-            gte->data[9u + i] = lm ? 0u : 0xffff8000u;
-        } else {
-            gte->data[9u + i] = (uint32_t)(int32_t)shifted;
-        }
+        gte->data[9u + i] = (uint32_t)gte_saturate_ir(
+            shifted, i, lm, &flags);
     }
     if (flags & 0x7f800000u) flags |= 0x80000000u;
     gte->control[31] = flags;
