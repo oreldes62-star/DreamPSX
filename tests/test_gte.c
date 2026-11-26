@@ -404,6 +404,46 @@ int main(void)
     assert(psx_gte_read_data(&gte, 22u, &value) &&
            value == 0xab0c0804u); /* RGB=(4,8,12), CODE=AB */
 
+    /* NCS: background color is added before RGB conversion. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 8u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 10u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 12u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 13u, 16u));
+    assert(psx_gte_write_control(&gte, 14u, 32u));
+    assert(psx_gte_write_control(&gte, 15u, 48u));
+    assert(psx_gte_write_control(&gte, 16u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 18u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 20u, 0x00001000u));
+    assert(psx_gte_write_data(&gte, 0u, 0x02000100u));
+    assert(psx_gte_write_data(&gte, 1u, 768u));
+    assert(psx_gte_write_data(&gte, 6u, 0xab000000u));
+    assert(psx_gte_execute(&gte, 0x4a08001eu));
+    assert(psx_gte_read_data(&gte, 25u, &value) && value == 272u);
+    assert(psx_gte_read_data(&gte, 26u, &value) && value == 544u);
+    assert(psx_gte_read_data(&gte, 27u, &value) && value == 816u);
+    assert(psx_gte_read_data(&gte, 22u, &value) && value == 0xab332211u);
+
+    /* NCCS: background color participates before RGBC modulation. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 8u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 10u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 12u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 13u, 16u));
+    assert(psx_gte_write_control(&gte, 14u, 32u));
+    assert(psx_gte_write_control(&gte, 15u, 48u));
+    assert(psx_gte_write_control(&gte, 16u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 18u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 20u, 0x00001000u));
+    assert(psx_gte_write_data(&gte, 0u, 0x02000100u));
+    assert(psx_gte_write_data(&gte, 1u, 768u));
+    assert(psx_gte_write_data(&gte, 6u, 0xab808080u));
+    assert(psx_gte_execute(&gte, 0x4a08001bu));
+    assert(psx_gte_read_data(&gte, 25u, &value) && value == 136u);
+    assert(psx_gte_read_data(&gte, 26u, &value) && value == 272u);
+    assert(psx_gte_read_data(&gte, 27u, &value) && value == 408u);
+    assert(psx_gte_read_data(&gte, 22u, &value) && value == 0xab190f08u);
+
     /* NCCT: process V0/V1/V2 and push three RGB results in order. */
     psx_gte_reset(&gte);
     assert(psx_gte_write_control(&gte, 8u, 0x00001000u));
