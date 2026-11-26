@@ -1028,6 +1028,34 @@ int main(void)
     assert(psx_gte_read_data(&gte, 22u, &value) && value == 0x7f304040u);
     assert(psx_gte_read_control(&gte, 31u, &value) && value == 0u);
 
+    /* NCDT numeric reference: three differently scaled normals must
+     * produce three distinct RGB results in FIFO order. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 8u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 10u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 12u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 16u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 18u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 20u, 0x00001000u));
+    assert(psx_gte_write_data(&gte, 0u, 0x08001000u)); /* V0=(4096,2048,1024) */
+    assert(psx_gte_write_data(&gte, 1u, 1024u));
+    assert(psx_gte_write_data(&gte, 2u, 0x04000800u)); /* V1=(2048,1024,512) */
+    assert(psx_gte_write_data(&gte, 3u, 512u));
+    assert(psx_gte_write_data(&gte, 4u, 0x02000400u)); /* V2=(1024,512,256) */
+    assert(psx_gte_write_data(&gte, 5u, 256u));
+    assert(psx_gte_write_data(&gte, 6u, 0x7fc08040u));
+    assert(psx_gte_write_data(&gte, 8u, 0u));
+    assert(psx_gte_execute(&gte, 0x4a080416u)); /* NCDT, sf=1, lm=1 */
+    assert(psx_gte_read_data(&gte, 25u, &value) && value == 256u);
+    assert(psx_gte_read_data(&gte, 26u, &value) && value == 256u);
+    assert(psx_gte_read_data(&gte, 27u, &value) && value == 192u);
+    assert(psx_gte_read_data(&gte, 20u, &value) && value == 0x7f304040u);
+    assert(psx_gte_read_data(&gte, 21u, &value) && value == 0x7f181820u);
+    assert(psx_gte_read_data(&gte, 22u, &value) && value == 0x7f0c1010u);
+    assert(psx_gte_read_data(&gte, 0u, &value) && value == 0x08001000u);
+    assert(psx_gte_read_data(&gte, 1u, &value) && value == 1024u);
+    assert(psx_gte_read_control(&gte, 31u, &value) && value == 0u);
+
     assert(!psx_gte_read_data(0, 0u, &value));
     assert(!psx_gte_write_control(0, 0u, 0u));
 
