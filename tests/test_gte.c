@@ -1596,6 +1596,28 @@ int main(void)
     assert((value & (1u << 18u)) != 0u); /* earlier SZ saturation retained */
     assert((value & 0x80000000u) != 0u); /* summary retained */
 
+    /* RTPT retains IR0 saturation from V0 even though V2 finishes in range.
+     * IR0's bit 12 alone must not set the summary bit 31. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 2u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 4u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 26u, 200u)); /* H */
+    assert(psx_gte_write_control(&gte, 27u, 32767u)); /* DQA */
+    assert(psx_gte_write_control(&gte, 28u, 0u)); /* DQB */
+    assert(psx_gte_write_data(&gte, 0u, 0u));
+    assert(psx_gte_write_data(&gte, 1u, 100u)); /* V0 Z: IR0 overflows */
+    assert(psx_gte_write_data(&gte, 2u, 0u));
+    assert(psx_gte_write_data(&gte, 3u, 10000u)); /* V1 Z */
+    assert(psx_gte_write_data(&gte, 4u, 0u));
+    assert(psx_gte_write_data(&gte, 5u, 32767u)); /* V2 Z: IR0 in range */
+    assert(psx_gte_execute(&gte, 0x4a080030u)); /* RTPT, sf=1 */
+    assert(psx_gte_read_data(&gte, 8u, &value));
+    assert(value <= 4096u);
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 12u)) != 0u); /* V0 IR0 saturation retained */
+    assert((value & 0x80000000u) == 0u); /* IR0 excluded from summary */
+
     /* NCT must retain saturation flags raised by V0 while processing
      * later vertices whose lighting calculations do not saturate. */
     psx_gte_reset(&gte);
