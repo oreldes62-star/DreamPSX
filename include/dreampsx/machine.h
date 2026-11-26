@@ -7,6 +7,7 @@
 #include "dreampsx/cop0.h"
 #include "dreampsx/cpu.h"
 #include "dreampsx/irq.h"
+#include "dreampsx/gte.h"
 #include "dreampsx/memory.h"
 
 typedef struct {
@@ -14,6 +15,7 @@ typedef struct {
     PsxMemory memory;
     PsxBus bus;
     PsxCpu cpu;
+    PsxGte gte;
     uint32_t cop0_status;
     uint32_t cop0_cause;
     uint32_t cop0_epc;
