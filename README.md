@@ -2,7 +2,7 @@
 PlayStation emulator research and development for Sega Dreamcast.
 
 ## Development status
-Experimental project. The host-side CMake build and all 13 CTest targets passed in GitHub Actions on commit `dee84400f012bdfb2c38fbddd056f94c0b089822`. This validates the host test suite only; the Dreamcast/KallistiOS target remains a separate future integration step.
+Experimental project. The host-side CMake build and all 13 CTest targets passed in GitHub Actions on commit `e85bfa6de764dd03df32f593ba9ae24a95e4da33`. This validates the host test suite only; the Dreamcast/KallistiOS target remains a separate future integration step.
 
 ## Current milestones
 - [COP2 CU2 milestone 1.2](docs/COP2-CU2-MILESTONE-1.2.md)
@@ -45,9 +45,10 @@ Experimental project. The host-side CMake build and all 13 CTest targets passed 
 - [GTE register-file foundation milestone 3.20](docs/GTE-REGISTER-FILE-MILESTONE-3.20.md)
 - [COP2 transfers and GTE memory access milestone 3.21](docs/COP2-TRANSFERS-MILESTONE-3.21.md)
 - [GTE NCLIP command milestone 3.22](docs/GTE-NCLIP-MILESTONE-3.22.md)
+- [GTE MVMVA command milestone 3.23](docs/GTE-MVMVA-MILESTONE-3.23.md)
 
 ## Target
 Sega Dreamcast with 16 MiB RAM. Long-term target: CDI test build for Flycast, then GDEMU.
 
 ## Limitations
-No Dreamcast/KallistiOS build, CDI image or playable game exists yet. CPU registers and BIOS instruction fetch are represented, and a growing subset of R3000A instructions plus the first GTE geometry command (NCLIP) execute; instruction decoding/execution remains partial, and remaining hardware devices are not implemented. The host CMake/CTest suite passes in GitHub Actions, but it does not produce a Dreamcast binary or CDI image.
+No Dreamcast/KallistiOS build, CDI image or playable game exists yet. CPU registers and BIOS instruction fetch are represented, and a growing subset of R3000A instructions plus the first GTE geometry commands (NCLIP and an initial MVMVA implementation) execute; instruction decoding/execution remains partial, and remaining hardware devices are not implemented. The host CMake/CTest suite passes in GitHub Actions, but it does not produce a Dreamcast binary or CDI image.
