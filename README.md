@@ -36,6 +36,7 @@ Experimental project. The host-side CMake build and all 12 CTest tests passed in
 - [R3000A REGIMM link-register aliasing milestone 3.11](docs/R3000A-REGIMM-LINK-ALIAS-MILESTONE-3.11.md)
 - [R3000A REGIMM branch-delay exception milestone 3.12](docs/R3000A-REGIMM-DELAY-SLOT-MILESTONE-3.12.md)
 - [R3000A delayed-load/control-flow milestone 3.13](docs/R3000A-DELAYED-LOAD-CONTROL-FLOW-MILESTONE-3.13.md)
+- [R3000A delayed-load/link/exception milestone 3.14](docs/R3000A-DELAYED-LOAD-EXCEPTION-INTERACTIONS-MILESTONE-3.14.md)
 
 ## Target
 Sega Dreamcast with 16 MiB RAM. Long-term target: CDI test build for Flycast, then GDEMU.
