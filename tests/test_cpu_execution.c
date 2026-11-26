@@ -119,6 +119,27 @@ int main(void)
     assert(machine.cpu.next_pc == 0x448u);
     assert(psx_cpu_step(&machine.cpu, &machine.bus));
 
+    /* BGEZAL also links on a taken branch; BLTZAL does not link when false. */
+    put_word(ram, 0x450u, (0x01u << 26) | (8u << 21) | (17u << 16) | 1u);
+    put_word(ram, 0x454u, 0u);
+    psx_cpu_write_gpr(&machine.cpu, 8u, 0u);
+    psx_cpu_write_gpr(&machine.cpu, 31u, 0x22222222u);
+    machine.cpu.pc = 0x450u; machine.cpu.next_pc = 0x454u;
+    machine.cpu.delay_slot_pending = false;
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(psx_cpu_read_gpr(&machine.cpu, 31u) == 0x458u);
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+
+    put_word(ram, 0x460u, (0x01u << 26) | (8u << 21) | (16u << 16) | 1u);
+    put_word(ram, 0x464u, 0u);
+    psx_cpu_write_gpr(&machine.cpu, 8u, 1u);
+    psx_cpu_write_gpr(&machine.cpu, 31u, 0x33333333u);
+    machine.cpu.pc = 0x460u; machine.cpu.next_pc = 0x464u;
+    machine.cpu.delay_slot_pending = false;
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(psx_cpu_read_gpr(&machine.cpu, 31u) == 0x33333333u);
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+
     /* Unsupported REGIMM sub-op encodings are reserved instructions. */
     put_word(ram, 0x460u, (0x01u << 26) | (8u << 21) | (2u << 16));
     machine.cpu.pc = 0x460u; machine.cpu.next_pc = 0x464u;
