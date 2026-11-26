@@ -31,6 +31,7 @@ Experimental project. The repository now includes a host-side CMake build for th
 - [R3000A memory access validation milestone 3.6](docs/R3000A-MEMORY-ACCESS-VALIDATION-MILESTONE-3.6.md)
 - [R3000A delayed-load exception milestone 3.7](docs/R3000A-DELAYED-LOAD-EXCEPTION-MILESTONE-3.7.md)
 - [Host build and automated test foundation milestone 3.8](docs/HOST-BUILD-MILESTONE-3.8.md)
+- [R3000A REGIMM branch instructions milestone 3.9](docs/R3000A-REGIMM-BRANCHES-MILESTONE-3.9.md)
 
 ## Target
 Sega Dreamcast with 16 MiB RAM. Long-term target: CDI test build for Flycast, then GDEMU.
