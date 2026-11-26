@@ -92,6 +92,16 @@ int main(void)
     assert(psx_gte_read_data(&gte, 15u, &value));
     assert(value == 0x00070008u);
 
+    /* H is unsigned 16-bit; DQA, ZSF3 and ZSF4 are signed 16-bit. */
+    assert(psx_gte_write_control(&gte, 26u, 0x12345678u));
+    assert(psx_gte_read_control(&gte, 26u, &value) && value == 0x5678u);
+    assert(psx_gte_write_control(&gte, 27u, 0x12348001u));
+    assert(psx_gte_read_control(&gte, 27u, &value) && value == 0xffff8001u);
+    assert(psx_gte_write_control(&gte, 29u, 0x1234ffffu));
+    assert(psx_gte_read_control(&gte, 29u, &value) && value == 0xffffffffu);
+    assert(psx_gte_write_control(&gte, 30u, 0x12347fffu));
+    assert(psx_gte_read_control(&gte, 30u, &value) && value == 0x7fffu);
+
     assert(psx_gte_write_control(&gte, 31u, 0xffffffffu));
     assert(psx_gte_read_control(&gte, 31u, &value));
     assert(value == 0xfffff000u);
