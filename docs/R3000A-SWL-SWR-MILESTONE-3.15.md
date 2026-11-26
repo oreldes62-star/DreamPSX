@@ -16,12 +16,14 @@
 
 The CPU execution test source checks SWL and SWR at all four byte offsets.
 Each case starts with a known memory word and register value, then verifies
-that selected byte lanes are replaced while untouched lanes are preserved.
+that selected byte lanes are replaced while untouched lanes are preserved. A
+combined SWR/SWL pair is also tested across two aligned words to form one
+unaligned 32-bit store.
 
 ## Validation
 
 GitHub Actions host build and CTest passed on commit
-`6359f4b4532058e967cdb521c6c3c187d19141d1`:
+`a0866bf540d09a25dd534caca548ae904b39d7a2`:
 
 - CMake configure: passed
 - Host build: passed
