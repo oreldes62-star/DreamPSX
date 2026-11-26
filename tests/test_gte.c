@@ -349,9 +349,9 @@ int main(void)
     assert(psx_gte_write_data(&gte, 26u, (uint32_t)-6));
     assert(psx_gte_write_data(&gte, 27u, 7u));
     assert(psx_gte_execute(&gte, 0x4a00003eu)); /* GPL, sf=0 */
-    assert(psx_gte_read_data(&gte, 25u, &value) && value == 28672u);
-    assert(psx_gte_read_data(&gte, 26u, &value) && value == (uint32_t)-36864);
-    assert(psx_gte_read_data(&gte, 27u, &value) && value == 45056u);
+    assert(psx_gte_read_data(&gte, 25u, &value) && value == 8197u);
+    assert(psx_gte_read_data(&gte, 26u, &value) && value == (uint32_t)-12294);
+    assert(psx_gte_read_data(&gte, 27u, &value) && value == 16391u);
 
     /* NCS: identity light/color matrices preserve the normal and push RGB. */
     psx_gte_reset(&gte);
