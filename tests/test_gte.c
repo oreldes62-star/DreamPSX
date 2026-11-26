@@ -117,6 +117,19 @@ int main(void)
     assert(psx_gte_read_data(&gte, 10u, &value) && value == (uint32_t)-18);
     assert(psx_gte_read_data(&gte, 11u, &value) && value == 33u);
 
+    /* Negative MAC1 overflow must set FLAG bit 27 (not bit 29). */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 0x00007fffu)); /* RT11=32767 */
+    assert(psx_gte_write_control(&gte, 2u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 4u, 0x00001000u));
+    assert(psx_gte_write_data(&gte, 0u, 0xffff8000u)); /* V0.x=-32768 */
+    assert(psx_gte_write_data(&gte, 1u, 0u));
+    assert(psx_gte_execute(&gte, 0x48000012u)); /* sf=0, RT, V0, no TR */
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 27u)) != 0u);
+    assert((value & (1u << 29u)) == 0u);
+    assert((value & 0x80000000u) != 0u);
+
     /* sf=0 leaves the 12-bit fixed-point matrix scale unshifted. */
     assert(psx_gte_execute(&gte, 0x48006012u)); /* RT, V0, no translation */
     assert(psx_gte_read_data(&gte, 25u, &value) && value == 4096u);
