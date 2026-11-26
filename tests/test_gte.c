@@ -200,6 +200,54 @@ int main(void)
     assert(psx_gte_read_data(&gte, 18u, &value) && value == 1000u);
     assert(psx_gte_read_data(&gte, 19u, &value) && value == 1000u);
 
+    /* AVSZ3 averages the last three SZ FIFO entries into OTZ. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 29u, 0x1000u)); /* ZSF3=1.0 */
+    assert(psx_gte_write_data(&gte, 17u, 1000u));
+    assert(psx_gte_write_data(&gte, 18u, 2000u));
+    assert(psx_gte_write_data(&gte, 19u, 3000u));
+    assert(psx_gte_execute(&gte, 0x4a00002du));
+    assert(psx_gte_read_data(&gte, 24u, &value) && value == 6000u * 4096u);
+    assert(psx_gte_read_data(&gte, 7u, &value) && value == 6000u);
+    assert(psx_gte_read_control(&gte, 31u, &value) && value == 0u);
+
+    /* AVSZ4 includes SZ0 and uses ZSF4. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 30u, 0x1000u)); /* ZSF4=1.0 */
+    assert(psx_gte_write_data(&gte, 16u, 500u));
+    assert(psx_gte_write_data(&gte, 17u, 1000u));
+    assert(psx_gte_write_data(&gte, 18u, 2000u));
+    assert(psx_gte_write_data(&gte, 19u, 3000u));
+    assert(psx_gte_execute(&gte, 0x4a00002eu));
+    assert(psx_gte_read_data(&gte, 24u, &value) && value == 6500u * 4096u);
+    assert(psx_gte_read_data(&gte, 7u, &value) && value == 6500u);
+
+    /* AVSZ3 clamps negative OTZ and reports the OTZ saturation flag. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 29u, (uint32_t)-0x1000));
+    assert(psx_gte_write_data(&gte, 17u, 1000u));
+    assert(psx_gte_write_data(&gte, 18u, 2000u));
+    assert(psx_gte_write_data(&gte, 19u, 3000u));
+    assert(psx_gte_execute(&gte, 0x4a00002du));
+    assert(psx_gte_read_data(&gte, 7u, &value) && value == 0u);
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 18u)) != 0u);
+    assert((value & (1u << 31u)) != 0u);
+
+    /* AVSZ4 reports MAC0 positive overflow and clamps OTZ to 0xffff. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 30u, 0x7fffu));
+    assert(psx_gte_write_data(&gte, 16u, 0xffffu));
+    assert(psx_gte_write_data(&gte, 17u, 0xffffu));
+    assert(psx_gte_write_data(&gte, 18u, 0xffffu));
+    assert(psx_gte_write_data(&gte, 19u, 0xffffu));
+    assert(psx_gte_execute(&gte, 0x4a00002eu));
+    assert(psx_gte_read_data(&gte, 7u, &value) && value == 0xffffu);
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 16u)) != 0u);
+    assert((value & (1u << 18u)) != 0u);
+    assert((value & (1u << 31u)) != 0u);
+
     /* MVMVA: identity rotation, V0 plus a translation vector. */
     psx_gte_reset(&gte);
     assert(psx_gte_write_control(&gte, 0u, 0x00001000u)); /* RT11=4096 */
