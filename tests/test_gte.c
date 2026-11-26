@@ -157,6 +157,45 @@ int main(void)
     assert(psx_gte_read_data(&gte, 14u, &value));
     assert((int16_t)(value & 0xffffu) == 538);
 
+    /* UNR table index 0: normalized SZ3 is exactly 0x8000. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 2u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 4u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 7u, 0x8000u));
+    assert(psx_gte_write_control(&gte, 26u, 0x4000u));
+    assert(psx_gte_write_control(&gte, 27u, 1u)); /* DQA */
+    assert(psx_gte_execute(&gte, 0x4a080001u));
+    assert(psx_gte_read_data(&gte, 8u, &value) && value == 8u);
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 17u)) == 0u);
+
+    /* UNR table index 256: normalized SZ3 is 0xffff. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 2u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 4u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 7u, 0xffffu));
+    assert(psx_gte_write_control(&gte, 26u, 0x7fffu));
+    assert(psx_gte_write_control(&gte, 27u, 1u)); /* DQA */
+    assert(psx_gte_execute(&gte, 0x4a080001u));
+    assert(psx_gte_read_data(&gte, 8u, &value) && value == 7u);
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 17u)) == 0u);
+
+    /* The UNR quotient saturates to 0x1ffff without divide-overflow FLAG. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 2u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 4u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 7u, 0x7f20u));
+    assert(psx_gte_write_control(&gte, 26u, 0xfe3fu));
+    assert(psx_gte_write_control(&gte, 27u, 1u)); /* DQA */
+    assert(psx_gte_execute(&gte, 0x4a080001u));
+    assert(psx_gte_read_data(&gte, 8u, &value) && value == 31u);
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 17u)) == 0u);
+
     /* RTPS near-plane divide overflow and screen-coordinate saturation. */
     psx_gte_reset(&gte);
     assert(psx_gte_write_control(&gte, 0u, 0x00001000u));
