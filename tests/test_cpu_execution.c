@@ -518,7 +518,7 @@ int main(void)
             0x81234567u, 0x02468aceu, 0x80000000u, 0x81234567u
         };
         static const uint32_t srl_expected[4] = {
-            0x81234567u, 0x4091a2b3u, 0u, 0x81234567u
+            0x81234567u, 0x4091a2b3u, 1u, 0x81234567u
         };
         static const uint32_t sra_expected[4] = {
             0x81234567u, 0xc091a2b3u, 0xffffffffu, 0x81234567u
