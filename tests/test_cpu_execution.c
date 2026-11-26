@@ -328,6 +328,33 @@ int main(void)
     assert(psx_cpu_read_gpr(&machine.cpu, 13u) == 2u);
     machine.cpu.load_delay_pending = false;
 
+    /* A delayed load to $ra followed by JALR $ra,$ra must use the
+     * old $ra as the jump target. JALR's link write then wins over the
+     * pending load, rather than allowing the loaded target to replace it.
+     */
+    assert(psx_memory_write32(&machine.memory, 0x700u, 0x560u));
+    assert(psx_memory_write32(&machine.memory, 0x500u, 0x8d3f0000u)); /* LW ra,0(t1) */
+    assert(psx_memory_write32(&machine.memory, 0x504u,
+                              (31u << 21) | (31u << 11) | 0x09u)); /* JALR ra,ra */
+    assert(psx_memory_write32(&machine.memory, 0x508u, 0x24080001u)); /* delay slot */
+    assert(psx_memory_write32(&machine.memory, 0x540u, 0x240a002au)); /* old target */
+    assert(psx_memory_write32(&machine.memory, 0x560u, 0x240a0063u)); /* loaded target */
+    psx_cpu_write_gpr(&machine.cpu, 9u, 0x700u);
+    psx_cpu_write_gpr(&machine.cpu, 31u, 0x540u);
+    machine.cpu.pc = 0x500u; machine.cpu.next_pc = 0x504u;
+    machine.cpu.delay_slot_pending = false;
+    machine.cpu.load_delay_pending = false;
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(machine.cpu.load_delay_pending);
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(machine.cpu.next_pc == 0x540u);
+    assert(psx_cpu_read_gpr(&machine.cpu, 31u) == 0x50cu);
+    assert(!machine.cpu.load_delay_pending);
+    assert(machine.cpu.delay_slot_pending);
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(psx_cpu_read_gpr(&machine.cpu, 10u) == 42u);
+
     /* LWL/LWR merge semantics on little-endian memory, all byte offsets. */
     assert(psx_memory_write32(&machine.memory, 0x220u, 0x44332211u));
     assert(psx_memory_write32(&machine.memory, 0x224u, 0x88776655u));
