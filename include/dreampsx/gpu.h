@@ -22,7 +22,7 @@ typedef struct {
     size_t vram_pixels;
     uint32_t status;
     uint32_t command;
-    uint32_t parameters[2];
+    uint32_t parameters[3];
     unsigned parameter_count;
     unsigned parameter_expected;
     PsxGpuTransferMode transfer_mode;
