@@ -509,6 +509,48 @@ int main(void)
            ((uint32_t)PSX_EXCEPTION_TRAP << PSX_COP0_CAUSE_EXCCODE_SHIFT));
     assert(machine.cop0_epc == 0x358u);
 
+    /* A true conditional trap in a branch delay slot must report the
+     * branch address in EPC and set Cause.BD.
+     */
+    assert(psx_memory_write32(&machine.memory, 0x360u, 0x10000001u)); /* BEQ zero,zero,+1 */
+    assert(psx_memory_write32(&machine.memory, 0x364u,
+                              (8u << 21) | (9u << 16) | 0x34u)); /* TEQ t0,t1 */
+    machine.cpu.pc = 0x360u;
+    machine.cpu.next_pc = 0x364u;
+    machine.cpu.delay_slot_pending = false;
+    machine.cpu.load_delay_pending = false;
+    machine.cop0_status = 0u;
+    psx_cpu_write_gpr(&machine.cpu, 8u, 0x55u);
+    psx_cpu_write_gpr(&machine.cpu, 9u, 0x55u);
+    assert(psx_machine_step(&machine)); /* branch */
+    assert(machine.cpu.delay_slot_pending);
+    assert(psx_machine_step(&machine)); /* trap in delay slot */
+    assert(machine.cop0_epc == 0x360u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_BD) != 0u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_EXCCODE) ==
+           ((uint32_t)PSX_EXCEPTION_TRAP << PSX_COP0_CAUSE_EXCCODE_SHIFT));
+
+    /* A false trap in a delay slot retires normally and preserves the
+     * already-selected branch target without manufacturing another slot.
+     */
+    assert(psx_memory_write32(&machine.memory, 0x368u, 0x10000001u)); /* BEQ zero,zero,+1 */
+    assert(psx_memory_write32(&machine.memory, 0x36cu,
+                              (8u << 21) | (9u << 16) | 0x34u)); /* TEQ t0,t1 */
+    machine.cpu.pc = 0x368u;
+    machine.cpu.next_pc = 0x36cu;
+    machine.cpu.delay_slot_pending = false;
+    machine.cpu.load_delay_pending = false;
+    machine.cop0_status = 0u;
+    psx_cpu_write_gpr(&machine.cpu, 8u, 0x55u);
+    psx_cpu_write_gpr(&machine.cpu, 9u, 0xaau);
+    assert(psx_machine_step(&machine));
+    assert(machine.cpu.delay_slot_pending);
+    assert(psx_machine_step(&machine));
+    assert(machine.cpu.pc == 0x370u);
+    assert(!machine.cpu.delay_slot_pending);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_EXCCODE) !=
+           ((uint32_t)PSX_EXCEPTION_TRAP << PSX_COP0_CAUSE_EXCCODE_SHIFT));
+
     free(bios);
     free(ram);
     puts("DreamPSX machine-state tests: OK");
