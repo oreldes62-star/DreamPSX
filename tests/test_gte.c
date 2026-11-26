@@ -283,6 +283,26 @@ int main(void)
     assert((value & (1u << 18u)) != 0u); /* OTZ lower saturation */
     assert((value & (1u << 31u)) != 0u); /* FLAG summary */
 
+    /* AVSZ4 stays below positive MAC0 overflow at INT32_MAX-1. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 30u, 0x7fffu)); /* ZSF4=32767 */
+    assert(psx_gte_write_data(&gte, 16u, 65535u));
+    assert(psx_gte_write_data(&gte, 17u, 3u));
+    assert(psx_gte_execute(&gte, 0x4a00002eu));
+    assert(psx_gte_read_data(&gte, 24u, &value) &&
+           value == 0x7ffffffeu);
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 16u)) == 0u); /* no positive MAC0 overflow */
+
+    /* Raising the sum by one crosses the signed 32-bit MAC0 boundary. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 30u, 0x7fffu));
+    assert(psx_gte_write_data(&gte, 16u, 65535u));
+    assert(psx_gte_write_data(&gte, 17u, 4u));
+    assert(psx_gte_execute(&gte, 0x4a00002eu));
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 16u)) != 0u); /* positive MAC0 overflow */
+
     /* SQR squares IR1-IR3, with sf=1 shifting the MAC by 12. */
     psx_gte_reset(&gte);
     assert(psx_gte_write_data(&gte, 9u, 3u));
