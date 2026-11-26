@@ -618,6 +618,55 @@ int main(void)
         assert(stored_word == 0xa1b2c3d4u);
     }
 
+    /* COP2 transfers: MTC2/MFC2 and CTC2/CFC2. */
+    {
+        const uint32_t cu2 = 0x40000000u;
+        uint32_t value = 0u;
+        machine.cop0_status = cu2;
+        machine.cpu.delay_slot_pending = false;
+        machine.cpu.load_delay_pending = false;
+        psx_cpu_write_gpr(&machine.cpu, 8u, 0x00008001u);
+        put_word(ram, 0x500u, (0x12u << 26) | (4u << 21) | (8u << 16) | (9u << 11)); /* MTC2 t0, D9 */
+        put_word(ram, 0x504u, (0x12u << 26) | (8u << 16) | (9u << 11)); /* MFC2 t1, D9 */
+        put_word(ram, 0x508u, (0x09u << 26) | (9u << 21) | (10u << 16)); /* ADDIU t2,t1,0 */
+        put_word(ram, 0x50cu, 0u); /* NOP retires MFC2 result */
+        machine.cpu.pc = 0x500u; machine.cpu.next_pc = 0x504u;
+        assert(psx_machine_step(&machine));
+        assert(psx_gte_read_data(&machine.gte, 9u, &value));
+        assert(value == 0xffff8001u);
+        assert(psx_machine_step(&machine));
+        assert(psx_cpu_read_gpr(&machine.cpu, 9u) == 0u); /* MFC2 delay */
+        assert(psx_machine_step(&machine));
+        assert(psx_cpu_read_gpr(&machine.cpu, 10u) == 0u); /* consumer sees old value */
+        assert(psx_machine_step(&machine));
+        assert(psx_cpu_read_gpr(&machine.cpu, 9u) == 0xffff8001u);
+
+        /* Control-register transfers share the same delayed MFC/CFC path. */
+        psx_cpu_write_gpr(&machine.cpu, 8u, 0x12345678u);
+        put_word(ram, 0x510u, (0x12u << 26) | (6u << 21) | (8u << 16) | (31u << 11)); /* CTC2 t0,C31 */
+        put_word(ram, 0x514u, (0x12u << 26) | (2u << 21) | (11u << 16) | (31u << 11)); /* CFC2 t3,C31 */
+        put_word(ram, 0x518u, 0u);
+        machine.cpu.pc = 0x510u; machine.cpu.next_pc = 0x514u;
+        assert(psx_machine_step(&machine));
+        assert(psx_machine_step(&machine));
+        assert(psx_cpu_read_gpr(&machine.cpu, 11u) == 0u);
+        assert(psx_machine_step(&machine));
+        assert(psx_cpu_read_gpr(&machine.cpu, 11u) == 0x12345000u);
+
+        /* LWC2/SWC2 move GTE data registers through the main bus. */
+        put_word(ram, 0x600u, 0x89abcdefu);
+        psx_cpu_write_gpr(&machine.cpu, 12u, 0x600u);
+        put_word(ram, 0x520u, (0x32u << 26) | (12u << 21) | (10u << 16)); /* LWC2 D10,0(t4) */
+        put_word(ram, 0x524u, (0x3au << 26) | (12u << 21) | (10u << 16) | 4u); /* SWC2 D10,4(t4) */
+        machine.cpu.pc = 0x520u; machine.cpu.next_pc = 0x524u;
+        assert(psx_machine_step(&machine));
+        assert(psx_gte_read_data(&machine.gte, 10u, &value));
+        assert(value == 0x89abcdefu);
+        assert(psx_machine_step(&machine));
+        assert(psx_memory_read32(&machine.memory, 0x604u, &value));
+        assert(value == 0x89abcdefu);
+    }
+
     free(bios); free(ram);
     puts("DreamPSX R3000A execution tests: OK");
     return 0;
