@@ -374,6 +374,27 @@ int main(void)
     assert(psx_gte_read_data(&gte, 22u, &value) &&
            value == 0xab302010u); /* RGB=(16,32,48), CODE=AB */
 
+    /* NCCS: light/color stages followed by RGBC modulation. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 8u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 10u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 12u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 16u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 18u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 20u, 0x00001000u));
+    assert(psx_gte_write_data(&gte, 0u, 0x02000100u));
+    assert(psx_gte_write_data(&gte, 1u, 768u));
+    assert(psx_gte_write_data(&gte, 6u, 0xab404040u)); /* RGB=64, CODE=AB */
+    assert(psx_gte_execute(&gte, 0x4a08001bu)); /* NCCS, sf=1 */
+    assert(psx_gte_read_data(&gte, 25u, &value) && value == 64u);
+    assert(psx_gte_read_data(&gte, 26u, &value) && value == 128u);
+    assert(psx_gte_read_data(&gte, 27u, &value) && value == 192u);
+    assert(psx_gte_read_data(&gte, 9u, &value) && value == 64u);
+    assert(psx_gte_read_data(&gte, 10u, &value) && value == 128u);
+    assert(psx_gte_read_data(&gte, 11u, &value) && value == 192u);
+    assert(psx_gte_read_data(&gte, 22u, &value) &&
+           value == 0xab0c0804u); /* RGB=(4,8,12), CODE=AB */
+
     /* MVMVA: identity rotation, V0 plus a translation vector. */
     psx_gte_reset(&gte);
     assert(psx_gte_write_control(&gte, 0u, 0x00001000u)); /* RT11=4096 */
