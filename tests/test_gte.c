@@ -172,6 +172,34 @@ int main(void)
     assert((value & (1u << 17u)) != 0u);
     assert((value & (1u << 18u)) == 0u);
 
+    /* RTPT transforms V0/V1/V2 and leaves their results in FIFO order. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 2u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 4u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 24u, 160u << 16u));
+    assert(psx_gte_write_control(&gte, 25u, 120u << 16u));
+    assert(psx_gte_write_control(&gte, 26u, 200u));
+    assert(psx_gte_write_data(&gte, 0u, 0u));          /* V0=(0,0,1000) */
+    assert(psx_gte_write_data(&gte, 1u, 1000u);
+    assert(psx_gte_write_data(&gte, 2u, 100u));        /* V1=(100,0,1000) */
+    assert(psx_gte_write_data(&gte, 3u, 1000u));
+    assert(psx_gte_write_data(&gte, 4u, 0x00640000u)); /* V2=(0,100,1000) */
+    assert(psx_gte_write_data(&gte, 5u, 1000u));
+    assert(psx_gte_execute(&gte, 0x4a080030u)); /* RTPT, sf=1 */
+    assert(psx_gte_read_data(&gte, 12u, &value));
+    assert((int16_t)(value & 0xffffu) == 160);
+    assert((int16_t)(value >> 16u) == 120);
+    assert(psx_gte_read_data(&gte, 13u, &value));
+    assert((int16_t)(value & 0xffffu) == 179);
+    assert((int16_t)(value >> 16u) == 120);
+    assert(psx_gte_read_data(&gte, 14u, &value));
+    assert((int16_t)(value & 0xffffu) == 160);
+    assert((int16_t)(value >> 16u) == 139);
+    assert(psx_gte_read_data(&gte, 17u, &value) && value == 1000u);
+    assert(psx_gte_read_data(&gte, 18u, &value) && value == 1000u);
+    assert(psx_gte_read_data(&gte, 19u, &value) && value == 1000u);
+
     /* MVMVA: identity rotation, V0 plus a translation vector. */
     psx_gte_reset(&gte);
     assert(psx_gte_write_control(&gte, 0u, 0x00001000u)); /* RT11=4096 */
