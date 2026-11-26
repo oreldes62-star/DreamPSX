@@ -168,6 +168,66 @@ int main(void)
     assert(psx_cpu_read_gpr(&machine.cpu, 13u) == 2u);
     machine.cpu.load_delay_pending = false;
 
+    /* LWL/LWR merge semantics on little-endian memory, all byte offsets. */
+    assert(psx_memory_write32(&machine.memory, 0x220u, 0x44332211u));
+    assert(psx_memory_write32(&machine.memory, 0x224u, 0x88776655u));
+    {
+        static const uint32_t lwl_expected[4] = {
+            0x11bbccddu, 0x2211ccddu, 0x332211ddu, 0x44332211u
+        };
+        static const uint32_t lwr_expected[4] = {
+            0x44332211u, 0xaa443322u, 0xaabb4433u, 0xaabbcc44u
+        };
+        unsigned offset;
+        for (offset = 0u; offset < 4u; ++offset) {
+            uint32_t pc_lwl = 0x240u + offset * 8u;
+            uint32_t pc_lwr = 0x280u + offset * 8u;
+            assert(psx_memory_write32(&machine.memory, pc_lwl,
+                                      (0x22u << 26) | (9u << 21) |
+                                      (8u << 16) | offset));
+            assert(psx_memory_write32(&machine.memory, pc_lwl + 4u, 0u));
+            psx_cpu_write_gpr(&machine.cpu, 8u, 0xaabbccddu);
+            psx_cpu_write_gpr(&machine.cpu, 9u, 0x220u);
+            machine.cpu.pc = pc_lwl; machine.cpu.next_pc = pc_lwl + 4u;
+            machine.cpu.load_delay_pending = false;
+            assert(psx_cpu_step(&machine.cpu, &machine.bus));
+            assert(machine.cpu.load_delay_pending);
+            assert(psx_cpu_step(&machine.cpu, &machine.bus));
+            assert(psx_cpu_read_gpr(&machine.cpu, 8u) == lwl_expected[offset]);
+            machine.cpu.load_delay_pending = false;
+
+            assert(psx_memory_write32(&machine.memory, pc_lwr,
+                                      (0x26u << 26) | (9u << 21) |
+                                      (8u << 16) | offset));
+            assert(psx_memory_write32(&machine.memory, pc_lwr + 4u, 0u));
+            psx_cpu_write_gpr(&machine.cpu, 8u, 0xaabbccddu);
+            machine.cpu.pc = pc_lwr; machine.cpu.next_pc = pc_lwr + 4u;
+            machine.cpu.load_delay_pending = false;
+            assert(psx_cpu_step(&machine.cpu, &machine.bus));
+            assert(psx_cpu_step(&machine.cpu, &machine.bus));
+            assert(psx_cpu_read_gpr(&machine.cpu, 8u) == lwr_expected[offset]);
+            machine.cpu.load_delay_pending = false;
+        }
+    }
+
+    /* Adjacent LWL/LWR to the same rt forward the first partial word. */
+    assert(psx_memory_write32(&machine.memory, 0x300u,
+                              (0x22u << 26) | (9u << 21) | (8u << 16) | 3u));
+    assert(psx_memory_write32(&machine.memory, 0x304u,
+                              (0x26u << 26) | (9u << 21) | (8u << 16)));
+    assert(psx_memory_write32(&machine.memory, 0x308u, 0u));
+    psx_cpu_write_gpr(&machine.cpu, 8u, 0xdeadbeefu);
+    psx_cpu_write_gpr(&machine.cpu, 9u, 0x201u);
+    machine.cpu.pc = 0x300u; machine.cpu.next_pc = 0x304u;
+    machine.cpu.load_delay_pending = false;
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(machine.cpu.load_delay_pending);
+    assert(psx_cpu_read_gpr(&machine.cpu, 8u) == 0x55adbeefu);
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(psx_cpu_read_gpr(&machine.cpu, 8u) == 0x55443322u);
+    machine.cpu.load_delay_pending = false;
+
     free(bios); free(ram);
     puts("DreamPSX R3000A execution tests: OK");
     return 0;
