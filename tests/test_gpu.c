@@ -72,6 +72,31 @@ int main(void)
     assert(psx_gpu_vram_read(&gpu, 0u, 200u, &pixel));
     assert(pixel == 0x001fu);
 
+    /* E3/E4 restrict primitive writes to the inclusive drawing area. */
+    assert(psx_gpu_gp0_write(&gpu, 0xe3000000u | 201u | (201u << 10u)));
+    assert(psx_gpu_gp0_write(&gpu, 0xe4000000u | 202u | (202u << 10u)));
+    assert(psx_gpu_gp0_write(&gpu, 0x200000ffu));
+    assert(psx_gpu_gp0_write(&gpu, 200u | (200u << 16u)));
+    assert(psx_gpu_gp0_write(&gpu, 204u | (200u << 16u)));
+    assert(psx_gpu_gp0_write(&gpu, 200u | (204u << 16u)));
+    assert(psx_gpu_vram_read(&gpu, 201u, 201u, &pixel));
+    assert(pixel == 0x001fu);
+    assert(psx_gpu_vram_read(&gpu, 200u, 200u, &pixel));
+    assert(pixel == 0u);
+
+    /* E5 signed offsets translate all three submitted vertices. */
+    assert(psx_gpu_gp0_write(&gpu, 0xe3000000u));
+    assert(psx_gpu_gp0_write(&gpu, 0xe4000000u | 1023u | (511u << 10u)));
+    assert(psx_gpu_gp0_write(&gpu, 0xe5000000u | 10u | (20u << 11u)));
+    assert(psx_gpu_gp0_write(&gpu, 0x2000ff00u));
+    assert(psx_gpu_gp0_write(&gpu, 100u | (100u << 16u)));
+    assert(psx_gpu_gp0_write(&gpu, 104u | (100u << 16u)));
+    assert(psx_gpu_gp0_write(&gpu, 100u | (104u << 16u)));
+    assert(psx_gpu_vram_read(&gpu, 111u, 121u, &pixel));
+    assert(pixel == 0x03e0u);
+    assert(psx_gpu_vram_read(&gpu, 101u, 101u, &pixel));
+    assert(pixel == 0u);
+
     /* GPU reset preserves VRAM but restores status and parser state. */
     assert(psx_gpu_gp1_write(&gpu, 0x00000000u));
     assert(psx_gpu_read_status(&gpu, &status));
