@@ -99,7 +99,7 @@ int main(void)
     assert(psx_cpu_read_gpr(&machine.cpu, 10u) == 0x55u);
     machine.cop0_status = 0x0000003cu;
     assert(psx_machine_step(&machine));
-    assert(machine.cop0_status == 0x0000000fu);
+    assert(machine.cop0_status == 0x0000003fu);
 
     /* COP0 is rejected while the current mode is user mode. */
     machine.cop0_status = PSX_COP0_STATUS_KUC;
