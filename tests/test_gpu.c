@@ -64,6 +64,14 @@ int main(void)
     assert(psx_gpu_vram_read(&gpu, 103u, 103u, &pixel));
     assert(pixel == 0u);
 
+    /* Signed 11-bit coordinates are decoded and clipped at the VRAM edge. */
+    assert(psx_gpu_gp0_write(&gpu, 0x200000ffu)); /* Red */
+    assert(psx_gpu_gp0_write(&gpu, 0x7feu | (200u << 16u))); /* (-2,200) */
+    assert(psx_gpu_gp0_write(&gpu, 2u | (200u << 16u)));
+    assert(psx_gpu_gp0_write(&gpu, 0x7feu | (204u << 16u)));
+    assert(psx_gpu_vram_read(&gpu, 0u, 200u, &pixel));
+    assert(pixel == 0x001fu);
+
     /* GPU reset preserves VRAM but restores status and parser state. */
     assert(psx_gpu_gp1_write(&gpu, 0x00000000u));
     assert(psx_gpu_read_status(&gpu, &status));
