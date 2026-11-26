@@ -284,6 +284,31 @@ int main(void)
     assert(psx_cpu_read_gpr(&machine.cpu, 8u) == 0x12345678u);
     assert(psx_cpu_read_gpr(&machine.cpu, 12u) == 1u);
 
+    /* A branch immediately after LW must compare the OLD destination value.
+     * The load retires after the branch has read its operands, so BEQ still
+     * takes its path even though the loaded value is nonzero.
+     */
+    assert(psx_memory_write32(&machine.memory, 0x208u, 1u));
+    assert(psx_memory_write32(&machine.memory, 0x1f0u, 0x8d280000u)); /* LW t0,0(t1) */
+    assert(psx_memory_write32(&machine.memory, 0x1f4u, 0x11000001u)); /* BEQ t0,zero,+1 */
+    assert(psx_memory_write32(&machine.memory, 0x1f8u, 0x240a002au)); /* delay slot */
+    assert(psx_memory_write32(&machine.memory, 0x1fcu, 0x240b002bu)); /* branch target */
+    psx_cpu_write_gpr(&machine.cpu, 8u, 0u);
+    psx_cpu_write_gpr(&machine.cpu, 9u, 0x208u);
+    machine.cpu.pc = 0x1f0u; machine.cpu.next_pc = 0x1f4u;
+    machine.cpu.delay_slot_pending = false;
+    machine.cpu.load_delay_pending = false;
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(machine.cpu.load_delay_pending);
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(machine.cpu.next_pc == 0x1fcu); /* branch used the old zero value */
+    assert(psx_cpu_read_gpr(&machine.cpu, 8u) == 1u); /* load retired after compare */
+    assert(machine.cpu.delay_slot_pending);
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(psx_cpu_read_gpr(&machine.cpu, 10u) == 42u);
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(psx_cpu_read_gpr(&machine.cpu, 11u) == 43u);
+
     /* Consecutive loads retire in order and each retain one-instruction delay. */
     assert(psx_memory_write32(&machine.memory, 0x204u, 0x87654321u));
     assert(psx_memory_write32(&machine.memory, 0x1f0u, 0x8d280000u)); /* LW t0,0(t1) */
