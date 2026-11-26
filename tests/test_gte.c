@@ -322,6 +322,44 @@ int main(void)
     assert((value & (1u << 27u)) != 0u); /* MAC1 negative overflow */
     assert((value & (1u << 31u)) != 0u); /* FLAG summary */
 
+    /* MVMVA positive/negative 44-bit overflow on MAC2. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 2u, 0x00007fffu)); /* RT[1][1] */
+    assert(psx_gte_write_control(&gte, 6u, 0x7fffffffu)); /* TRY */
+    assert(psx_gte_write_data(&gte, 0u, 0x7fff0000u)); /* V0.y=32767 */
+    assert(psx_gte_execute(&gte, 0x4a000012u));
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 28u)) != 0u);
+    assert((value & (1u << 31u)) != 0u);
+
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 2u, 0x00007fffu));
+    assert(psx_gte_write_control(&gte, 6u, 0x80000000u));
+    assert(psx_gte_write_data(&gte, 0u, 0x80000000u)); /* V0.y=-32768 */
+    assert(psx_gte_execute(&gte, 0x4a000012u));
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 25u)) != 0u);
+    assert((value & (1u << 31u)) != 0u);
+
+    /* MVMVA positive/negative 44-bit overflow on MAC3. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 4u, 0x00007fffu)); /* RT[2][2] */
+    assert(psx_gte_write_control(&gte, 7u, 0x7fffffffu)); /* TRZ */
+    assert(psx_gte_write_data(&gte, 1u, 0x00007fffu)); /* V0.z=32767 */
+    assert(psx_gte_execute(&gte, 0x4a000012u));
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 26u)) != 0u);
+    assert((value & (1u << 31u)) != 0u);
+
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 4u, 0x00007fffu));
+    assert(psx_gte_write_control(&gte, 7u, 0x80000000u));
+    assert(psx_gte_write_data(&gte, 1u, 0x00008000u)); /* V0.z=-32768 */
+    assert(psx_gte_execute(&gte, 0x4a000012u));
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 23u)) != 0u);
+    assert((value & (1u << 31u)) != 0u);
+
     /* SQR squares IR1-IR3, with sf=1 shifting the MAC by 12. */
     psx_gte_reset(&gte);
     assert(psx_gte_write_data(&gte, 9u, 3u));
