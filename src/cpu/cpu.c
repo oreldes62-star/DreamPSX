@@ -232,6 +232,7 @@ PsxCpuStepResult psx_cpu_step_result_with_cop0(PsxCpu *cpu, PsxBus *bus,
             }
             result = cp_value;
             write_result = true;
+            is_load = true; /* MFC0 has the R3000A one-instruction transfer delay. */
         } else if (cop_rs == 4u) { /* MTC0 */
             if ((instruction & 0x7ffu) != 0u)
                 return PSX_CPU_STEP_RESERVED_INSTRUCTION;
