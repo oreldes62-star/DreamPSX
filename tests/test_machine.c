@@ -317,6 +317,34 @@ int main(void)
     psx_irq_write_mask(&machine.irq, 0u);
     psx_machine_refresh_interrupts(&machine);
 
+    /* A synchronous overflow immediately after a delay-slot LW must
+     * retire that load, report EPC at the branch target, and clear Cause.BD.
+     */
+    assert(psx_memory_write32(&machine.memory, 0x310u, 0xfacec0deu));
+    assert(psx_memory_write32(&machine.memory, 0x1e0u, 0x10000001u)); /* BEQ zero,zero,+1 */
+    assert(psx_memory_write32(&machine.memory, 0x1e4u, 0x8d280000u)); /* LW t0,0(t1), delay slot */
+    assert(psx_memory_write32(&machine.memory, 0x1e8u, 0x21280001u)); /* ADDI t0,t1,1 */
+    psx_cpu_write_gpr(&machine.cpu, 8u, 0x55555555u);
+    psx_cpu_write_gpr(&machine.cpu, 9u, 0x310u);
+    machine.cpu.pc = 0x1e0u;
+    machine.cpu.next_pc = 0x1e4u;
+    machine.cpu.delay_slot_pending = false;
+    machine.cpu.load_delay_pending = false;
+    psx_cpu_write_gpr(&machine.cpu, 9u, 0x7fffffffu);
+    machine.cop0_status = 0u;
+    assert(psx_machine_step(&machine)); /* branch */
+    assert(psx_machine_step(&machine)); /* delay-slot load */
+    assert(machine.cpu.load_delay_pending);
+    assert(psx_cpu_read_gpr(&machine.cpu, 8u) == 0x55555555u);
+    assert(psx_machine_step(&machine)); /* target ADDI overflows */
+    assert(psx_cpu_read_gpr(&machine.cpu, 8u) == 0xfacec0deu);
+    assert(!machine.cpu.load_delay_pending);
+    assert(machine.cop0_epc == 0x1e8u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_BD) == 0u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_EXCCODE) ==
+           ((uint32_t)PSX_EXCEPTION_OVERFLOW <<
+            PSX_COP0_CAUSE_EXCCODE_SHIFT));
+
     /* Halfword loads/stores and word stores report alignment faults with
      * the original effective address in BadVAddr.
      */
