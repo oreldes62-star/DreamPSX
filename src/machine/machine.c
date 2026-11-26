@@ -55,6 +55,7 @@ void psx_machine_raise_exception(PsxMachine *machine, PsxExceptionCode code,
                           machine->cpu.load_delay_register,
                           machine->cpu.load_delay_value);
         machine->cpu.load_delay_pending = false;
+        machine->cpu.load_delay_mergeable = false;
     }
 
     machine->cop0_badvaddr = badvaddr;
