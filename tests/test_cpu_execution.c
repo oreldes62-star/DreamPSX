@@ -814,6 +814,19 @@ int main(void)
     assert(((machine.cop0_cause >> 2u) & 31u) ==
            PSX_EXCEPTION_RESERVED_INSTRUCTION);
 
+    /* A valid COP2 command also requires Status.CU2. */
+    machine.cop0_status = 0u;
+    machine.cop0_cause = 0u;
+    machine.cpu.delay_slot_pending = false;
+    machine.cpu.load_delay_pending = false;
+    put_word(ram, 0x538u, 0x4b400006u); /* COP2 NCLIP with CU2 disabled */
+    machine.cpu.pc = 0x538u;
+    machine.cpu.next_pc = 0x53cu;
+    assert(psx_machine_step(&machine));
+    assert(machine.cop0_epc == 0x538u);
+    assert(((machine.cop0_cause >> 2u) & 31u) ==
+           PSX_EXCEPTION_COPROCESSOR_UNUSABLE);
+
     free(bios); free(ram);
     puts("DreamPSX R3000A execution tests: OK");
     return 0;
