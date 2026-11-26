@@ -33,6 +33,7 @@ Experimental project. The repository includes a host-side CMake build configurat
 - [Host build and automated test foundation milestone 3.8](docs/HOST-BUILD-MILESTONE-3.8.md)
 - [R3000A REGIMM branch instructions milestone 3.9](docs/R3000A-REGIMM-BRANCHES-MILESTONE-3.9.md)
 - [R3000A branch encoding validation milestone 3.10](docs/R3000A-BRANCH-ENCODING-MILESTONE-3.10.md)
+- [R3000A REGIMM link-register aliasing milestone 3.11](docs/R3000A-REGIMM-LINK-ALIAS-MILESTONE-3.11.md)
 
 ## Target
 Sega Dreamcast with 16 MiB RAM. Long-term target: CDI test build for Flycast, then GDEMU.
