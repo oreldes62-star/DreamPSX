@@ -332,14 +332,15 @@ static void gte_execute_rtps(PsxGte *gte, uint32_t instruction)
         }
         shifted[i] = gte_shift_mac(mac[i], shift);
         gte->data[25u + i] = (uint32_t)shifted[i];
-        ir[i] = gte_saturate_ir(shifted[i], i, false, &flags);
         if (i == 2u) {
+            bool lm = (instruction & (1u << 10u)) != 0u;
+            int64_t stored = shifted[i];
             /* FLAG.22 checks MAC3>>12 as if lm=0, independently of sf. */
             (void)gte_saturate_ir(gte_shift_mac(mac[i], 12u), 2u,
                                   false, &flags);
-            ir[i] = gte_saturate_ir(shifted[i], 2u,
-                                    (instruction & (1u << 10u)) != 0u,
-                                    &flags);
+            if (stored > 32767) stored = 32767;
+            if (stored < (lm ? 0 : -32768)) stored = lm ? 0 : -32768;
+            ir[i] = (int32_t)stored;
         } else {
             ir[i] = gte_saturate_ir(shifted[i], i,
                                     (instruction & (1u << 10u)) != 0u,
@@ -349,7 +350,7 @@ static void gte_execute_rtps(PsxGte *gte, uint32_t instruction)
     }
 
     /* SZ3 uses MAC3>>12 when sf=0 and MAC3 directly when sf=1. */
-    sz = (uint32_t)gte_shift_mac(mac[2], 12u - shift);
+    sz = (uint32_t)gte_shift_mac(mac[2], 12u);
     if ((int64_t)sz > 0xffffu) {
         flags |= 1u << 18u;
         sz = 0xffffu;
