@@ -160,6 +160,17 @@ int main(void)
     assert((value & (1u << 15)) != 0u);
     assert((value & (1u << 31)) != 0u);
 
+    /* Mirroring the extreme triangle reverses its winding and must report
+     * positive MAC0 overflow instead of negative overflow. */
+    assert(psx_gte_write_data(&gte, 12u, 0x7fff7fffu));
+    assert(psx_gte_write_data(&gte, 13u, 0x7fff8000u));
+    assert(psx_gte_write_data(&gte, 14u, 0x80008000u));
+    assert(psx_gte_execute(&gte, 0x4b400006u));
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 16u)) != 0u);
+    assert((value & (1u << 15u)) == 0u);
+    assert((value & (1u << 31u)) != 0u);
+
     /* RTPS: identity projection, screen offsets and SZ FIFO output. */
     psx_gte_reset(&gte);
     assert(psx_gte_write_control(&gte, 0u, 0x00001000u));
