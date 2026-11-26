@@ -51,6 +51,17 @@ int main(void)
     assert(psx_bus_read32(&bus, 0x1f801814u, &word));
     assert(word == 0x14802000u);
 
+    /* GP0 A0 upload and C0 readback are exposed through GP0/GPUREAD MMIO. */
+    assert(psx_bus_write32(&bus, 0xbf801810u, 0xa0000000u));
+    assert(psx_bus_write32(&bus, 0xbf801810u, 8u | (9u << 16u)));
+    assert(psx_bus_write32(&bus, 0xbf801810u, 2u | (1u << 16u)));
+    assert(psx_bus_write32(&bus, 0xbf801810u, 0x56781234u));
+    assert(psx_bus_write32(&bus, 0x1f801810u, 0xc0000000u));
+    assert(psx_bus_write32(&bus, 0x1f801810u, 8u | (9u << 16u)));
+    assert(psx_bus_write32(&bus, 0x1f801810u, 2u | (1u << 16u)));
+    assert(psx_bus_read32(&bus, 0xbf801810u, &word));
+    assert(word == 0x56781234u);
+
     /* Unknown hardware registers and invalid alignments are rejected. */
     assert(!psx_bus_read32(&bus, 0x1f801080u, &word));
     assert(!psx_bus_read16(&bus, 0x00000101u, &half));
