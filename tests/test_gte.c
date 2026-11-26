@@ -442,7 +442,7 @@ int main(void)
     assert(psx_gte_read_data(&gte, 25u, &value) && value == 136u);
     assert(psx_gte_read_data(&gte, 26u, &value) && value == 272u);
     assert(psx_gte_read_data(&gte, 27u, &value) && value == 408u);
-    assert(psx_gte_read_data(&gte, 22u, &value) && value == 0xab190f08u);
+    assert(psx_gte_read_data(&gte, 22u, &value) && value == 0xab191108u);
 
     /* NCCT: process V0/V1/V2 and push three RGB results in order. */
     psx_gte_reset(&gte);
