@@ -679,8 +679,11 @@ int main(void)
     machine.cpu.delay_slot_pending = false;
     machine.cpu.load_delay_pending = false;
     assert(psx_machine_step(&machine));
-    assert(psx_gte_read_data(&machine.gte, 24u, &value));
-    assert(value == 10000u);
+    {
+        uint32_t nclip_value = 0u;
+        assert(psx_gte_read_data(&machine.gte, 24u, &nclip_value));
+        assert(nclip_value == 10000u);
+    }
 
     /* COP2 is unavailable when Status.CU2 is clear. */
     machine.cop0_status = 0u;
