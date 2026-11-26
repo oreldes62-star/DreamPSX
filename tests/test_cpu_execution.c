@@ -732,6 +732,25 @@ int main(void)
     assert(machine.cop0_epc == 0x55cu);
     assert(((machine.cop0_cause >> 2u) & 31u) == PSX_EXCEPTION_COPROCESSOR_UNUSABLE);
 
+    /* MTC2/MFC2 must preserve the SXYP alias semantics through the CPU. */
+    machine.cop0_status = 0x40000000u;
+    psx_cpu_write_gpr(&machine.cpu, 8u, 0x12345678u);
+    psx_cpu_write_gpr(&machine.cpu, 9u, 0u);
+    put_word(ram, 0x560u, (0x12u << 26) | (4u << 21) | (8u << 16) | (15u << 11)); /* MTC2 t0,SXYP */
+    put_word(ram, 0x564u, (0x12u << 26) | (9u << 16) | (15u << 11)); /* MFC2 t1,SXYP */
+    put_word(ram, 0x568u, 0u);
+    machine.cpu.pc = 0x560u;
+    machine.cpu.next_pc = 0x564u;
+    machine.cpu.delay_slot_pending = false;
+    machine.cpu.load_delay_pending = false;
+    assert(psx_machine_step(&machine));
+    assert(psx_gte_read_data(&machine.gte, 14u, &value));
+    assert(value == 0x12345678u);
+    assert(psx_machine_step(&machine));
+    assert(psx_cpu_read_gpr(&machine.cpu, 9u) == 0u); /* MFC2 transfer delay */
+    assert(psx_machine_step(&machine));
+    assert(psx_cpu_read_gpr(&machine.cpu, 9u) == 0x12345678u);
+
     /* COP2 NCLIP command executes through the CPU command path. */
     machine.cop0_status = 0x40000000u;
     assert(psx_gte_write_data(&machine.gte, 12u, 0x00000000u));
