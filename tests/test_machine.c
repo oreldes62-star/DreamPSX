@@ -188,6 +188,65 @@ int main(void)
     assert(!machine.cpu.load_delay_pending);
     assert(machine.cop0_epc == 0x1a4u);
 
+    /* Halfword loads/stores and word stores report alignment faults with
+     * the original effective address in BadVAddr.
+     */
+    assert(psx_memory_write32(&machine.memory, 0x340u,
+                              (0x21u << 26) | (9u << 21) | (8u << 16)));
+    machine.cpu.pc = 0x340u;
+    machine.cpu.next_pc = 0x344u;
+    machine.cpu.delay_slot_pending = false;
+    psx_cpu_write_gpr(&machine.cpu, 9u, 0x401u);
+    machine.cop0_status = 0u;
+    assert(psx_machine_step(&machine));
+    assert(machine.cop0_badvaddr == 0x401u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_EXCCODE) ==
+           ((uint32_t)PSX_EXCEPTION_ADDRESS_LOAD <<
+            PSX_COP0_CAUSE_EXCCODE_SHIFT));
+
+    assert(psx_memory_write32(&machine.memory, 0x344u,
+                              (0x29u << 26) | (9u << 21) | (8u << 16)));
+    machine.cpu.pc = 0x344u;
+    machine.cpu.next_pc = 0x348u;
+    machine.cpu.delay_slot_pending = false;
+    psx_cpu_write_gpr(&machine.cpu, 9u, 0x401u);
+    psx_cpu_write_gpr(&machine.cpu, 8u, 0xbeefu);
+    machine.cop0_status = 0u;
+    assert(psx_machine_step(&machine));
+    assert(machine.cop0_badvaddr == 0x401u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_EXCCODE) ==
+           ((uint32_t)PSX_EXCEPTION_ADDRESS_STORE <<
+            PSX_COP0_CAUSE_EXCCODE_SHIFT));
+
+    assert(psx_memory_write32(&machine.memory, 0x348u,
+                              (0x2bu << 26) | (9u << 21) | (8u << 16)));
+    machine.cpu.pc = 0x348u;
+    machine.cpu.next_pc = 0x34cu;
+    machine.cpu.delay_slot_pending = false;
+    psx_cpu_write_gpr(&machine.cpu, 9u, 0x402u);
+    machine.cop0_status = 0u;
+    assert(psx_machine_step(&machine));
+    assert(machine.cop0_badvaddr == 0x402u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_EXCCODE) ==
+           ((uint32_t)PSX_EXCEPTION_ADDRESS_STORE <<
+            PSX_COP0_CAUSE_EXCCODE_SHIFT));
+
+    /* An aligned store to an unmapped device region is a Bus Data exception,
+     * not an Address Error Store.
+     */
+    assert(psx_memory_write32(&machine.memory, 0x34cu,
+                              (0x2bu << 26) | (9u << 21) | (8u << 16)));
+    machine.cpu.pc = 0x34cu;
+    machine.cpu.next_pc = 0x350u;
+    machine.cpu.delay_slot_pending = false;
+    psx_cpu_write_gpr(&machine.cpu, 9u, 0x1f000000u);
+    machine.cop0_status = 0u;
+    assert(psx_machine_step(&machine));
+    assert(machine.cop0_badvaddr == 0x1f000000u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_EXCCODE) ==
+           ((uint32_t)PSX_EXCEPTION_BUS_DATA <<
+            PSX_COP0_CAUSE_EXCCODE_SHIFT));
+
     free(bios);
     free(ram);
     puts("DreamPSX machine-state tests: OK");
