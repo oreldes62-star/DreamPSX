@@ -6,14 +6,14 @@ The CPU decoder now supports the four classic R3000A REGIMM branch forms:
 
 - `BLTZ` — branch when the signed source register is negative.
 - `BGEZ` — branch when the signed source register is non-negative.
-- `BLTZAL` — branch when negative and write `PC + 8` to `$ra`.
-- `BGEZAL` — branch when non-negative and write `PC + 8` to `$ra`.
+- `BLTZAL` — branch when negative and write `PC + 8` to `$ra` regardless of whether the branch is taken.
+- `BGEZAL` — branch when non-negative and write `PC + 8` to `$ra` regardless of whether the branch is taken.
 
 The branch delay slot is tracked for taken and not-taken REGIMM branches. A REGIMM control transfer attempted from a delay slot is classified as unpredictable, consistently with the existing control-transfer guard. Unsupported REGIMM sub-op encodings return Reserved Instruction.
 
 ## Regression coverage added
 
-The CPU execution test source now checks a taken BLTZ, a not-taken BGEZ with its delay slot, BLTZAL link behavior, and rejection of an unsupported REGIMM sub-op.
+The CPU execution test source checks taken and not-taken branches, both link variants on taken and not-taken conditions, delay-slot behavior, and rejection of an unsupported REGIMM sub-op. A follow-up audit corrected the link behavior: the R3000A writes `$ra` for BLTZAL/BGEZAL even when the condition is false.
 
 ## Validation status
 
