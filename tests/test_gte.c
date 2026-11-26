@@ -730,6 +730,7 @@ int main(void)
     assert(psx_gte_write_control(&gte, 2u, 0x1000u));
     assert(psx_gte_write_control(&gte, 4u, 0x1000u));
     assert(psx_gte_write_control(&gte, 24u, 0x7fffffffu)); /* OFX */
+    assert(psx_gte_write_control(&gte, 28u, 0x7fffffffu)); /* DQB: final MAC0 */
     assert(psx_gte_write_control(&gte, 26u, 0u)); /* H=0, quotient=0 */
     assert(psx_gte_write_data(&gte, 0u, 0u));
     assert(psx_gte_write_data(&gte, 1u, 1000u));
@@ -746,6 +747,7 @@ int main(void)
     assert(psx_gte_write_control(&gte, 2u, 0x1000u));
     assert(psx_gte_write_control(&gte, 4u, 0x1000u));
     assert(psx_gte_write_control(&gte, 24u, 0x80000000u)); /* OFX */
+    assert(psx_gte_write_control(&gte, 28u, 0x80000000u)); /* DQB: final MAC0 */
     assert(psx_gte_write_control(&gte, 26u, 0u)); /* H=0, quotient=0 */
     assert(psx_gte_write_data(&gte, 0u, 0u));
     assert(psx_gte_write_data(&gte, 1u, 1000u));
