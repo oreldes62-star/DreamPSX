@@ -25,7 +25,7 @@ The host GTE test target now includes:
 
 ## Validation status
 
-The RTPS implementation and test suite are being validated by GitHub Actions. The last confirmed successful run before the latest edge-case additions passed all 13 host test targets on commit `3c60f9d623155caa3634e2476b4c7d36c9976d13`.
+The host build and CTest suite passed on commit `bb4dbc85c16318774dbb71f1daaf340463a05c41`: 13/13 test targets passed, including the new sf=0 and negative-depth cases.
 
 This is host-side validation only. RTPS accuracy has not yet been compared exhaustively against physical PS1 hardware. No Dreamcast/KallistiOS build, BIOS boot, CDI image, Flycast gameplay or GDEMU test is claimed.
 
