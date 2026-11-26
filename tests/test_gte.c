@@ -395,6 +395,28 @@ int main(void)
     assert(psx_gte_read_data(&gte, 22u, &value) &&
            value == 0xab0c0804u); /* RGB=(4,8,12), CODE=AB */
 
+    /* NCCT: process V0/V1/V2 and push three RGB results in order. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 8u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 10u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 12u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 16u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 18u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 20u, 0x00001000u));
+    assert(psx_gte_write_data(&gte, 0u, 0x02000100u)); /* V0=(256,512,768) */
+    assert(psx_gte_write_data(&gte, 1u, 768u));
+    assert(psx_gte_write_data(&gte, 2u, 0x01000080u)); /* V1=(128,256,384) */
+    assert(psx_gte_write_data(&gte, 3u, 384u));
+    assert(psx_gte_write_data(&gte, 4u, 0x00800040u)); /* V2=(64,128,192) */
+    assert(psx_gte_write_data(&gte, 5u, 192u));
+    assert(psx_gte_write_data(&gte, 6u, 0xab404040u));
+    assert(psx_gte_execute(&gte, 0x4a08003fu)); /* NCCT, sf=1 */
+    assert(psx_gte_read_data(&gte, 20u, &value) && value == 0xab0c0804u);
+    assert(psx_gte_read_data(&gte, 21u, &value) && value == 0xab060402u);
+    assert(psx_gte_read_data(&gte, 22u, &value) && value == 0xab030201u);
+    assert(psx_gte_read_data(&gte, 0u, &value) && value == 0x02000100u);
+    assert(psx_gte_read_data(&gte, 1u, &value) && value == 768u);
+
     /* MVMVA: identity rotation, V0 plus a translation vector. */
     psx_gte_reset(&gte);
     assert(psx_gte_write_control(&gte, 0u, 0x00001000u)); /* RT11=4096 */
