@@ -287,7 +287,11 @@ int main(void)
     assert(psx_gte_read_data(&gte, 10u, &value) && value == (uint32_t)-2);
     assert(psx_gte_read_data(&gte, 11u, &value) && value == 1u);
 
-    /* OP sf=0 exposes the fixed-point cross-product before shifting. */
+    /* OP sf=0 exposes the fixed-point cross-product before shifting.
+     * Restore IR inputs because the preceding OP updated IR1-IR3. */
+    assert(psx_gte_write_data(&gte, 9u, 1u));
+    assert(psx_gte_write_data(&gte, 10u, 2u));
+    assert(psx_gte_write_data(&gte, 11u, 3u));
     assert(psx_gte_execute(&gte, 0x4a00000cu)); /* OP, sf=0 */
     assert(psx_gte_read_data(&gte, 25u, &value) && value == 4096u);
     assert(psx_gte_read_data(&gte, 26u, &value) && value == (uint32_t)-8192);
