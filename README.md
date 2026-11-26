@@ -58,6 +58,7 @@ Experimental project. The host-side CMake build and all 13 CTest targets passed 
 - [GTE NCCS normal color modulation milestone 3.33](docs/GTE-NCCS-MILESTONE-3.33.md)
 - [GTE NCCT triple normal-color milestone 3.34](docs/GTE-NCCT-MILESTONE-3.34.md)
 - [GTE NCT triple lighting milestone 3.35](docs/GTE-NCT-MILESTONE-3.35.md)
+- [GTE DPCS and INTPL interpolation milestone 3.36](docs/GTE-DPCS-INTPL-MILESTONE-3.36.md)
 
 ## Target
 Sega Dreamcast with 16 MiB RAM. Long-term target: CDI test build for Flycast, then GDEMU.
