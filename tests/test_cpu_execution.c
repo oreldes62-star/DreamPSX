@@ -842,6 +842,36 @@ int main(void)
     assert(machine.cop0_epc == 0x55cu);
     assert(((machine.cop0_cause >> 2u) & 31u) == PSX_EXCEPTION_COPROCESSOR_UNUSABLE);
 
+    /* CU2-unusable takes priority over alignment faults for LWC2/SWC2. */
+    machine.cop0_status = 0u;
+    machine.cop0_cause = 0u;
+    machine.cop0_badvaddr = 0xdeadbeefu;
+    machine.gte.data[0u] = 0x13579bdfu;
+    psx_cpu_write_gpr(&machine.cpu, 12u, 0x601u);
+    put_word(ram, 0x55cu, (0x32u << 26) | (12u << 21)); /* Misaligned LWC2 D0 */
+    machine.cpu.pc = 0x55cu;
+    machine.cpu.next_pc = 0x560u;
+    machine.cpu.delay_slot_pending = false;
+    machine.cpu.load_delay_pending = false;
+    assert(psx_machine_step(&machine));
+    assert(((machine.cop0_cause >> 2u) & 31u) ==
+           PSX_EXCEPTION_COPROCESSOR_UNUSABLE);
+    assert(machine.cop0_badvaddr == 0xdeadbeefu);
+    assert(machine.gte.data[0u] == 0x13579bdfu);
+
+    machine.cop0_cause = 0u;
+    psx_cpu_write_gpr(&machine.cpu, 12u, 0x603u);
+    put_word(ram, 0x560u, (0x3au << 26) | (12u << 21)); /* Misaligned SWC2 D0 */
+    machine.cpu.pc = 0x560u;
+    machine.cpu.next_pc = 0x564u;
+    machine.cpu.delay_slot_pending = false;
+    machine.cpu.load_delay_pending = false;
+    assert(psx_machine_step(&machine));
+    assert(((machine.cop0_cause >> 2u) & 31u) ==
+           PSX_EXCEPTION_COPROCESSOR_UNUSABLE);
+    assert(machine.cop0_badvaddr == 0xdeadbeefu);
+    assert(machine.gte.data[0u] == 0x13579bdfu);
+
     /* MTC2/MFC2 must preserve the SXYP alias semantics through the CPU. */
     uint32_t alias_value = 0u;
     machine.cop0_status = 0x40000000u;
