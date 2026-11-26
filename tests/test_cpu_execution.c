@@ -722,6 +722,40 @@ int main(void)
     assert(psx_machine_step(&machine));
     assert(machine.gte.control[31u] == 0xfffff000u);
 
+    /* MTC2 IRGB and MFC2 ORGB expose the packed color alias. */
+    machine.cop0_status = 0x40000000u;
+    machine.cpu.delay_slot_pending = false;
+    machine.cpu.load_delay_pending = false;
+    psx_cpu_write_gpr(&machine.cpu, 8u, 0x00007fffu);
+    psx_cpu_write_gpr(&machine.cpu, 9u, 0u);
+    put_word(ram, 0x56cu, (0x12u << 26) | (4u << 21) | (8u << 16) | (28u << 11)); /* MTC2 IRGB */
+    put_word(ram, 0x570u, (0x12u << 26) | (9u << 16) | (29u << 11)); /* MFC2 ORGB */
+    put_word(ram, 0x574u, 0u);
+    machine.cpu.pc = 0x56cu;
+    machine.cpu.next_pc = 0x570u;
+    assert(psx_machine_step(&machine));
+    assert(psx_machine_step(&machine));
+    assert(psx_cpu_read_gpr(&machine.cpu, 9u) == 0u);
+    assert(psx_machine_step(&machine));
+    assert(psx_cpu_read_gpr(&machine.cpu, 9u) == 0x7fffu);
+
+    /* MFC2 LZCR returns the leading-sign count produced by MTC2 LZCS. */
+    psx_cpu_write_gpr(&machine.cpu, 8u, 0x00ffffffu);
+    psx_cpu_write_gpr(&machine.cpu, 9u, 0u);
+    put_word(ram, 0x578u, (0x12u << 26) | (4u << 21) | (8u << 16) | (30u << 11)); /* MTC2 LZCS */
+    put_word(ram, 0x57cu, (0x12u << 26) | (9u << 16) | (31u << 11)); /* MFC2 LZCR */
+    put_word(ram, 0x580u, 0u);
+    machine.cpu.pc = 0x578u;
+    machine.cpu.next_pc = 0x57cu;
+    machine.cpu.delay_slot_pending = false;
+    machine.cpu.load_delay_pending = false;
+    assert(psx_machine_step(&machine));
+    assert(machine.gte.data[31u] == 8u);
+    assert(psx_machine_step(&machine));
+    assert(psx_cpu_read_gpr(&machine.cpu, 9u) == 0u);
+    assert(psx_machine_step(&machine));
+    assert(psx_cpu_read_gpr(&machine.cpu, 9u) == 8u);
+
     /* LWC2/SWC2 alignment faults must report the effective address. */
     machine.cop0_status = 0x40000000u;
     machine.cop0_cause = 0u;
