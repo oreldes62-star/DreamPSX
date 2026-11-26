@@ -1376,6 +1376,25 @@ int main(void)
     assert((value & (1u << 22u)) != 0u); /* IR3 saturation */
     assert((value & 0x80000000u) != 0u);
 
+    /* Signed IR lower boundary is inclusive at -32768 when lm=0. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 0x00001000u));
+    assert(psx_gte_write_data(&gte, 0u, 0xffff8000u)); /* V0.x=-32768 */
+    assert(psx_gte_execute(&gte, 0x48006012u)); /* sf=0, lm=0 */
+    assert(psx_gte_read_data(&gte, 9u, &value) && value == 0xffff8000u);
+    assert(psx_gte_read_control(&gte, 31u, &value) && value == 0u);
+
+    /* One unit below -32768 clamps and raises IR1 saturation. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 5u, 0xffffffffu)); /* TRX=-1 */
+    assert(psx_gte_write_data(&gte, 0u, 0xffff8000u));
+    assert(psx_gte_execute(&gte, 0x48004012u)); /* sf=0, RT, V0, TR, lm=0 */
+    assert(psx_gte_read_data(&gte, 9u, &value) && value == 0xffff8000u);
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 24u)) != 0u);
+    assert((value & 0x80000000u) != 0u);
+
     /* Independent PCSX-Redux reference: RT rotation plus TR translation. */
     psx_gte_reset(&gte);
     assert(psx_gte_write_control(&gte, 0u, 0xf0000000u));
