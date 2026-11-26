@@ -675,6 +675,63 @@ static void gte_execute_dcpl(PsxGte *gte, uint32_t instruction)
     gte->control[31] = flags;
 }
 
+static void gte_execute_cdp(PsxGte *gte, uint32_t instruction)
+{
+    unsigned shift = (instruction & (1u << 19u)) ? 12u : 0u;
+    bool lm = (instruction & (1u << 10u)) != 0u;
+    int32_t input_ir[3], color_ir[3];
+    int64_t mac[3];
+    const uint32_t channels[3] = {
+        gte->data[6] & 0xffu,
+        (gte->data[6] >> 8u) & 0xffu,
+        (gte->data[6] >> 16u) & 0xffu
+    };
+    int32_t ir0 = gte_signed16(gte->data[8]);
+    uint32_t flags = 0u;
+    uint32_t rgb = gte->data[6] & 0xff000000u;
+    unsigned i, j;
+
+    input_ir[0] = gte_signed16(gte->data[9]);
+    input_ir[1] = gte_signed16(gte->data[10]);
+    input_ir[2] = gte_signed16(gte->data[11]);
+
+    /* BK + color matrix * IR. */
+    for (i = 0u; i < 3u; ++i) {
+        int64_t accumulator = (int64_t)(int32_t)gte->control[13u + i] * 4096;
+        gte_check_mac_overflow(accumulator, i, &flags);
+        for (j = 0u; j < 3u; ++j) {
+            accumulator += (int64_t)gte_matrix_element(gte, 2u, i, j) *
+                           input_ir[j];
+            gte_check_mac_overflow(accumulator, i, &flags);
+        }
+        accumulator = gte_shift_mac(accumulator, shift);
+        color_ir[i] = gte_saturate_ir(accumulator, i, lm, &flags);
+    }
+
+    /* RGBC modulation followed by far-color interpolation. */
+    for (i = 0u; i < 3u; ++i) {
+        int64_t base = (int64_t)channels[i] * color_ir[i] * 16;
+        int64_t far = (int64_t)(int32_t)gte->control[21u + i] * 4096;
+        int32_t difference;
+        gte_check_mac_overflow(base, i, &flags);
+        difference = gte_saturate_ir(
+            gte_shift_mac(far - base, shift), i, false, &flags);
+        mac[i] = base + (int64_t)ir0 * difference;
+        gte_check_mac_overflow(mac[i], i, &flags);
+        mac[i] = gte_shift_mac(mac[i], shift);
+        gte->data[25u + i] = (uint32_t)mac[i];
+        gte->data[9u + i] = (uint32_t)gte_saturate_ir(
+            mac[i], i, lm, &flags);
+    }
+
+    rgb |= gte_color_channel(mac[0]) |
+           (gte_color_channel(mac[1]) << 8u) |
+           (gte_color_channel(mac[2]) << 16u);
+    gte_push_rgb(gte, rgb);
+    if (flags & 0x7f87e000u) flags |= 0x80000000u;
+    gte->control[31] = flags;
+}
+
 static void gte_execute_ncds(PsxGte *gte, uint32_t instruction)
 {
     unsigned shift = (instruction & (1u << 19u)) ? 12u : 0u;
@@ -989,6 +1046,10 @@ bool psx_gte_execute(PsxGte *gte, uint32_t instruction)
     }
     if (command == 0x29u) {
         gte_execute_dcpl(gte, instruction);
+        return true;
+    }
+    if (command == 0x14u) {
+        gte_execute_cdp(gte, instruction);
         return true;
     }
     if (command == 0x13u) {
