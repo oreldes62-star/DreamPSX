@@ -58,9 +58,10 @@ bool psx_cpu_fetch_instruction(const PsxCpu *cpu, const PsxBus *bus,
     return psx_bus_read32(bus, cpu->pc, instruction);
 }
 
-PsxCpuStepResult psx_cpu_step_result_with_cop0(PsxCpu *cpu, PsxBus *bus,
+PsxCpuStepResult psx_cpu_step_result_with_cop0_gte(PsxCpu *cpu, PsxBus *bus,
                             uint32_t *cop0_status, uint32_t *cop0_cause,
-                            uint32_t *cop0_epc, uint32_t *cop0_badvaddr)
+                            uint32_t *cop0_epc, uint32_t *cop0_badvaddr,
+                            PsxGte *gte)
 {
     uint32_t instruction, old_pc, sequential_pc, sequential_next;
     unsigned op, rs, rt, rd, shamt, funct;
@@ -227,6 +228,42 @@ PsxCpuStepResult psx_cpu_step_result_with_cop0(PsxCpu *cpu, PsxBus *bus,
         default: return PSX_CPU_STEP_RESERVED_INSTRUCTION;
         }
         break;
+    case 0x12u: { /* COP2 register transfers; command execution follows later. */
+        unsigned cop_rs = rs;
+        uint32_t cop_value;
+        if (!cop0_status || ((*cop0_status & 0x40000000u) == 0u) || !gte)
+            return PSX_CPU_STEP_COPROCESSOR_UNUSABLE;
+        if ((instruction & 0x7ffu) != 0u)
+            return PSX_CPU_STEP_RESERVED_INSTRUCTION;
+        switch (cop_rs) {
+        case 0u: /* MFC2: delayed move from GTE data register. */
+            if (!psx_gte_read_data(gte, (uint8_t)rd, &cop_value))
+                return PSX_CPU_STEP_RESERVED_INSTRUCTION;
+            result = cop_value;
+            write_result = true;
+            is_load = true;
+            break;
+        case 2u: /* CFC2: delayed move from GTE control register. */
+            if (!psx_gte_read_control(gte, (uint8_t)rd, &cop_value))
+                return PSX_CPU_STEP_RESERVED_INSTRUCTION;
+            result = cop_value;
+            write_result = true;
+            is_load = true;
+            break;
+        case 4u: /* MTC2 */
+            if (!psx_gte_write_data(gte, (uint8_t)rd, b))
+                return PSX_CPU_STEP_RESERVED_INSTRUCTION;
+            break;
+        case 6u: /* CTC2 */
+            if (!psx_gte_write_control(gte, (uint8_t)rd, b))
+                return PSX_CPU_STEP_RESERVED_INSTRUCTION;
+            break;
+        default:
+            /* COP2 command encodings are deliberately not executed yet. */
+            return PSX_CPU_STEP_RESERVED_INSTRUCTION;
+        }
+        break;
+    }
     case 0x10u: { /* COP0: MFC0, MTC0 and RFE */
         unsigned cop_rs = rs;
         uint32_t cp_value;
@@ -386,6 +423,15 @@ PsxCpuStepResult psx_cpu_step_result_with_cop0(PsxCpu *cpu, PsxBus *bus,
         default: result = (b & 0xffffff00u) | (result >> 24); break;
         }
         write_result = true; is_load = true; is_merge_load = true; break;
+    case 0x32u: /* LWC2 */
+        if (!cop0_status || ((*cop0_status & 0x40000000u) == 0u) || !gte)
+            return PSX_CPU_STEP_COPROCESSOR_UNUSABLE;
+        address = a + sign_extend_16(imm);
+        if ((address & 3u) != 0u) { cpu->fault_address = address; return PSX_CPU_STEP_ADDRESS_ERROR_LOAD; }
+        if (!psx_bus_read32(bus, address, &result)) { cpu->fault_address = address; return PSX_CPU_STEP_DATA_BUS_ERROR; }
+        if (!psx_gte_write_data(gte, (uint8_t)rt, result))
+            return PSX_CPU_STEP_RESERVED_INSTRUCTION;
+        break;
     case 0x28u: /* SB */
         address = a + sign_extend_16(imm);
         if (!psx_bus_write8(bus, address, (uint8_t)b)) { cpu->fault_address = address; return PSX_CPU_STEP_DATA_BUS_ERROR; }
@@ -418,6 +464,15 @@ PsxCpuStepResult psx_cpu_step_result_with_cop0(PsxCpu *cpu, PsxBus *bus,
         }
         break;
     }
+    case 0x3au: /* SWC2 */
+        if (!cop0_status || ((*cop0_status & 0x40000000u) == 0u) || !gte)
+            return PSX_CPU_STEP_COPROCESSOR_UNUSABLE;
+        address = a + sign_extend_16(imm);
+        if ((address & 3u) != 0u) { cpu->fault_address = address; return PSX_CPU_STEP_ADDRESS_ERROR_STORE; }
+        if (!psx_gte_read_data(gte, (uint8_t)rt, &result))
+            return PSX_CPU_STEP_RESERVED_INSTRUCTION;
+        if (!psx_bus_write32(bus, address, result)) { cpu->fault_address = address; return PSX_CPU_STEP_DATA_BUS_ERROR; }
+        break;
     case 0x2bu: /* SW */
         address = a + sign_extend_16(imm);
         if ((address & 3u) != 0u) { cpu->fault_address = address; return PSX_CPU_STEP_ADDRESS_ERROR_STORE; }
@@ -468,6 +523,14 @@ PsxCpuStepResult psx_cpu_step_result_with_cop0(PsxCpu *cpu, PsxBus *bus,
     }
     cpu->gpr[0] = 0u;
     return PSX_CPU_STEP_OK;
+}
+
+PsxCpuStepResult psx_cpu_step_result_with_cop0(PsxCpu *cpu, PsxBus *bus,
+                            uint32_t *status, uint32_t *cause,
+                            uint32_t *epc, uint32_t *badvaddr)
+{
+    return psx_cpu_step_result_with_cop0_gte(cpu, bus, status, cause,
+                                              epc, badvaddr, NULL);
 }
 
 bool psx_cpu_step_with_cop0(PsxCpu *cpu, PsxBus *bus,
