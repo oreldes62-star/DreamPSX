@@ -91,10 +91,10 @@ bool psx_machine_step(PsxMachine *machine)
         PsxCpu *cpu = &machine->cpu;
         bool in_delay_slot = cpu->delay_slot_pending;
         uint32_t branch_pc = cpu->delay_branch_pc;
-        PsxCpuStepResult result = psx_cpu_step_result_with_cop0(
+        PsxCpuStepResult result = psx_cpu_step_result_with_cop0_gte(
             cpu, &machine->bus, &machine->cop0_status,
             &machine->cop0_cause, &machine->cop0_epc,
-            &machine->cop0_badvaddr);
+            &machine->cop0_badvaddr, &machine->gte);
 
         if (result == PSX_CPU_STEP_OK) return true;
 
