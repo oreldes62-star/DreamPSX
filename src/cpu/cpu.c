@@ -128,6 +128,9 @@ PsxCpuStepResult psx_cpu_step_result_with_cop0(PsxCpu *cpu, PsxBus *bus,
         case 0x00u: case 0x02u: case 0x03u:
             if (rs != 0u) return PSX_CPU_STEP_RESERVED_INSTRUCTION;
             break;
+        case 0x04u: case 0x06u: case 0x07u:
+            if (shamt != 0u) return PSX_CPU_STEP_RESERVED_INSTRUCTION;
+            break;
         case 0x08u:
             if (rt != 0u || rd != 0u || shamt != 0u)
                 return PSX_CPU_STEP_RESERVED_INSTRUCTION;
@@ -161,6 +164,9 @@ PsxCpuStepResult psx_cpu_step_result_with_cop0(PsxCpu *cpu, PsxBus *bus,
         case 0x00u: result = b << shamt; write_result = true; break;
         case 0x02u: result = b >> shamt; write_result = true; break;
         case 0x03u: result = arithmetic_shift_right(b, shamt); write_result = true; break;
+        case 0x04u: result = b << (a & 31u); write_result = true; break; /* SLLV */
+        case 0x06u: result = b >> (a & 31u); write_result = true; break; /* SRLV */
+        case 0x07u: result = arithmetic_shift_right(b, a & 31u); write_result = true; break; /* SRAV */
         case 0x08u: control_transfer = true; branch = true; branch_target = a; break; /* JR */
         case 0x0cu: return PSX_CPU_STEP_SYSCALL;
         case 0x0du: return PSX_CPU_STEP_BREAKPOINT;
