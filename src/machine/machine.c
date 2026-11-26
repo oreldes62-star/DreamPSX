@@ -10,7 +10,7 @@ bool psx_machine_init(PsxMachine *machine,
                                      bios, bios_size)) return false;
     if (!psx_gpu_init(&machine->gpu)) return false;
     psx_machine_reset(machine);
-    if (!psx_bus_init(&machine->bus, &machine->memory, &machine->irq))
+    if (!psx_bus_init(&machine->bus, &machine->memory, &machine->irq,\n                     &machine->gpu))
         return false;
     return true;
 }
