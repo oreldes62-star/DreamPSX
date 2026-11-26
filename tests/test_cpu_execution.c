@@ -150,6 +150,25 @@ int main(void)
                &machine.cop0_badvaddr) ==
            PSX_CPU_STEP_RESERVED_INSTRUCTION);
 
+    /* BLEZ and BGTZ require the encoded rt field to be zero. */
+    put_word(ram, 0x468u, (0x06u << 26) | (8u << 21) | (1u << 16));
+    machine.cpu.pc = 0x468u; machine.cpu.next_pc = 0x46cu;
+    machine.cpu.delay_slot_pending = false;
+    assert(psx_cpu_step_result_with_cop0(
+               &machine.cpu, &machine.bus, &machine.cop0_status,
+               &machine.cop0_cause, &machine.cop0_epc,
+               &machine.cop0_badvaddr) ==
+           PSX_CPU_STEP_RESERVED_INSTRUCTION);
+
+    put_word(ram, 0x46cu, (0x07u << 26) | (8u << 21) | (2u << 16));
+    machine.cpu.pc = 0x46cu; machine.cpu.next_pc = 0x470u;
+    machine.cpu.delay_slot_pending = false;
+    assert(psx_cpu_step_result_with_cop0(
+               &machine.cpu, &machine.bus, &machine.cop0_status,
+               &machine.cop0_cause, &machine.cop0_epc,
+               &machine.cop0_badvaddr) ==
+           PSX_CPU_STEP_RESERVED_INSTRUCTION);
+
     /* COP0 transfers: MTC0 Status, MFC0 Status, EPC and RFE. */
     put_word(ram, 0x160u, 0x40886000u); /* MTC0 t0,Status */
     put_word(ram, 0x164u, 0x40096000u); /* MFC0 t1,Status */
