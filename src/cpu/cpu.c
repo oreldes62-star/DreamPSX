@@ -228,11 +228,16 @@ PsxCpuStepResult psx_cpu_step_result_with_cop0_gte(PsxCpu *cpu, PsxBus *bus,
         default: return PSX_CPU_STEP_RESERVED_INSTRUCTION;
         }
         break;
-    case 0x12u: { /* COP2 register transfers; command execution follows later. */
+    case 0x12u: { /* COP2 register transfers and GTE commands. */
         unsigned cop_rs = rs;
         uint32_t cop_value;
         if (!cop0_status || ((*cop0_status & 0x40000000u) == 0u) || !gte)
             return PSX_CPU_STEP_COPROCESSOR_UNUSABLE;
+        if ((cop_rs & 0x10u) != 0u) {
+            if (!psx_gte_execute(gte, instruction))
+                return PSX_CPU_STEP_RESERVED_INSTRUCTION;
+            break;
+        }
         if ((instruction & 0x7ffu) != 0u)
             return PSX_CPU_STEP_RESERVED_INSTRUCTION;
         switch (cop_rs) {
@@ -259,7 +264,7 @@ PsxCpuStepResult psx_cpu_step_result_with_cop0_gte(PsxCpu *cpu, PsxBus *bus,
                 return PSX_CPU_STEP_RESERVED_INSTRUCTION;
             break;
         default:
-            /* COP2 command encodings are deliberately not executed yet. */
+            /* Reserved COP2 transfer encoding. */
             return PSX_CPU_STEP_RESERVED_INSTRUCTION;
         }
         break;
