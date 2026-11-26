@@ -73,6 +73,50 @@ int main(void)
     assert(psx_cpu_read_gpr(&m.cpu, 14u) == 0xffffffffu);
     assert(psx_cpu_read_gpr(&m.cpu, 15u) == 5u);
 
+    /* Signed division truncates toward zero; remainder keeps dividend sign. */
+    psx_cpu_write_gpr(&m.cpu, 8u, 0xfffffff9u); /* -7 */
+    psx_cpu_write_gpr(&m.cpu, 9u, 3u);
+    execute_at(&m, ram, 0x144u, 0x0109001au); /* DIV t0,t1 */
+    execute_at(&m, ram, 0x148u, 0x00008012u); /* MFLO t8 */
+    execute_at(&m, ram, 0x14cu, 0x00008810u); /* MFHI t9 */
+    assert(psx_cpu_read_gpr(&m.cpu, 16u) == 0xfffffffeu); /* -2 */
+    assert(psx_cpu_read_gpr(&m.cpu, 17u) == 0xffffffffu); /* -1 */
+
+    /* R3000A signed overflow corner: INT32_MIN / -1 is defined here. */
+    psx_cpu_write_gpr(&m.cpu, 8u, 0x80000000u);
+    psx_cpu_write_gpr(&m.cpu, 9u, 0xffffffffu);
+    execute_at(&m, ram, 0x150u, 0x0109001au);
+    execute_at(&m, ram, 0x154u, 0x00008012u);
+    execute_at(&m, ram, 0x158u, 0x00008810u);
+    assert(psx_cpu_read_gpr(&m.cpu, 16u) == 0x80000000u);
+    assert(psx_cpu_read_gpr(&m.cpu, 17u) == 0u);
+
+    /* Unsigned division and multiplication preserve all 64 result bits. */
+    psx_cpu_write_gpr(&m.cpu, 8u, 0xffffffffu);
+    psx_cpu_write_gpr(&m.cpu, 9u, 3u);
+    execute_at(&m, ram, 0x15cu, 0x0109001bu); /* DIVU t0,t1 */
+    execute_at(&m, ram, 0x160u, 0x00008012u);
+    execute_at(&m, ram, 0x164u, 0x00008810u);
+    assert(psx_cpu_read_gpr(&m.cpu, 16u) == 0x55555555u);
+    assert(psx_cpu_read_gpr(&m.cpu, 17u) == 0u);
+
+    psx_cpu_write_gpr(&m.cpu, 8u, 0xffffffffu);
+    psx_cpu_write_gpr(&m.cpu, 9u, 0xffffffffu);
+    execute_at(&m, ram, 0x168u, 0x01090019u); /* MULTU t0,t1 */
+    execute_at(&m, ram, 0x16cu, 0x00008012u);
+    execute_at(&m, ram, 0x170u, 0x00008810u);
+    assert(psx_cpu_read_gpr(&m.cpu, 16u) == 1u);
+    assert(psx_cpu_read_gpr(&m.cpu, 17u) == 0xfffffffeu);
+
+    /* Unsigned division by zero returns all-ones quotient and dividend remainder. */
+    psx_cpu_write_gpr(&m.cpu, 8u, 0x87654321u);
+    psx_cpu_write_gpr(&m.cpu, 9u, 0u);
+    execute_at(&m, ram, 0x174u, 0x0109001bu); /* DIVU t0,t1 */
+    execute_at(&m, ram, 0x178u, 0x00008012u);
+    execute_at(&m, ram, 0x17cu, 0x00008810u);
+    assert(psx_cpu_read_gpr(&m.cpu, 16u) == 0xffffffffu);
+    assert(psx_cpu_read_gpr(&m.cpu, 17u) == 0x87654321u);
+
     free(bios);
     free(ram);
     return 0;
