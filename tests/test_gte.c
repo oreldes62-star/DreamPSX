@@ -177,6 +177,62 @@ int main(void)
     assert((int16_t)(value & 0xffffu) == 160);
     assert((int16_t)(value >> 16u) == 120);
 
+    /* RTPS IR0 lower boundary: zero is inclusive and does not saturate. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 2u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 4u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 7u, 4096u)); /* TRZ => SZ3=4096 */
+    assert(psx_gte_write_control(&gte, 26u, 0u)); /* H=0 => quotient=0 */
+    assert(psx_gte_write_control(&gte, 27u, 0)); /* DQA=0 */
+    assert(psx_gte_write_control(&gte, 28u, 0u)); /* DQB=0 */
+    assert(psx_gte_execute(&gte, 0x4a080001u));
+    assert(psx_gte_read_data(&gte, 8u, &value) && value == 0u);
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 12u)) == 0u);
+
+    /* RTPS IR0 clamps one unit below zero and sets FLAG.12. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 2u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 4u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 7u, 4096u));
+    assert(psx_gte_write_control(&gte, 26u, 0u));
+    assert(psx_gte_write_control(&gte, 27u, 0));
+    assert(psx_gte_write_control(&gte, 28u, 0xfffff000u)); /* DQB=-4096 */
+    assert(psx_gte_execute(&gte, 0x4a080001u));
+    assert(psx_gte_read_data(&gte, 8u, &value) && value == 0u);
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 12u)) != 0u);
+
+    /* RTPS IR0 upper boundary: 4096 is inclusive. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 2u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 4u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 7u, 4096u));
+    assert(psx_gte_write_control(&gte, 26u, 0u));
+    assert(psx_gte_write_control(&gte, 27u, 0));
+    assert(psx_gte_write_control(&gte, 28u, 0x01000000u)); /* DQB=4096<<12 */
+    assert(psx_gte_execute(&gte, 0x4a080001u));
+    assert(psx_gte_read_data(&gte, 8u, &value) && value == 4096u);
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 12u)) == 0u);
+
+    /* RTPS IR0 clamps one unit above 4096 and sets FLAG.12. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 2u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 4u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 7u, 4096u));
+    assert(psx_gte_write_control(&gte, 26u, 0u));
+    assert(psx_gte_write_control(&gte, 27u, 0));
+    assert(psx_gte_write_control(&gte, 28u, 0x01001000u)); /* DQB=4097<<12 */
+    assert(psx_gte_execute(&gte, 0x4a080001u));
+    assert(psx_gte_read_data(&gte, 8u, &value) && value == 4096u);
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 12u)) != 0u);
+
     /* RTPS projects an offset vertex using H/SZ3. */
     psx_gte_reset(&gte);
     assert(psx_gte_write_control(&gte, 0u, 0x00001000u));
