@@ -34,6 +34,6 @@ the commit. No full Dreamcast build or CDI image is claimed.
 
 ## Next step
 
-Add a matching interrupt-boundary regression, then create a minimal host build
-configuration so the CPU, bus, memory and machine tests can be compiled and run
-reproducibly.
+Create a minimal host build configuration so the CPU, bus, memory and machine
+tests can be compiled and run reproducibly. Then use compiler feedback to
+correct any integration issues before expanding the instruction set.
