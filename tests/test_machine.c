@@ -62,6 +62,11 @@ int main(void)
     assert(machine.cpu.next_pc == 0x80000084u);
     assert((machine.cop0_status & PSX_COP0_STATUS_IEC) == 0u);
     assert(!psx_machine_interrupt_eligible(&machine));
+    /* Clear the latched source before testing unrelated synchronous faults. */
+    psx_irq_set_line(&machine.irq, 2u, false);
+    psx_irq_write_stat(&machine.irq, (uint16_t)~(1u << 2));
+    psx_irq_write_mask(&machine.irq, 0u);
+    psx_machine_refresh_interrupts(&machine);
 
     /* Synchronous CPU faults are translated into architectural exceptions. */
     assert(psx_memory_write32(&machine.memory, 0x100u, 0x20280001u)); /* ADDI t0,t1,1 */
