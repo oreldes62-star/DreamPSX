@@ -601,6 +601,47 @@ int main(void)
     assert(psx_gte_read_control(&gte, 31u, &value));
     assert((value & (1u << 16u)) != 0u); /* positive MAC0 overflow */
 
+    /* The signed 44-bit MAC boundary is inclusive at both ends.
+     * TRX*4096 is 0x7ffffffff000; adding 4095 reaches the
+     * largest representable value without raising MAC1 overflow. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 1u)); /* RT[0][0] */
+    assert(psx_gte_write_control(&gte, 5u, 0x7fffffffu)); /* TRX */
+    assert(psx_gte_write_data(&gte, 0u, 4095u)); /* V0.x */
+    assert(psx_gte_execute(&gte, 0x4a000012u)); /* MVMVA, sf=0 */
+    assert(psx_gte_read_data(&gte, 25u, &value));
+    assert(value == 0x7fffffffu);
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 30u)) == 0u);
+
+    /* One additional MAC unit crosses the positive 44-bit boundary. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 1u));
+    assert(psx_gte_write_control(&gte, 5u, 0x7fffffffu));
+    assert(psx_gte_write_data(&gte, 0u, 4096u));
+    assert(psx_gte_execute(&gte, 0x4a000012u));
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 30u)) != 0u);
+
+    /* -2^43 is representable; subtracting one more unit is overflow. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 1u));
+    assert(psx_gte_write_control(&gte, 5u, 0x80000000u)); /* TRX */
+    assert(psx_gte_write_data(&gte, 0u, 0u));
+    assert(psx_gte_execute(&gte, 0x4a000012u));
+    assert(psx_gte_read_data(&gte, 25u, &value));
+    assert(value == 0x80000000u);
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 27u)) == 0u);
+
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 1u));
+    assert(psx_gte_write_control(&gte, 5u, 0x80000000u));
+    assert(psx_gte_write_data(&gte, 0u, 0xffffffffu)); /* V0.x=-1 */
+    assert(psx_gte_execute(&gte, 0x4a000012u));
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 27u)) != 0u);
+
     /* MVMVA checks positive and negative 44-bit MAC1 overflow. */
     psx_gte_reset(&gte);
     assert(psx_gte_write_control(&gte, 0u, 0x00007fffu)); /* RT[0][0] */
