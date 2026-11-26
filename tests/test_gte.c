@@ -303,6 +303,25 @@ int main(void)
     assert(psx_gte_read_control(&gte, 31u, &value));
     assert((value & (1u << 16u)) != 0u); /* positive MAC0 overflow */
 
+    /* MVMVA checks positive and negative 44-bit MAC1 overflow. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 0x00007fffu)); /* RT[0][0] */
+    assert(psx_gte_write_control(&gte, 5u, 0x7fffffffu)); /* TRX */
+    assert(psx_gte_write_data(&gte, 0u, 0x00007fffu)); /* V0.x=32767 */
+    assert(psx_gte_execute(&gte, 0x4a000012u)); /* MVMVA, sf=0 */
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 30u)) != 0u); /* MAC1 positive overflow */
+    assert((value & (1u << 31u)) != 0u); /* FLAG summary */
+
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 0x00007fffu));
+    assert(psx_gte_write_control(&gte, 5u, 0x80000000u)); /* TRX */
+    assert(psx_gte_write_data(&gte, 0u, 0x00008000u)); /* V0.x=-32768 */
+    assert(psx_gte_execute(&gte, 0x4a000012u));
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 27u)) != 0u); /* MAC1 negative overflow */
+    assert((value & (1u << 31u)) != 0u); /* FLAG summary */
+
     /* SQR squares IR1-IR3, with sf=1 shifting the MAC by 12. */
     psx_gte_reset(&gte);
     assert(psx_gte_write_data(&gte, 9u, 3u));
