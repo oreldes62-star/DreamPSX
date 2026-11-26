@@ -158,6 +158,34 @@ int main(void)
     assert(psx_gte_read_data(&gte, 14u, &value));
     assert((int16_t)(value & 0xffffu) == 1023);
 
+    /* UNR divide boundary: H just below 2*SZ is valid. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 2u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 4u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 7u, 101u)); /* SZ3=101 */
+    assert(psx_gte_write_control(&gte, 26u, 200u)); /* H=2*101-2 */
+    assert(psx_gte_write_data(&gte, 0u, 0u));
+    assert(psx_gte_write_data(&gte, 1u, 0u));
+    assert(psx_gte_execute(&gte, 0x4a080001u));
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 17u)) == 0u);
+    assert(psx_gte_read_data(&gte, 19u, &value) && value == 101u);
+
+    /* At H == 2*SZ the hardware reports divide overflow. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 2u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 4u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 7u, 100u)); /* SZ3=100 */
+    assert(psx_gte_write_control(&gte, 26u, 200u)); /* H=2*SZ */
+    assert(psx_gte_write_data(&gte, 0u, 0u));
+    assert(psx_gte_write_data(&gte, 1u, 0u));
+    assert(psx_gte_execute(&gte, 0x4a080001u));
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 17u)) != 0u);
+    assert((value & (1u << 31u)) != 0u);
+
     /* RTPS sf=0 preserves the unshifted MAC3 and derives SZ3 >> 12. */
     psx_gte_reset(&gte);
     assert(psx_gte_write_control(&gte, 0u, 0x00001000u));
