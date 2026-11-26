@@ -663,10 +663,10 @@ int main(void)
         machine.cpu.pc = 0x520u; machine.cpu.next_pc = 0x524u;
         assert(psx_machine_step(&machine));
         assert(psx_gte_read_data(&machine.gte, 7u, &value));
-        assert(value == 0x89abcdefu);
+        assert(value == 0xcdefu); /* OTZ is unsigned 16-bit. */
         assert(psx_machine_step(&machine));
         assert(psx_memory_read32(&machine.memory, 0x604u, &value));
-        assert(value == 0x89abcdefu);
+        assert(value == 0xcdefu);
 
         /* MFC2's one-instruction delay also applies when the consumer is
          * MTC2: the GTE receives the old GPR value, then the load retires. */
