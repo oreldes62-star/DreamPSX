@@ -188,6 +188,34 @@ int main(void)
     assert(!machine.cpu.load_delay_pending);
     assert(machine.cop0_epc == 0x1a4u);
 
+    /* A data-bus fault immediately after a load must retire the older
+     * load, while leaving the faulting load's destination untouched.
+     */
+    assert(psx_memory_write32(&machine.memory, 0x304u, 0x13579bdfu));
+    assert(psx_memory_write32(&machine.memory, 0x1b0u, 0x8d280000u)); /* LW t0,0(t1) */
+    assert(psx_memory_write32(&machine.memory, 0x1b4u, 0x8d6a0000u)); /* LW t2,0(t3) */
+    psx_cpu_write_gpr(&machine.cpu, 8u, 0x11111111u);
+    psx_cpu_write_gpr(&machine.cpu, 9u, 0x304u);
+    psx_cpu_write_gpr(&machine.cpu, 10u, 0x22222222u);
+    psx_cpu_write_gpr(&machine.cpu, 11u, 0x1f000000u);
+    machine.cpu.pc = 0x1b0u;
+    machine.cpu.next_pc = 0x1b4u;
+    machine.cpu.delay_slot_pending = false;
+    machine.cpu.load_delay_pending = false;
+    machine.cop0_status = 0u;
+    assert(psx_machine_step(&machine));
+    assert(machine.cpu.load_delay_pending);
+    assert(psx_cpu_read_gpr(&machine.cpu, 8u) == 0x11111111u);
+    assert(psx_machine_step(&machine));
+    assert(psx_cpu_read_gpr(&machine.cpu, 8u) == 0x13579bdfu);
+    assert(psx_cpu_read_gpr(&machine.cpu, 10u) == 0x22222222u);
+    assert(!machine.cpu.load_delay_pending);
+    assert(machine.cop0_epc == 0x1b4u);
+    assert(machine.cop0_badvaddr == 0x1f000000u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_EXCCODE) ==
+           ((uint32_t)PSX_EXCEPTION_BUS_DATA <<
+            PSX_COP0_CAUSE_EXCCODE_SHIFT));
+
     /* Halfword loads/stores and word stores report alignment faults with
      * the original effective address in BadVAddr.
      */
