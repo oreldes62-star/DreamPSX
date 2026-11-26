@@ -123,7 +123,10 @@ int main(void)
     put_word(ram, 0x460u, (0x01u << 26) | (8u << 21) | (2u << 16));
     machine.cpu.pc = 0x460u; machine.cpu.next_pc = 0x464u;
     machine.cpu.delay_slot_pending = false;
-    assert(psx_cpu_step_result(&machine.cpu, &machine.bus) ==
+    assert(psx_cpu_step_result_with_cop0(
+               &machine.cpu, &machine.bus, &machine.cop0_status,
+               &machine.cop0_cause, &machine.cop0_epc,
+               &machine.cop0_badvaddr) ==
            PSX_CPU_STEP_RESERVED_INSTRUCTION);
 
     /* COP0 transfers: MTC0 Status, MFC0 Status, EPC and RFE. */
