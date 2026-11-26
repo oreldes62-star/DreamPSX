@@ -918,6 +918,26 @@ int main(void)
     assert((value & (1u << 18u)) != 0u); /* earlier SZ saturation retained */
     assert((value & 0x80000000u) != 0u); /* summary retained */
 
+    /* NCT must retain saturation flags raised by V0 while processing
+     * later vertices whose lighting calculations do not saturate. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 8u, 0x00007fffu));
+    assert(psx_gte_write_control(&gte, 10u, 0x00007fffu));
+    assert(psx_gte_write_control(&gte, 12u, 0x00007fffu));
+    assert(psx_gte_write_control(&gte, 16u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 18u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 20u, 0x00001000u));
+    assert(psx_gte_write_data(&gte, 0u, 0x00007fffu)); /* V0 X=32767 */
+    assert(psx_gte_write_data(&gte, 1u, 0u));
+    assert(psx_gte_write_data(&gte, 2u, 0u));
+    assert(psx_gte_write_data(&gte, 3u, 0u));
+    assert(psx_gte_write_data(&gte, 4u, 0u));
+    assert(psx_gte_write_data(&gte, 5u, 0u));
+    assert(psx_gte_execute(&gte, 0x4a000420u)); /* NCT, sf=0, lm=1 */
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 24u)) != 0u); /* V0 IR1 saturation retained */
+    assert((value & 0x80000000u) != 0u); /* FLAG summary retained */
+
     assert(!psx_gte_read_data(0, 0u, &value));
     assert(!psx_gte_write_control(0, 0u, 0u));
 
