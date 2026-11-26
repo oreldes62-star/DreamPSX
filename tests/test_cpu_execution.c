@@ -822,6 +822,38 @@ int main(void)
     assert(psx_machine_step(&machine));
     assert(psx_cpu_read_gpr(&machine.cpu, 9u) == 0x12345678u);
 
+    /* ORGB and LZCR are read-only views: MTC2 writes are ignored. */
+    psx_cpu_write_gpr(&machine.cpu, 8u, 0u);
+    psx_cpu_write_gpr(&machine.cpu, 9u, 0u);
+    put_word(ram, 0x584u, (0x12u << 26) | (4u << 21) | (8u << 16) | (29u << 11)); /* MTC2 ORGB */
+    put_word(ram, 0x588u, (0x12u << 26) | (9u << 16) | (29u << 11)); /* MFC2 ORGB */
+    put_word(ram, 0x58cu, 0u);
+    machine.cpu.pc = 0x584u;
+    machine.cpu.next_pc = 0x588u;
+    machine.cpu.delay_slot_pending = false;
+    machine.cpu.load_delay_pending = false;
+    assert(psx_machine_step(&machine));
+    assert(psx_machine_step(&machine));
+    assert(psx_cpu_read_gpr(&machine.cpu, 9u) == 0u);
+    assert(psx_machine_step(&machine));
+    assert(psx_cpu_read_gpr(&machine.cpu, 9u) == 0x7fffu);
+
+    psx_cpu_write_gpr(&machine.cpu, 8u, 5u);
+    psx_cpu_write_gpr(&machine.cpu, 9u, 0u);
+    put_word(ram, 0x590u, (0x12u << 26) | (4u << 21) | (8u << 16) | (31u << 11)); /* MTC2 LZCR */
+    put_word(ram, 0x594u, (0x12u << 26) | (9u << 16) | (31u << 11)); /* MFC2 LZCR */
+    put_word(ram, 0x598u, 0u);
+    machine.cpu.pc = 0x590u;
+    machine.cpu.next_pc = 0x594u;
+    machine.cpu.delay_slot_pending = false;
+    machine.cpu.load_delay_pending = false;
+    assert(psx_machine_step(&machine));
+    assert(machine.gte.data[31u] == 8u);
+    assert(psx_machine_step(&machine));
+    assert(psx_cpu_read_gpr(&machine.cpu, 9u) == 0u);
+    assert(psx_machine_step(&machine));
+    assert(psx_cpu_read_gpr(&machine.cpu, 9u) == 8u);
+
     /* COP2 NCLIP command executes through the CPU command path. */
     machine.cop0_status = 0x40000000u;
     assert(psx_gte_write_data(&machine.gte, 12u, 0x00000000u));
