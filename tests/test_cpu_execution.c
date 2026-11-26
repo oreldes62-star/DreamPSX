@@ -526,9 +526,7 @@ int main(void)
         unsigned i;
         for (i = 0u; i < 4u; ++i) {
             uint32_t pc = 0x700u + i * 12u;
-            uint32_t value = 0u;
             unsigned funct;
-            const uint32_t *expected;
             for (funct = 0u; funct < 3u; ++funct) {
                 uint32_t instruction = (9u << 21) | (8u << 16) |
                                        (10u << 11) | (funct == 0u ? 0x04u :
@@ -542,12 +540,18 @@ int main(void)
                 machine.cpu.delay_slot_pending = false;
                 machine.cpu.load_delay_pending = false;
                 assert(psx_cpu_step(&machine.cpu, &machine.bus));
-                assert(psx_cpu_read_gpr(&machine.cpu, 10u) ==
-                       (funct == 0u ? sll_expected[i] :
-                       (funct == 1u ? srl_expected[i] : sra_expected[i])));
+                {
+                    uint32_t expected_value = (funct == 0u ? sll_expected[i] :
+                        (funct == 1u ? srl_expected[i] : sra_expected[i]));
+                    uint32_t actual_value = psx_cpu_read_gpr(&machine.cpu, 10u);
+                    if (actual_value != expected_value) {
+                        fprintf(stderr, "variable shift mismatch: amount=%u kind=%u got=%08x expected=%08x\\n",
+                                amounts[i], funct, actual_value, expected_value);
+                    }
+                    assert(actual_value == expected_value);
+                }
             }
         }
-        (void)amounts; (void)sll_expected; (void)srl_expected; (void)sra_expected;
     }
 
     /* Signed/unsigned byte and halfword loads, plus little-endian stores. */
