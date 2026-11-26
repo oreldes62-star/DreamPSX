@@ -8,7 +8,7 @@
 
 ## Validation status
 
-The regression is committed in `tests/test_machine.c`. The immediately preceding host revision passed all 12 CTest tests; the workflow for this new regression is running separately and must complete before this milestone can be marked fully validated.
+The regression is committed in `tests/test_machine.c`. GitHub Actions configured CMake, built the core and test executables, and passed all 12 CTest tests on commit `b6089eb2410f6d967dcea2c116bb295de5c69d39`. This confirms the host-side regression suite for that revision; it does not validate a Dreamcast/KallistiOS build.
 
 ## Next step
 
