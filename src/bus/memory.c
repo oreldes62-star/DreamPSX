@@ -26,7 +26,7 @@ static bool locate(const PsxMemory *memory, uint32_t address,
         address < PSX_SCRATCH_BASE + PSX_SCRATCH_SIZE) {
         const uint32_t offset = address - PSX_SCRATCH_BASE;
         if (read_ptr) *read_ptr = memory->scratchpad + offset;
-        if (write_ptr) *write_ptr = memory->scratchpad + offset;
+        if (write_ptr) *write_ptr = (uint8_t *)(void *)memory->scratchpad + offset;
         return true;
     }
     if (address >= PSX_BIOS_BASE &&
