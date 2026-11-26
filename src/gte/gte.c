@@ -123,3 +123,39 @@ bool psx_gte_write_control(PsxGte *gte, uint8_t index, uint32_t value)
         gte->control[index] |= 0x80000000u;
     return true;
 }
+
+static int32_t gte_signed16(uint32_t value)
+{
+    uint32_t low = value & 0xffffu;
+    return (low & 0x8000u) ? (int32_t)(low - 0x10000u) : (int32_t)low;
+}
+
+bool psx_gte_execute(PsxGte *gte, uint32_t instruction)
+{
+    uint32_t command;
+    int64_t x0, y0, x1, y1, x2, y2, area;
+    uint32_t flags = 0u;
+
+    if (!gte) return false;
+    command = instruction & 0x3fu;
+    if (command != 0x06u) return false; /* NCLIP */
+
+    /* SXY registers pack signed SX in bits 0..15 and SY in bits 16..31. */
+    x0 = gte_signed16(gte->data[12]);
+    y0 = gte_signed16(gte->data[12] >> 16);
+    x1 = gte_signed16(gte->data[13]);
+    y1 = gte_signed16(gte->data[13] >> 16);
+    x2 = gte_signed16(gte->data[14]);
+    y2 = gte_signed16(gte->data[14] >> 16);
+
+    /* Signed screen-space triangle area. Keep the intermediate wide so
+     * overflow is detected before MAC0 is reduced to its 32-bit register. */
+    area = x0 * (y1 - y2) + x1 * (y2 - y0) + x2 * (y0 - y1);
+    gte->data[24] = (uint32_t)area;
+
+    if (area > INT32_MAX) flags |= 1u << 16;
+    if (area < INT32_MIN) flags |= 1u << 15;
+    if (flags != 0u) flags |= 1u << 31;
+    gte->control[31] = flags;
+    return true;
+}
