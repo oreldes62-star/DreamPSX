@@ -645,15 +645,15 @@ int main(void)
         /* Control-register transfers share the same delayed MFC/CFC path. */
         psx_cpu_write_gpr(&machine.cpu, 8u, 0x12345678u);
         psx_cpu_write_gpr(&machine.cpu, 11u, 0u);
-        put_word(ram, 0x510u, (0x12u << 26) | (6u << 21) | (8u << 16) | (31u << 11)); /* CTC2 t0,C31 */
-        put_word(ram, 0x514u, (0x12u << 26) | (2u << 21) | (11u << 16) | (31u << 11)); /* CFC2 t3,C31 */
+        put_word(ram, 0x510u, (0x12u << 26) | (6u << 21) | (8u << 16) | (30u << 11)); /* CTC2 t0,C30 */
+        put_word(ram, 0x514u, (0x12u << 26) | (2u << 21) | (11u << 16) | (30u << 11)); /* CFC2 t3,C30 */
         put_word(ram, 0x518u, 0u);
         machine.cpu.pc = 0x510u; machine.cpu.next_pc = 0x514u;
         assert(psx_machine_step(&machine));
         assert(psx_machine_step(&machine));
         assert(psx_cpu_read_gpr(&machine.cpu, 11u) == 0u);
         assert(psx_machine_step(&machine));
-        assert(psx_cpu_read_gpr(&machine.cpu, 11u) == 0x12345000u);
+        assert(psx_cpu_read_gpr(&machine.cpu, 11u) == 0x12345678u);
 
         /* LWC2/SWC2 move GTE data registers through the main bus. */
         put_word(ram, 0x600u, 0x89abcdefu);
