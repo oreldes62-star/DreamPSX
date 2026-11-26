@@ -32,6 +32,7 @@ typedef struct {
     uint32_t load_delay_value;
     uint8_t load_delay_register;
     bool load_delay_pending;
+    bool load_delay_mergeable;
     bool delay_slot_pending;
     bool initialized;
 } PsxCpu;
