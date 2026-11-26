@@ -38,10 +38,11 @@ int main(void)
     assert(psx_cpu_step(&machine.cpu, &machine.bus));
     assert(psx_cpu_read_gpr(&machine.cpu, 10u) == 12u);
     assert(psx_cpu_step(&machine.cpu, &machine.bus));
-    assert(machine.cpu.pc == 0x110u && machine.cpu.next_pc == 0x114u);
+    /* Branch target is queued as next_pc while 0x110 is the delay slot. */
+    assert(machine.cpu.pc == 0x110u && machine.cpu.next_pc == 0x118u);
     assert(psx_cpu_step(&machine.cpu, &machine.bus));
     assert(psx_cpu_read_gpr(&machine.cpu, 11u) == 9u);
-    assert(machine.cpu.pc == 0x114u && machine.cpu.next_pc == 0x118u);
+    assert(machine.cpu.pc == 0x118u && machine.cpu.next_pc == 0x11cu);
     assert(psx_cpu_step(&machine.cpu, &machine.bus));
     assert(psx_cpu_read_gpr(&machine.cpu, 12u) == 11u);
     assert(psx_cpu_read_gpr(&machine.cpu, 11u) == 9u);
