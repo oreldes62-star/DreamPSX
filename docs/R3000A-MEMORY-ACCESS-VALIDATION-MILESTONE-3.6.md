@@ -15,6 +15,10 @@ access faults after the LWL/LWR implementation in milestone 3.5.
   effective address in BadVAddr.
 - The cases are exercised through `psx_machine_step()`, so the tests cover
   CPU result classification and machine-level COP0 exception dispatch.
+- `LB` and `LH` sign-extension are checked against negative byte/halfword
+  values; `LBU` and `LHU` are checked for zero-extension.
+- `SB`, `SH`, and `SW` are checked for the expected little-endian byte lanes
+  in RAM.
 
 ## Existing behavior reviewed
 
