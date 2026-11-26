@@ -355,6 +355,32 @@ int main(void)
     assert(psx_cpu_step(&machine.cpu, &machine.bus));
     assert(psx_cpu_read_gpr(&machine.cpu, 10u) == 42u);
 
+    /* A delayed LW to $ra followed by BGEZAL $ra must test the OLD
+     * negative $ra, remain not-taken, and still write PC+8 to $ra.
+     */
+    assert(psx_memory_write32(&machine.memory, 0x704u, 0x7fffffffu));
+    assert(psx_memory_write32(&machine.memory, 0x580u, 0x8d3f0000u)); /* LW ra,0(t1) */
+    assert(psx_memory_write32(&machine.memory, 0x584u,
+                              (0x01u << 26) | (31u << 21) | (17u << 16) | 1u));
+    assert(psx_memory_write32(&machine.memory, 0x588u, 0x24080001u)); /* delay slot */
+    assert(psx_memory_write32(&machine.memory, 0x58cu, 0x240a002au)); /* fall-through */
+    assert(psx_memory_write32(&machine.memory, 0x590u, 0x240b002bu)); /* branch target */
+    psx_cpu_write_gpr(&machine.cpu, 9u, 0x704u);
+    psx_cpu_write_gpr(&machine.cpu, 31u, 0xffffffffu);
+    machine.cpu.pc = 0x580u; machine.cpu.next_pc = 0x584u;
+    machine.cpu.delay_slot_pending = false;
+    machine.cpu.load_delay_pending = false;
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(machine.cpu.load_delay_pending);
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(machine.cpu.next_pc == 0x588u); /* old negative $ra: not taken */
+    assert(psx_cpu_read_gpr(&machine.cpu, 31u) == 0x58cu); /* link wins */
+    assert(!machine.cpu.load_delay_pending);
+    assert(machine.cpu.delay_slot_pending);
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(psx_cpu_read_gpr(&machine.cpu, 10u) == 42u);
+
     /* LWL/LWR merge semantics on little-endian memory, all byte offsets. */
     assert(psx_memory_write32(&machine.memory, 0x220u, 0x44332211u));
     assert(psx_memory_write32(&machine.memory, 0x224u, 0x88776655u));
