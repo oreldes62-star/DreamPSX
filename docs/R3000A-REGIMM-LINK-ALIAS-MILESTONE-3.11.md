@@ -8,7 +8,7 @@
 
 ## Validation status
 
-The regression cases have been added to `tests/test_cpu_execution.c` and committed. The test suite has not been compiled or executed in this session, and no successful GitHub Actions run has been confirmed. This is source-level coverage, not a verified passing test.
+The regression cases have been added to `tests/test_cpu_execution.c` and committed. GitHub Actions successfully configured CMake, built the core and all test executables, and passed all 12 CTest tests on commit `392bc827334fc223550bfdc8bbf4c46ed30c7e13`. This validates the host-side test suite for that revision; it does not validate a Dreamcast/KallistiOS build.
 
 ## Next step
 
