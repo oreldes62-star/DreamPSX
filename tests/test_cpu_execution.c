@@ -315,6 +315,7 @@ int main(void)
     assert(psx_memory_write32(&machine.memory, 0x1f4u, 0x8d2a0004u)); /* LW t2,4(t1) */
     assert(psx_memory_write32(&machine.memory, 0x1f8u, 0x240d0002u)); /* ADDIU t5,zero,2 */
     psx_cpu_write_gpr(&machine.cpu, 8u, 0u);
+    psx_cpu_write_gpr(&machine.cpu, 9u, 0x200u);
     psx_cpu_write_gpr(&machine.cpu, 10u, 0u);
     machine.cpu.pc = 0x1f0u; machine.cpu.next_pc = 0x1f4u;
     machine.cpu.load_delay_pending = false;
