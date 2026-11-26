@@ -61,6 +61,7 @@ Experimental project. The host-side CMake build and all 13 CTest targets passed 
 - [GTE DPCS and INTPL interpolation milestone 3.36](docs/GTE-DPCS-INTPL-MILESTONE-3.36.md)
 - [GTE DPCT triple interpolation milestone 3.37](docs/GTE-DPCT-MILESTONE-3.37.md)
 - [GTE DCPL lighting depth cue milestone 3.38](docs/GTE-DCPL-MILESTONE-3.38.md)
+- [GTE NCDS and NCDT milestone 3.39](docs/GTE-NCDS-NCDT-MILESTONE-3.39.md)
 
 ## Target
 Sega Dreamcast with 16 MiB RAM. Long-term target: CDI test build for Flycast, then GDEMU.
