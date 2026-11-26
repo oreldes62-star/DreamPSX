@@ -43,7 +43,7 @@ int main(void)
     assert(psx_bus_write32(&machine.bus, 0x1f801810u, 0x0200ff00u));
     assert(psx_bus_write32(&machine.bus, 0x1f801810u, 0u));
     assert(psx_bus_write32(&machine.bus, 0x1f801810u, 1u | (1u << 16u)));
-    assert(psx_gpu_vram_read(&machine.gpu, 0u, 1u, &half));
+    assert(psx_gpu_vram_read(&machine.gpu, 0u, 0u, &half));
     assert(half == 0x03e0u);
     assert(psx_bus_read32(&machine.bus, 0xbf801814u, &word));
     assert(word == 0x14802000u);
