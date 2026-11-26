@@ -78,6 +78,54 @@ int main(void)
     assert(psx_cpu_read_gpr(&machine.cpu, 13u) == 42u);
 
 
+    /* REGIMM branches: BLTZ/BGEZ, link-on-taken, and delay slots. */
+    put_word(ram, 0x400u, (0x01u << 26) | (8u << 21) | (0u << 16) | 2u);  /* BLTZ t0,+2 */
+    put_word(ram, 0x404u, 0x240b0001u); /* delay slot */
+    put_word(ram, 0x408u, 0x240c0002u); /* skipped */
+    put_word(ram, 0x40cu, 0x240d0003u); /* branch target */
+    psx_cpu_write_gpr(&machine.cpu, 8u, 0xffffffffu);
+    machine.cpu.pc = 0x400u; machine.cpu.next_pc = 0x404u;
+    machine.cpu.delay_slot_pending = false;
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(machine.cpu.pc == 0x404u && machine.cpu.next_pc == 0x40cu);
+    assert(machine.cpu.delay_slot_pending);
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(!machine.cpu.delay_slot_pending);
+    assert(psx_cpu_read_gpr(&machine.cpu, 11u) == 1u);
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(psx_cpu_read_gpr(&machine.cpu, 13u) == 3u);
+
+    /* BGEZ not taken still executes its delay slot and continues sequentially. */
+    put_word(ram, 0x420u, (0x01u << 26) | (8u << 21) | (1u << 16) | 2u);
+    put_word(ram, 0x424u, 0x240e0004u);
+    psx_cpu_write_gpr(&machine.cpu, 8u, 0xffffffffu);
+    machine.cpu.pc = 0x420u; machine.cpu.next_pc = 0x424u;
+    machine.cpu.delay_slot_pending = false;
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(machine.cpu.delay_slot_pending);
+    assert(machine.cpu.next_pc == 0x428u);
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(psx_cpu_read_gpr(&machine.cpu, 14u) == 4u);
+
+    /* BLTZAL writes RA=PC+8 only when the condition is true. */
+    put_word(ram, 0x440u, (0x01u << 26) | (8u << 21) | (16u << 16) | 1u);
+    put_word(ram, 0x444u, 0u);
+    psx_cpu_write_gpr(&machine.cpu, 8u, 0x80000000u);
+    psx_cpu_write_gpr(&machine.cpu, 31u, 0x11111111u);
+    machine.cpu.pc = 0x440u; machine.cpu.next_pc = 0x444u;
+    machine.cpu.delay_slot_pending = false;
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(psx_cpu_read_gpr(&machine.cpu, 31u) == 0x448u);
+    assert(machine.cpu.next_pc == 0x448u);
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+
+    /* Unsupported REGIMM sub-op encodings are reserved instructions. */
+    put_word(ram, 0x460u, (0x01u << 26) | (8u << 21) | (2u << 16));
+    machine.cpu.pc = 0x460u; machine.cpu.next_pc = 0x464u;
+    machine.cpu.delay_slot_pending = false;
+    assert(psx_cpu_step_result(&machine.cpu, &machine.bus) ==
+           PSX_CPU_STEP_RESERVED_INSTRUCTION);
+
     /* COP0 transfers: MTC0 Status, MFC0 Status, EPC and RFE. */
     put_word(ram, 0x160u, 0x40886000u); /* MTC0 t0,Status */
     put_word(ram, 0x164u, 0x40096000u); /* MFC0 t1,Status */
