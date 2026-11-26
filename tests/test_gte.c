@@ -63,6 +63,18 @@ int main(void)
     assert(psx_gte_read_control(&gte, 31u, &value));
     assert(value == 0xfffff000u);
 
+    /* FLAG writes ignore the summary bit and reserved low bits, then
+     * recompute the summary from writable exception bits. */
+    assert(psx_gte_write_control(&gte, 31u, 0x80000000u));
+    assert(psx_gte_read_control(&gte, 31u, &value) && value == 0u);
+    assert(psx_gte_write_control(&gte, 31u, 0x00000fffu));
+    assert(psx_gte_read_control(&gte, 31u, &value) && value == 0u);
+    assert(psx_gte_write_control(&gte, 31u, 0x40001001u));
+    assert(psx_gte_read_control(&gte, 31u, &value) &&
+           value == 0xc0001000u);
+    assert(psx_gte_write_control(&gte, 31u, 0u));
+    assert(psx_gte_read_control(&gte, 31u, &value) && value == 0u);
+
     assert(!psx_gte_read_data(&gte, 32u, &value));
     assert(!psx_gte_write_data(&gte, 32u, 0u));
     assert(!psx_gte_read_control(&gte, 32u, &value));
