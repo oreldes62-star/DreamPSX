@@ -1511,6 +1511,25 @@ int main(void)
     assert(psx_gte_read_data(&gte, 1u, &value) && value == 1024u);
     assert(psx_gte_read_control(&gte, 31u, &value) && value == 0u);
 
+    /* A single color command shifts, rather than replaces, the RGB FIFO. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 8u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 10u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 12u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 16u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 18u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 20u, 0x00001000u));
+    assert(psx_gte_write_data(&gte, 20u, 0x11010203u));
+    assert(psx_gte_write_data(&gte, 21u, 0x22040506u));
+    assert(psx_gte_write_data(&gte, 22u, 0x33070809u));
+    assert(psx_gte_write_data(&gte, 0u, 0u));
+    assert(psx_gte_write_data(&gte, 1u, 0u));
+    assert(psx_gte_write_data(&gte, 6u, 0x44000000u));
+    assert(psx_gte_execute(&gte, 0x4a08001eu)); /* NCS, sf=1 */
+    assert(psx_gte_read_data(&gte, 20u, &value) && value == 0x22040506u);
+    assert(psx_gte_read_data(&gte, 21u, &value) && value == 0x33070809u);
+    assert(psx_gte_read_data(&gte, 22u, &value) && value == 0x44000000u);
+
     assert(!psx_gte_read_data(0, 0u, &value));
     assert(!psx_gte_write_control(0, 0u, 0u));
 
