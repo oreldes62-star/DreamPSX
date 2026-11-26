@@ -199,6 +199,15 @@ int main(void)
     assert(psx_gte_read_data(&gte, 17u, &value) && value == 1000u);
     assert(psx_gte_read_data(&gte, 18u, &value) && value == 1000u);
     assert(psx_gte_read_data(&gte, 19u, &value) && value == 1000u);
+    /* RTPT leaves MAC/IR registers at the final vertex and shifts all
+     * four depth entries, including the previous SZ3, through the FIFO. */
+    assert(psx_gte_read_data(&gte, 16u, &value) && value == 0u);
+    assert(psx_gte_read_data(&gte, 25u, &value) && value == 0u);
+    assert(psx_gte_read_data(&gte, 26u, &value) && value == 100u);
+    assert(psx_gte_read_data(&gte, 27u, &value) && value == 1000u);
+    assert(psx_gte_read_data(&gte, 9u, &value) && value == 0u);
+    assert(psx_gte_read_data(&gte, 10u, &value) && value == 100u);
+    assert(psx_gte_read_data(&gte, 11u, &value) && value == 1000u);
 
     /* AVSZ3 averages the last three SZ FIFO entries into OTZ. */
     psx_gte_reset(&gte);
