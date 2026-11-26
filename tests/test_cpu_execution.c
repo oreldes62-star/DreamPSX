@@ -801,6 +801,19 @@ int main(void)
     assert(((machine.cop0_cause >> 2u) & 31u) ==
            PSX_EXCEPTION_COPROCESSOR_UNUSABLE);
 
+    /* COP2 register-transfer encodings require the low 11 bits to be zero. */
+    machine.cop0_status = 0x40000000u;
+    machine.cop0_cause = 0u;
+    machine.cpu.delay_slot_pending = false;
+    machine.cpu.load_delay_pending = false;
+    put_word(ram, 0x534u, (0x12u << 26) | (9u << 16) | (9u << 11) | 1u);
+    machine.cpu.pc = 0x534u;
+    machine.cpu.next_pc = 0x538u;
+    assert(psx_machine_step(&machine));
+    assert(machine.cop0_epc == 0x534u);
+    assert(((machine.cop0_cause >> 2u) & 31u) ==
+           PSX_EXCEPTION_RESERVED_INSTRUCTION);
+
     /* An unsupported COP2 command must raise Reserved Instruction. */
     machine.cop0_status = 0x40000000u;
     machine.cop0_cause = 0u;
