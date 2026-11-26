@@ -98,7 +98,8 @@ PsxCpuStepResult psx_cpu_step_result_with_cop0(PsxCpu *cpu, PsxBus *bus,
     previous_load_value = cpu->load_delay_value;
     /* Branches in a delay slot are architecturally unpredictable on R3000A. */
     if (was_delay_slot &&
-        (((instruction >> 26) >= 0x02u && (instruction >> 26) <= 0x07u) ||
+        (((instruction >> 26) == 0x01u) ||
+         ((instruction >> 26) >= 0x02u && (instruction >> 26) <= 0x07u) ||
          ((instruction >> 26) == 0u &&
           (((instruction & 63u) == 0x08u) || ((instruction & 63u) == 0x09u)))))
         return PSX_CPU_STEP_UNPREDICTABLE;
@@ -249,6 +250,37 @@ PsxCpuStepResult psx_cpu_step_result_with_cop0(PsxCpu *cpu, PsxBus *bus,
                            ((*cop0_status >> 2) & 0x0000000fu);
         } else {
             return PSX_CPU_STEP_RESERVED_INSTRUCTION;
+        }
+        break;
+    }
+    case 0x01u: { /* REGIMM: BLTZ, BGEZ and link variants */
+        bool negative = (a & 0x80000000u) != 0u;
+        bool take_branch;
+        control_transfer = true;
+        switch (rt) {
+        case 0u:  /* BLTZ */
+            take_branch = negative;
+            break;
+        case 1u:  /* BGEZ */
+            take_branch = !negative;
+            break;
+        case 16u: /* BLTZAL */
+            take_branch = negative;
+            break;
+        case 17u: /* BGEZAL */
+            take_branch = !negative;
+            break;
+        default:
+            return PSX_CPU_STEP_RESERVED_INSTRUCTION;
+        }
+        if (take_branch) {
+            branch = true;
+            branch_target = old_pc + 4u + (sign_extend_16(imm) << 2);
+            if (rt == 16u || rt == 17u) {
+                rt = 31u;
+                result = old_pc + 8u;
+                write_result = true;
+            }
         }
         break;
     }
