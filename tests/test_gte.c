@@ -133,6 +133,43 @@ int main(void)
     assert(psx_gte_read_data(&gte, 26u, &value) && value == 512u);
     assert(psx_gte_read_data(&gte, 27u, &value) && value == 768u);
 
+    /* MVMVA selector coverage: V1, V2 and IR vector sources. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 2u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 4u, 0x00001000u));
+    assert(psx_gte_write_data(&gte, 2u, 0x00050004u)); /* V1=(4,5,6) */
+    assert(psx_gte_write_data(&gte, 3u, 6u));
+    assert(psx_gte_execute(&gte, 0x4808e012u)); /* sf=1, RT, V1, no TR */
+    assert(psx_gte_read_data(&gte, 25u, &value) && value == 4u);
+    assert(psx_gte_read_data(&gte, 26u, &value) && value == 5u);
+    assert(psx_gte_read_data(&gte, 27u, &value) && value == 6u);
+
+    assert(psx_gte_write_data(&gte, 4u, 0x00080007u)); /* V2=(7,8,9) */
+    assert(psx_gte_write_data(&gte, 5u, 9u));
+    assert(psx_gte_execute(&gte, 0x48096012u)); /* sf=1, RT, V2, no TR */
+    assert(psx_gte_read_data(&gte, 25u, &value) && value == 7u);
+    assert(psx_gte_read_data(&gte, 26u, &value) && value == 8u);
+    assert(psx_gte_read_data(&gte, 27u, &value) && value == 9u);
+
+    assert(psx_gte_write_data(&gte, 9u, 10u));
+    assert(psx_gte_write_data(&gte, 10u, 11u));
+    assert(psx_gte_write_data(&gte, 11u, 12u));
+    assert(psx_gte_execute(&gte, 0x4809e012u)); /* sf=1, RT, IR, no TR */
+    assert(psx_gte_read_data(&gte, 25u, &value) && value == 10u);
+    assert(psx_gte_read_data(&gte, 26u, &value) && value == 11u);
+    assert(psx_gte_read_data(&gte, 27u, &value) && value == 12u);
+
+    /* Matrix selector coverage: RT, light and color identity matrices. */
+    assert(psx_gte_execute(&gte, 0x480ce012u)); /* sf=1, light, IR, no TR */
+    assert(psx_gte_read_data(&gte, 25u, &value) && value == 10u);
+    assert(psx_gte_read_data(&gte, 26u, &value) && value == 11u);
+    assert(psx_gte_read_data(&gte, 27u, &value) && value == 12u);
+    assert(psx_gte_execute(&gte, 0x480ee012u)); /* sf=1, color, IR, no TR */
+    assert(psx_gte_read_data(&gte, 25u, &value) && value == 10u);
+    assert(psx_gte_read_data(&gte, 26u, &value) && value == 11u);
+    assert(psx_gte_read_data(&gte, 27u, &value) && value == 12u);
+
     /* Negative MAC1 overflow must set FLAG bit 27 (not bit 29). */
     psx_gte_reset(&gte);
     assert(psx_gte_write_control(&gte, 0u, 0x00007fffu)); /* RT11=32767 */
