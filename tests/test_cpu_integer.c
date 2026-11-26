@@ -24,10 +24,12 @@ static void execute_at(PsxMachine *m, uint8_t *ram, unsigned pc,
 int main(void)
 {
     PsxMachine m;
+    static uint16_t gpu_vram[PSX_GPU_VRAM_WIDTH * PSX_GPU_VRAM_HEIGHT];
     uint8_t *ram = (uint8_t *)calloc(1u, PSX_RAM_SIZE);
     uint8_t *bios = (uint8_t *)calloc(1u, PSX_BIOS_SIZE);
     assert(ram && bios);
-    assert(psx_machine_init(&m, ram, PSX_RAM_SIZE, bios, PSX_BIOS_SIZE));
+    assert(psx_machine_init(&m, ram, PSX_RAM_SIZE, bios, PSX_BIOS_SIZE,
+                            gpu_vram, PSX_GPU_VRAM_WIDTH * PSX_GPU_VRAM_HEIGHT));
 
     /* Signed and unsigned multiply, plus HI/LO transfers. */
     psx_cpu_write_gpr(&m.cpu, 8u, 7u);
