@@ -142,6 +142,21 @@ int main(void)
     assert((int16_t)(value & 0xffffu) == 199);
     assert((int16_t)(value >> 16u) == 139);
 
+    /* UNR reciprocal reference vector: H=12345, SZ3=23456.
+     * DuckStation's integer UNR path gives quotient 34492; IR1=1024
+     * therefore projects to screen X=538 after the 16-bit fixed-point shift. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 2u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 4u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 7u, 23456u)); /* SZ3 */
+    assert(psx_gte_write_control(&gte, 26u, 12345u)); /* H */
+    assert(psx_gte_write_data(&gte, 0u, 0x00000400u)); /* V0=(1024,0,0) */
+    assert(psx_gte_write_data(&gte, 1u, 0u));
+    assert(psx_gte_execute(&gte, 0x4a080001u));
+    assert(psx_gte_read_data(&gte, 14u, &value));
+    assert((int16_t)(value & 0xffffu) == 538);
+
     /* RTPS near-plane divide overflow and screen-coordinate saturation. */
     psx_gte_reset(&gte);
     assert(psx_gte_write_control(&gte, 0u, 0x00001000u));
