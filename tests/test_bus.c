@@ -10,11 +10,13 @@ int main(void)
     uint8_t bios[PSX_BIOS_SIZE] = {0};
     PsxMemory memory = {0};
     PsxIrqController irq;
-    PsxBus bus = {0};\n    PsxGpu gpu;
+    PsxBus bus = {0};
+    PsxGpu gpu;
     uint32_t word = 0;
     uint16_t half = 0;
 
-    psx_irq_reset(&irq);\n    assert(psx_gpu_init(&gpu));
+    psx_irq_reset(&irq);
+    assert(psx_gpu_init(&gpu));
     assert(psx_memory_init(&memory, ram, sizeof(ram), bios, sizeof(bios)));
     assert(psx_bus_init(&bus, &memory, &irq, &gpu));
 
@@ -39,7 +41,16 @@ int main(void)
     assert(psx_bus_read16(&bus, 0x1f801070u, &half));
     assert((half & 0x0020u) == 0u);
 
-    /* GPU GP0/GP1 ports are reachable through the shared CPU bus. */\n    assert(psx_bus_write32(&bus, 0x1f801810u, 0x020000ffu));\n    assert(psx_bus_write32(&bus, 0x1f801810u, 0u));\n    assert(psx_bus_write32(&bus, 0x1f801810u, 1u | (1u << 16u)));\n    assert(psx_gpu_vram_read(&gpu, 0u, 1u, &half));\n    assert(half == 0x001fu);\n    assert(psx_bus_read32(&bus, 0x1f801814u, &word));\n    assert(word == 0x14802000u);\n\n    /* Unknown hardware registers and invalid alignments are rejected. */
+    /* GPU GP0/GP1 ports are reachable through the shared CPU bus. */
+    assert(psx_bus_write32(&bus, 0x1f801810u, 0x020000ffu));
+    assert(psx_bus_write32(&bus, 0x1f801810u, 0u));
+    assert(psx_bus_write32(&bus, 0x1f801810u, 1u | (1u << 16u)));
+    assert(psx_gpu_vram_read(&gpu, 0u, 1u, &half));
+    assert(half == 0x001fu);
+    assert(psx_bus_read32(&bus, 0x1f801814u, &word));
+    assert(word == 0x14802000u);
+
+    /* Unknown hardware registers and invalid alignments are rejected. */
     assert(!psx_bus_read32(&bus, 0x1f801080u, &word));
     assert(!psx_bus_read16(&bus, 0x00000101u, &half));
     assert(!psx_bus_write32(&bus, 0x1f801072u, 0u));
