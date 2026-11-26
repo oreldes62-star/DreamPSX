@@ -424,6 +424,46 @@ static uint32_t gte_color_channel(int64_t mac)
     return (uint32_t)channel;
 }
 
+static void gte_execute_interpolate(PsxGte *gte, uint32_t instruction,
+                                       bool from_rgb)
+{
+    unsigned shift = (instruction & (1u << 19u)) ? 12u : 0u;
+    bool lm = (instruction & (1u << 10u)) != 0u;
+    int32_t ir0 = gte_signed16(gte->data[8]);
+    const uint32_t channels[3] = {
+        gte->data[6] & 0xffu,
+        (gte->data[6] >> 8u) & 0xffu,
+        (gte->data[6] >> 16u) & 0xffu
+    };
+    uint32_t flags = 0u;
+    uint32_t rgb = gte->data[6] & 0xff000000u;
+    int64_t mac[3];
+    unsigned i;
+
+    for (i = 0u; i < 3u; ++i) {
+        int64_t source = from_rgb
+            ? ((int64_t)channels[i] << 16u)
+            : ((int64_t)gte_signed16(gte->data[9u + i]) << 12u);
+        int64_t far = (int64_t)(int32_t)gte->control[21u + i] * 4096;
+        int32_t difference = gte_saturate_ir(
+            gte_shift_mac(far - source, shift), i, false, &flags);
+
+        mac[i] = source + (int64_t)ir0 * difference;
+        gte_check_mac_overflow(mac[i], i, &flags);
+        mac[i] = gte_shift_mac(mac[i], shift);
+        gte->data[25u + i] = (uint32_t)mac[i];
+        gte->data[9u + i] = (uint32_t)gte_saturate_ir(
+            mac[i], i, lm, &flags);
+    }
+
+    rgb |= gte_color_channel(mac[0]) |
+           (gte_color_channel(mac[1]) << 8u) |
+           (gte_color_channel(mac[2]) << 16u);
+    gte_push_rgb(gte, rgb);
+    if (flags & 0x7f87e000u) flags |= 0x80000000u;
+    gte->control[31] = flags;
+}
+
 static void gte_execute_ncs(PsxGte *gte, uint32_t instruction)
 {
     unsigned shift = (instruction & (1u << 19u)) ? 12u : 0u;
@@ -749,6 +789,14 @@ bool psx_gte_execute(PsxGte *gte, uint32_t instruction)
     }
     if (command == 0x3eu) {
         gte_execute_gpl(gte, instruction);
+        return true;
+    }
+    if (command == 0x10u) {
+        gte_execute_interpolate(gte, instruction, true);
+        return true;
+    }
+    if (command == 0x11u) {
+        gte_execute_interpolate(gte, instruction, false);
         return true;
     }
     if (command == 0x1eu) {
