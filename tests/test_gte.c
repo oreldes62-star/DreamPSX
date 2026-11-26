@@ -467,6 +467,21 @@ int main(void)
     assert(psx_gte_read_data(&gte, 27u, &value) && value == 2048u);
     assert(psx_gte_read_data(&gte, 22u, &value) && value == 0x00808080u);
 
+    /* DPCT: consume RGB0, RGB1, RGB2 in order and push three results. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 21u, 0x1000u));
+    assert(psx_gte_write_control(&gte, 22u, 0x1000u));
+    assert(psx_gte_write_control(&gte, 23u, 0x1000u));
+    assert(psx_gte_write_data(&gte, 6u, 0xabu << 24u));
+    assert(psx_gte_write_data(&gte, 8u, 0u)); /* IR0=0 preserves input colors */
+    assert(psx_gte_write_data(&gte, 20u, 0x00112233u));
+    assert(psx_gte_write_data(&gte, 21u, 0x00445566u));
+    assert(psx_gte_write_data(&gte, 22u, 0x00778899u));
+    assert(psx_gte_execute(&gte, 0x4a08002au)); /* DPCT, sf=1 */
+    assert(psx_gte_read_data(&gte, 20u, &value) && value == 0xab112233u);
+    assert(psx_gte_read_data(&gte, 21u, &value) && value == 0xab445566u);
+    assert(psx_gte_read_data(&gte, 22u, &value) && value == 0xab778899u);
+
     /* MVMVA: identity rotation, V0 plus a translation vector. */
     psx_gte_reset(&gte);
     assert(psx_gte_write_control(&gte, 0u, 0x00001000u)); /* RT11=4096 */
