@@ -48,16 +48,14 @@ bool psx_gte_read_data(const PsxGte *gte, uint8_t index, uint32_t *value)
     case 15u:
         result = gte->data[14u];
         break;
-    case 28u: {
+    case 28u:
+    case 29u: {
         uint32_t r = clamp_irgb_channel(gte->data[9u]);
         uint32_t g = clamp_irgb_channel(gte->data[10u]);
         uint32_t b = clamp_irgb_channel(gte->data[11u]);
         result = r | (g << 5u) | (b << 10u);
         break;
     }
-    case 29u:
-        result = gte->data[28u];
-        break;
     case 31u:
         result = gte->data[31u];
         break;
@@ -121,5 +119,7 @@ bool psx_gte_write_control(PsxGte *gte, uint8_t index, uint32_t value)
     if (!gte || index >= PSX_GTE_REGISTER_COUNT) return false;
     if (index == 31u) value &= 0x7ffff000u;
     gte->control[index] = value;
+    if (index == 31u && (value & 0x7ffff000u) != 0u)
+        gte->control[index] |= 0x80000000u;
     return true;
 }
