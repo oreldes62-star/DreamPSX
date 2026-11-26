@@ -1005,6 +1005,29 @@ int main(void)
     assert(psx_gte_read_data(&gte, 22u, &value) && value == 0x7f804020u);
     assert(psx_gte_read_control(&gte, 31u, &value) && value == 0u);
 
+    /* NCDS numeric reference: identity light/color matrices, asymmetric
+     * normal and RGBC channels, zero far color and zero depth cue. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 8u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 10u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 12u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 16u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 18u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 20u, 0x00001000u));
+    assert(psx_gte_write_data(&gte, 6u, 0x7fc08040u)); /* code, B, G, R */
+    assert(psx_gte_write_data(&gte, 0u, 0x08001000u)); /* X=4096, Y=2048 */
+    assert(psx_gte_write_data(&gte, 1u, 0x00000400u)); /* Z=1024 */
+    assert(psx_gte_write_data(&gte, 8u, 0u));          /* IR0 */
+    assert(psx_gte_execute(&gte, 0x4a080413u));        /* NCDS, sf=1, lm=1 */
+    assert(psx_gte_read_data(&gte, 25u, &value) && value == 1024u);
+    assert(psx_gte_read_data(&gte, 26u, &value) && value == 1024u);
+    assert(psx_gte_read_data(&gte, 27u, &value) && value == 768u);
+    assert(psx_gte_read_data(&gte, 9u, &value) && value == 1024u);
+    assert(psx_gte_read_data(&gte, 10u, &value) && value == 1024u);
+    assert(psx_gte_read_data(&gte, 11u, &value) && value == 768u);
+    assert(psx_gte_read_data(&gte, 22u, &value) && value == 0x7f304040u);
+    assert(psx_gte_read_control(&gte, 31u, &value) && value == 0u);
+
     assert(!psx_gte_read_data(0, 0u, &value));
     assert(!psx_gte_write_control(0, 0u, 0u));
 
