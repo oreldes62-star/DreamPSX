@@ -716,6 +716,23 @@ int main(void)
     assert(psx_gte_read_data(&gte, 25u, &value) && value == (uint32_t)-1);
     assert(psx_gte_read_data(&gte, 9u, &value) && value == 0u);
 
+    /* MVMVA reserved matrix selector 3: reproduce the documented
+     * hardware "garbage matrix" result from an independent PCSX-Redux test. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 0u, 0x20001000u));
+    assert(psx_gte_write_control(&gte, 1u, 0x40003000u));
+    assert(psx_gte_write_control(&gte, 2u, 0x60005000u));
+    assert(psx_gte_write_control(&gte, 3u, 0x80007000u));
+    assert(psx_gte_write_control(&gte, 4u, 0x00001000u));
+    assert(psx_gte_write_data(&gte, 8u, 0x0800u)); /* IR0 */
+    assert(psx_gte_write_data(&gte, 0u, 0x01000100u));
+    assert(psx_gte_write_data(&gte, 1u, 0x00000100u));
+    assert(psx_gte_execute(&gte, 0x480e6012u)); /* sf=1, mx=3, V0, cv=none */
+    assert(psx_gte_read_data(&gte, 25u, &value) && value == 128u);
+    assert(psx_gte_read_data(&gte, 26u, &value) && value == 2304u);
+    assert(psx_gte_read_data(&gte, 27u, &value) && value == 3840u);
+    assert(psx_gte_read_control(&gte, 31u, &value) && value == 0u);
+
     assert(!psx_gte_execute(&gte, 0x4b400007u));
     assert(!psx_gte_execute(0, 0x4b400006u));
 
