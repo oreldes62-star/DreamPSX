@@ -67,6 +67,39 @@ int main(void)
     assert(!psx_gte_write_data(&gte, 32u, 0u));
     assert(!psx_gte_read_control(&gte, 32u, &value));
     assert(!psx_gte_write_control(&gte, 32u, 0u));
+    /* NCLIP: counter-clockwise, clockwise and degenerate triangles. */
+    assert(psx_gte_write_data(&gte, 12u, 0x00000000u)); /* (0,0) */
+    assert(psx_gte_write_data(&gte, 13u, 0x00000064u)); /* (100,0) */
+    assert(psx_gte_write_data(&gte, 14u, 0x00640000u)); /* (0,100) */
+    assert(psx_gte_execute(&gte, 0x4b400006u));
+    assert(psx_gte_read_data(&gte, 24u, &value));
+    assert(value == 10000u);
+    assert(psx_gte_read_control(&gte, 31u, &value) && value == 0u);
+
+    assert(psx_gte_write_data(&gte, 13u, 0x00640000u));
+    assert(psx_gte_write_data(&gte, 14u, 0x00000064u));
+    assert(psx_gte_execute(&gte, 0x4b400006u));
+    assert(psx_gte_read_data(&gte, 24u, &value));
+    assert(value == (uint32_t)-10000);
+
+    assert(psx_gte_write_data(&gte, 13u, 0x00320032u));
+    assert(psx_gte_write_data(&gte, 14u, 0x00640064u));
+    assert(psx_gte_execute(&gte, 0x4b400006u));
+    assert(psx_gte_read_data(&gte, 24u, &value));
+    assert(value == 0u);
+
+    /* Extreme signed 16-bit coordinates exercise MAC0 overflow reporting. */
+    assert(psx_gte_write_data(&gte, 12u, 0x7fff7fffu));
+    assert(psx_gte_write_data(&gte, 13u, 0x80008000u));
+    assert(psx_gte_write_data(&gte, 14u, 0x7fff8000u));
+    assert(psx_gte_execute(&gte, 0x4b400006u));
+    assert(psx_gte_read_control(&gte, 31u, &value));
+    assert((value & (1u << 15)) != 0u);
+    assert((value & (1u << 31)) != 0u);
+
+    assert(!psx_gte_execute(&gte, 0x4b400007u));
+    assert(!psx_gte_execute(0, 0x4b400006u));
+
     assert(!psx_gte_read_data(0, 0u, &value));
     assert(!psx_gte_write_control(0, 0u, 0u));
 
