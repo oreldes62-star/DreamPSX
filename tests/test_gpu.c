@@ -6,10 +6,11 @@
 int main(void)
 {
     PsxGpu gpu;
+    uint16_t vram[PSX_GPU_VRAM_WIDTH * PSX_GPU_VRAM_HEIGHT];
     uint16_t pixel = 0xffffu;
     uint32_t status = 0u;
 
-    assert(psx_gpu_init(&gpu));
+    assert(psx_gpu_init(&gpu, vram, PSX_GPU_VRAM_WIDTH * PSX_GPU_VRAM_HEIGHT));
     assert(psx_gpu_read_status(&gpu, &status));
     assert(status == 0x14802000u);
 
