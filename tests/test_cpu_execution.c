@@ -772,6 +772,30 @@ int main(void)
     assert(ram[0x624u] == 0xefu && ram[0x625u] == 0xcdu &&
            ram[0x626u] == 0xabu && ram[0x627u] == 0x89u);
 
+    /* Unmapped LWC2/SWC2 addresses report a data-bus fault and exact address. */
+    psx_cpu_write_gpr(&machine.cpu, 12u, 0x1f000000u);
+    put_word(ram, 0x5a4u, (0x32u << 26) | (12u << 21)); /* LWC2 D0,0(t4) */
+    machine.cpu.pc = 0x5a4u;
+    machine.cpu.next_pc = 0x5a8u;
+    machine.cpu.delay_slot_pending = false;
+    machine.cpu.load_delay_pending = false;
+    assert(psx_cpu_step_result_with_cop0_gte(
+        &machine.cpu, &machine.bus, &machine.cop0_status,
+        &machine.cop0_cause, &machine.cop0_epc, &machine.cop0_badvaddr,
+        &machine.gte) == PSX_CPU_STEP_DATA_BUS_ERROR);
+    assert(machine.cpu.fault_address == 0x1f000000u);
+
+    put_word(ram, 0x5a8u, (0x3au << 26) | (12u << 21)); /* SWC2 D0,0(t4) */
+    machine.cpu.pc = 0x5a8u;
+    machine.cpu.next_pc = 0x5acu;
+    machine.cpu.delay_slot_pending = false;
+    machine.cpu.load_delay_pending = false;
+    assert(psx_cpu_step_result_with_cop0_gte(
+        &machine.cpu, &machine.bus, &machine.cop0_status,
+        &machine.cop0_cause, &machine.cop0_epc, &machine.cop0_badvaddr,
+        &machine.gte) == PSX_CPU_STEP_DATA_BUS_ERROR);
+    assert(machine.cpu.fault_address == 0x1f000000u);
+
     /* LWC2/SWC2 alignment faults must report the effective address. */
     machine.cop0_status = 0x40000000u;
     machine.cop0_cause = 0u;
