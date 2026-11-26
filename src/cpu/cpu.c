@@ -293,6 +293,9 @@ PsxCpuStepResult psx_cpu_step_result_with_cop0(PsxCpu *cpu, PsxBus *bus,
         if (op == 0x03u) { rt = 31u; result = old_pc + 8u; write_result = true; }
         break;
     case 0x04u: case 0x05u: case 0x06u: case 0x07u:
+        /* BLEZ/BGTZ encode rt as zero; other values are reserved. */
+        if ((op == 0x06u || op == 0x07u) && rt != 0u)
+            return PSX_CPU_STEP_RESERVED_INSTRUCTION;
         control_transfer = true;
         if ((op == 0x04u && a == b) || (op == 0x05u && a != b) ||
             (op == 0x06u && ((a & 0x80000000u) != 0u || a == 0u)) ||
