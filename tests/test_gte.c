@@ -983,6 +983,28 @@ int main(void)
     assert((value & (1u << 24u)) != 0u); /* V0 saturation retained */
     assert((value & 0x80000000u) != 0u); /* FLAG summary retained */
 
+    /* CC reference vector: identity color matrix and IR=(1,1,1)
+     * preserve the RGBC channels, while RGB FIFO entries shift once. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_control(&gte, 16u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 18u, 0x00001000u));
+    assert(psx_gte_write_control(&gte, 20u, 0x00001000u));
+    assert(psx_gte_write_data(&gte, 6u, 0x7f804020u)); /* RGBC */
+    assert(psx_gte_write_data(&gte, 9u, 0x1000u));
+    assert(psx_gte_write_data(&gte, 10u, 0x1000u));
+    assert(psx_gte_write_data(&gte, 11u, 0x1000u));
+    assert(psx_gte_write_data(&gte, 20u, 0x11111111u)); /* RGB0 */
+    assert(psx_gte_write_data(&gte, 21u, 0x22222222u)); /* RGB1 */
+    assert(psx_gte_write_data(&gte, 22u, 0x33333333u)); /* RGB2 */
+    assert(psx_gte_execute(&gte, 0x4a00041cu)); /* CC, sf=1, lm=1 */
+    assert(psx_gte_read_data(&gte, 25u, &value) && value == 0x200u);
+    assert(psx_gte_read_data(&gte, 26u, &value) && value == 0x400u);
+    assert(psx_gte_read_data(&gte, 27u, &value) && value == 0x800u);
+    assert(psx_gte_read_data(&gte, 20u, &value) && value == 0x22222222u);
+    assert(psx_gte_read_data(&gte, 21u, &value) && value == 0x33333333u);
+    assert(psx_gte_read_data(&gte, 22u, &value) && value == 0x7f804020u);
+    assert(psx_gte_read_control(&gte, 31u, &value) && value == 0u);
+
     assert(!psx_gte_read_data(0, 0u, &value));
     assert(!psx_gte_write_control(0, 0u, 0u));
 
