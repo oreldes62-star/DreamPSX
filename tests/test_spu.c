@@ -772,6 +772,36 @@ int main(void)
         psx_spu_reset(&spu);
     }
 
+    /* Full wet-path orchestration: disabled mode is transparent and does
+     * not advance ESA; enabled mode runs the stages and advances once. */
+    {
+        int16_t wet_left = 123;
+        int16_t wet_right = -123;
+        psx_spu_reset(&spu);
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+            PSX_SPU_REVERB_WORK_AREA_START_OFFSET, 0u));
+        spu.reverb_buffer_address = 0x200u;
+        assert(psx_spu_reverb_process_sample(&spu, 12000, -12000,
+                                              &wet_left, &wet_right));
+        assert(wet_left == 0 && wet_right == 0);
+        assert(spu.reverb_buffer_address == 0x200u);
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+            PSX_SPU_CONTROL_OFFSET, 0x0080u));
+        assert(psx_spu_write16(&spu, PSX_SPU_REVERB_OUTPUT_VOLUME_LEFT_OFFSET +
+            PSX_SPU_BASE_ADDR, 0x7fffu));
+        assert(psx_spu_write16(&spu, PSX_SPU_REVERB_OUTPUT_VOLUME_RIGHT_OFFSET +
+            PSX_SPU_BASE_ADDR, 0x7fffu));
+        assert(psx_spu_reverb_process_sample(&spu, 12000, -12000,
+                                              &wet_left, &wet_right));
+        assert(wet_left == 0 && wet_right == 0);
+        assert(spu.reverb_buffer_address == 0x202u);
+        assert(!psx_spu_reverb_process_sample(NULL, 0, 0,
+                                               &wet_left, &wet_right));
+        assert(!psx_spu_reverb_process_sample(&spu, 0, 0,
+                                               NULL, &wet_right));
+        psx_spu_reset(&spu);
+    }
+
     puts("DreamPSX SPU register/RAM tests: OK");
     return 0;
 }
