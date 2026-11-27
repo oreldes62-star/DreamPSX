@@ -36,6 +36,9 @@ static uint8_t *add_record(uint8_t *p, uint32_t lba, uint32_t size,
 int main(void)
 {
     static uint8_t image[24u * PSX_ISO9660_SECTOR_SIZE];
+    static uint8_t raw[24u * 2352u];
+    static const char cue[] = "FILE \"disc.bin\" BINARY\nTRACK 01 MODE1/2352\nINDEX 01 00:00:00\n";
+    PsxDiscImage disc;
     const uint8_t dot = 0u, dotdot = 1u;
     const uint8_t system_name[] = "SYSTEM.CNF;1";
     const uint8_t dir_name[] = "GAME";
@@ -80,6 +83,30 @@ int main(void)
     assert(psx_iso9660_lookup(&iso, "/", &file) && file.directory);
     assert(!psx_iso9660_lookup(&iso, "/MISSING.BIN", &file));
     assert(!psx_iso9660_lookup(&iso, "SYSTEM.CNF", &file));
+
+    /* Repeat the same filesystem traversal over raw MODE1/2352 sectors. */
+    for (unsigned sector = 0u; sector < 24u; ++sector) {
+        uint8_t *raw_sector = raw + (size_t)sector * 2352u;
+        memset(raw_sector, 0, 2352u);
+        for (unsigned sync = 1u; sync <= 10u; ++sync)
+            raw_sector[sync] = 0xffu;
+        raw_sector[15] = 1u;
+        memcpy(raw_sector + 16u,
+               image + (size_t)sector * PSX_ISO9660_SECTOR_SIZE,
+               PSX_ISO9660_SECTOR_SIZE);
+    }
+    assert(psx_disc_mount_cue(&disc, cue, sizeof(cue) - 1u,
+                              raw, sizeof(raw)));
+    assert(psx_iso9660_mount_disc(&iso, &disc));
+    assert(iso.image == NULL && iso.disc.mounted);
+    assert(psx_iso9660_lookup(&iso, "/game/slus_123.45;1", &file));
+    assert(file.lba == 23u && file.size == 12u);
+    memset(output, 0, sizeof(output));
+    assert(psx_iso9660_read(&iso, &file, 0u, output, 12u));
+    assert(memcmp(output, "PS-X EXE DATA", 12u) == 0);
+    assert(!psx_iso9660_read(NULL, &file, 0u, output, 1u));
+    psx_iso9660_unmount(&iso);
+    assert(!iso.disc.mounted);
 
     pvd[1] = 'X';
     assert(!psx_iso9660_mount(&iso, image, sizeof(image)));
