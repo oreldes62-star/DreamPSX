@@ -93,6 +93,8 @@ static bool bus_try_gpu_dma(PsxBus *bus)
      * endpoints exist. They must not be silently consumed by the GPU path. */
     if (selected != 2) return true;
 
+    if (psx_dma_begin_channel(bus->dma) != 2) return true;
+
     control = bus->dma->channel[2].chcr;
     sync_mode = (control >> 9u) & 3u;
     if (sync_mode == 0u)
@@ -107,7 +109,10 @@ static bool bus_try_gpu_dma(PsxBus *bus)
     else
         transfer_ok = true;
 
-    /* A request stays queued if the device could not complete it. */
+    /* A failed endpoint operation relinquishes the active slot and keeps
+     * the CHCR request pending for a later retry. Successful endpoints call
+     * psx_dma_complete_channel(), which retires the active state. */
+    if (!transfer_ok) psx_dma_abort_channel(bus->dma, 2u);
     psx_dma_refresh_queue(bus->dma);
     return transfer_ok;
 }
