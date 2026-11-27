@@ -37,7 +37,7 @@ int main(void)
 
     /* Timer2's divide-by-eight source retains sub-tick phase across calls. */
     assert(psx_bus_write16(&machine.bus,
-        PSX_TIMER_BASE_ADDR + 2u * PSX_TIMER_STRIDE + 8u, 2u));
+        PSX_TIMER_BASE_ADDR + 2u * PSX_TIMER_STRIDE + 8u, 1u));
     assert(psx_bus_write16(&machine.bus,
         PSX_TIMER_BASE_ADDR + 2u * PSX_TIMER_STRIDE + 4u,
         (uint16_t)((1u << PSX_TIMER_MODE_CLOCK_SHIFT) |
