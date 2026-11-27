@@ -2,6 +2,11 @@
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
+static bool raw_disc_read(void *context, size_t offset, uint8_t *destination, size_t size) {
+ const uint8_t *bytes=(const uint8_t *)context;
+ if(!bytes || !destination || offset > 25u*2352u || size > 25u*2352u-offset) return false;
+ memcpy(destination,bytes+offset,size); return true;
+}
 static void put32(uint8_t *p,uint32_t v) {
  p[0]=(uint8_t)v; p[1]=(uint8_t)(v>>8u); p[2]=(uint8_t)(v>>16u); p[3]=(uint8_t)(v>>24u);
 }
@@ -16,9 +21,11 @@ int main(void) {
  static uint8_t iso_image[25u*PSX_ISO9660_SECTOR_SIZE];
  static uint8_t raw_disc[25u*2352u];
  static const char cue[] = "FILE \"boot.bin\" BINARY\nTRACK 01 MODE1/2352\nINDEX 01 00:00:00\n";
- static uint8_t ram[PSX_RAM_SIZE], bios[PSX_BIOS_SIZE];
- static uint16_t vram[1024u*512u];
- PsxMachine machine; PsxBootConfig config;
+ static uint8_t ram[PSX_RAM_SIZE], reader_ram[PSX_RAM_SIZE], bios[PSX_BIOS_SIZE];
+ static uint16_t vram[1024u*512u], reader_vram[1024u*512u];
+ PsxMachine machine, reader_machine; PsxBootConfig config;
+ PsxDiscImage reader_disc;
+ uint8_t sector_data[PSX_DISC_SECTOR_DATA_SIZE];
  const uint8_t dot=0u,dotdot=1u,cnf_name[]="SYSTEM.CNF;1",dir_name[]="GAME",exe_name[]="SLUS_123.45;1";
  const char cnf[]="BOOT = cdrom:\\GAME\\SLUS_123.45;1\r\n";
  uint8_t *pvd=iso_image+16u*2048u,*root=iso_image+20u*2048u,*game=iso_image+21u*2048u,*exe=iso_image+23u*2048u,*p;
@@ -71,6 +78,22 @@ int main(void) {
    assert(psx_cdrom_read_data32(&machine.cdrom,&sector_word));
    assert(sector_word==0x78563412u);
  }
- puts("machine raw CUE BIN boot and first instruction tests: OK");
+ /* Repeat the same complete boot through a file-style random-access reader.
+    This is the path used by the KallistiOS VFS CUE adapter. */
+ assert(psx_disc_mount_reader(&reader_disc,sizeof(raw_disc),PSX_DISC_MODE1_2352,
+                              raw_disc_read,raw_disc));
+ assert(psx_machine_init(&reader_machine,reader_ram,sizeof(reader_ram),bios,sizeof(bios),
+                         reader_vram,1024u*512u));
+ assert(psx_machine_boot_from_disc_image(&reader_machine,&reader_disc,&config));
+ assert(reader_machine.cdrom.disc.mounted);
+ assert(reader_machine.cdrom.disc.source==NULL);
+ assert(reader_machine.cdrom.disc.read_at==raw_disc_read);
+ assert(reader_machine.cpu.pc==0x80010000u);
+ assert(psx_machine_step(&reader_machine));
+ assert(psx_cpu_read_gpr(&reader_machine.cpu,2u)==42u);
+ assert(psx_disc_read_sector(&reader_machine.cdrom.disc,0u,sector_data));
+ assert(sector_data[0]==0x12u && sector_data[1]==0x34u &&
+        sector_data[2]==0x56u && sector_data[3]==0x78u);
+ puts("machine CUE and random-access file-backed boot tests: OK");
  return 0;
 }
