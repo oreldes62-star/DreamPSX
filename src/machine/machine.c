@@ -47,6 +47,22 @@ bool psx_machine_interrupt_eligible(const PsxMachine *machine)
 }
 
 
+/* Timer IRQs map to interrupt controller sources 4, 5 and 6. */
+bool psx_machine_timer_advance_clock(PsxMachine *machine, unsigned timer,
+                                     PsxTimerClock clock, uint32_t ticks)
+{
+    uint8_t irq_sources = 0u;
+    if (!machine || !psx_timers_advance_clock(&machine->timers, timer,
+                                               clock, ticks, &irq_sources))
+        return false;
+    if ((irq_sources & (1u << timer)) != 0u) {
+        psx_irq_set_line(&machine->irq, 4u + timer, true);
+        psx_irq_set_line(&machine->irq, 4u + timer, false);
+        psx_machine_refresh_interrupts(machine);
+    }
+    return true;
+}
+
 /* The PS1 interrupt controller maps VBlank to source 0 (IRQ0). Keep the
  * source level asserted for the complete blanking interval; the controller
  * latches the rising edge and software acknowledges it through I_STAT.
