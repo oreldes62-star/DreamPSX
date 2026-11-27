@@ -60,6 +60,19 @@ int main(void)
     psx_kos_audio_backend_stop(&backend);
     assert(kos_stub_stopped() == 1);
 
+    /* Invalid input must reset stale state before any KOS call. */
+    backend.stream_handle = 7;
+    backend.stream_system_initialized = true;
+    backend.initialized = true;
+    assert(!psx_kos_audio_backend_start(&backend, NULL));
+    assert(backend.stream_handle == SND_STREAM_INVALID);
+    assert(!backend.stream_system_initialized);
+    assert(!backend.initialized);
+    psx_kos_audio_backend_stop(&backend);
+    assert(kos_stub_stopped() == 1);
+    assert(kos_stub_destroyed() == 1);
+    assert(kos_stub_shutdown_count() == 1);
+
     /* A failed stream subsystem init must not attempt shutdown. */
     kos_stub_reset();
     kos_stub_set_init_result(-1);
