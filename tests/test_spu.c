@@ -464,8 +464,7 @@ int main(void)
         assert(spu.reverb_buffer_address == base);
         assert(psx_spu_reverb_resolve_address(&spu, 0u) == base);
         assert(psx_spu_reverb_resolve_address(&spu, 2u) == base + 16u);
-        assert(psx_spu_reverb_resolve_address(&spu, 0x0200u) ==
-               PSX_SPU_REVERB_BUFFER_END_ADDRESS);
+        assert(psx_spu_reverb_resolve_address(&spu, 0x0200u) == base);
         spu.reverb_buffer_address = PSX_SPU_REVERB_BUFFER_END_ADDRESS;
         psx_spu_reverb_advance(&spu);
         assert(spu.reverb_buffer_address == base);
@@ -473,8 +472,7 @@ int main(void)
         assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
                                PSX_SPU_REVERB_WORK_AREA_START_OFFSET, 0u));
         assert(spu.reverb_buffer_address == 0u);
-        assert(psx_spu_reverb_resolve_address(&spu, 0xffffu) ==
-               PSX_SPU_REVERB_BUFFER_END_ADDRESS);
+        assert(psx_spu_reverb_resolve_address(&spu, 0xffffu) == 0x7fff8u);
         assert(!psx_spu_reverb_resolve_address(NULL, 0u));
     }
 
