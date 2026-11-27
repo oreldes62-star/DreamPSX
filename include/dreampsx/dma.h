@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include "dreampsx/memory.h"
 #include "dreampsx/gpu.h"
+#include "dreampsx/cdrom.h"
 
 #define PSX_DMA_BASE_ADDR 0x1f801080u
 #define PSX_DMA_DPCR_ADDR 0x1f8010f0u
@@ -92,6 +93,10 @@ bool psx_dma_execute_gpu_linked_list(PsxDmaController *dma,
 /* Execute channel-2 request/block mode (CHCR sync=1), in either direction. */
 bool psx_dma_execute_gpu_request(PsxDmaController *dma,
                                   PsxMemory *memory, PsxGpu *gpu);
+
+/* Execute channel-3 CD-ROM burst transfer from the data FIFO to RAM. */
+bool psx_dma_execute_cdrom(PsxDmaController *dma, PsxMemory *memory,
+                           PsxCdrom *cdrom);
 
 /* True when DICR's master interrupt condition is asserted. */
 bool psx_dma_irq_output(const PsxDmaController *dma);
