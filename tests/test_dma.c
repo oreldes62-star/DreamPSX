@@ -35,7 +35,18 @@ int main(void)
                                   (1u << 3u)) == 3);
     assert(psx_dma_write32(&dma, PSX_DMA_DPCR_ADDR, 0x07654321u));
 
-    /* Pending discovery honors DPCR enable, CHCR start and sync mode. */
+    /* CHCR requests persist in discovery while DPCR temporarily blocks
+     * arbitration; enabling the channel makes it immediately selectable. */
+    assert(psx_dma_write32(&dma, PSX_DMA_DPCR_ADDR, 0u));
+    assert(psx_dma_write32(&dma, PSX_DMA_BASE_ADDR + 0x08u, 0x01000200u));
+    assert(psx_dma_pending_mask(&dma) == 1u);
+    assert(psx_dma_select_channel(&dma, psx_dma_pending_mask(&dma)) == -1);
+    assert(psx_dma_write32(&dma, PSX_DMA_DPCR_ADDR, 8u));
+    assert(psx_dma_select_channel(&dma, psx_dma_pending_mask(&dma)) == 0);
+    assert(psx_dma_write32(&dma, PSX_DMA_BASE_ADDR + 0x08u, 0u));
+
+    /* Pending discovery honors CHCR start and sync mode; DPCR arbitration
+     * is applied separately by the priority selector. */
     assert(psx_dma_write32(&dma, PSX_DMA_DPCR_ADDR, 0x00008888u));
     assert(psx_dma_write32(&dma, PSX_DMA_BASE_ADDR + 0x18u, 0x01000200u));
     assert(psx_dma_write32(&dma, PSX_DMA_BASE_ADDR + 0x28u, 0x01000000u));
