@@ -121,4 +121,4 @@ The machine layer now routes GPU VBlank level transitions to the PS1 interrupt c
 The three root-counter register banks now expose counter, mode and target registers, read-to-clear target/overflow flags, and an explicit deterministic tick API. Clock-source selection, HBlank/dot-clock wiring and timer IRQ generation remain future work. See [timer register milestone 3.75](docs/TIMERS-REGISTER-MILESTONE-3.75.md).
 
 
-Milestone 3.76 adds selectable root-counter clock domains and timer IRQ event routing. GPU-generated HBlank/dot-clock pulses, full synchronization modes and CPU-cycle scheduling remain future integration work. See [timer clock and IRQ milestone](docs/TIMERS-CLOCK-IRQ-MILESTONE-3.76.md).
+Milestone 3.76 adds selectable root-counter clock domains and timer IRQ event routing. Milestone 3.77 now emits one abstract HBlank pulse per advanced scanline and routes it to Timer1, including its IRQ path. Exact horizontal phase, dot-clock pulses, full synchronization modes and CPU-cycle scheduling remain future integration work. See [HBlank/Timer1 integration milestone](docs/GPU-HBLANK-TIMER1-MILESTONE-3.77.md).
