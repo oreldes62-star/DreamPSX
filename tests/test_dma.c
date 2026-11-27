@@ -27,10 +27,10 @@ int main(void)
                                   (1u << 3u)) == 2);
     assert(psx_dma_select_channel(&dma, 1u << 6u) == -1);
     assert(psx_dma_select_channel(&dma, 0u) == -1);
-    assert(psx_dma_write32(&dma, PSX_DMA_DPCR_ADDR, 0x0000a8c0u));
+    assert(psx_dma_write32(&dma, PSX_DMA_DPCR_ADDR, 0x0000a2c0u));
     assert(psx_dma_select_channel(&dma, (1u << 1u) | (1u << 2u) |
                                   (1u << 3u)) == 3);
-    assert(psx_dma_write32(&dma, PSX_DMA_DPCR_ADDR, 0x000098c0u));
+    assert(psx_dma_write32(&dma, PSX_DMA_DPCR_ADDR, 0x000092c0u));
     assert(psx_dma_select_channel(&dma, (1u << 1u) | (1u << 2u) |
                                   (1u << 3u)) == 3);
     assert(psx_dma_write32(&dma, PSX_DMA_DPCR_ADDR, 0x07654321u));
