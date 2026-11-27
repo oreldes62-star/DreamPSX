@@ -24,14 +24,34 @@ int main(void)
     assert(psx_gpu_gp1_write(&machine.gpu,
         0x07000000u | (256u << 10u) | 16u));
     assert(psx_gpu_gp1_write(&machine.gpu, 0x08000000u));
-    psx_irq_write_mask(&machine.irq, 1u << 0u);
+    psx_irq_write_mask(&machine.irq, (1u << 0u) | (1u << 5u));
+
+    /* Timer1 selects HBlank (clock source 1), targets its first line tick,
+     * and raises IRQ source 5 through the machine adapter. */
+    assert(psx_timers_write16(&machine.timers, 0x1f801118u, 1u));
+    assert(psx_timers_write16(&machine.timers, 0x1f801114u,
+                              (uint16_t)((1u << 8u) | (1u << 4u))));
     machine.cop0_status = PSX_COP0_STATUS_IEC | PSX_COP0_CAUSE_IP2;
 
     assert(psx_machine_video_advance_scanline(&machine, &video));
     assert(video.vblank && video.vblank_started);
+    assert(video.hblank_pulse);
+    assert(machine.timers.timer[1].counter == 1u);
+    assert((psx_irq_read_stat(&machine.irq) & (1u << 5u)) != 0u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) != 0u);
     assert((psx_irq_read_stat(&machine.irq) & 1u) != 0u);
     assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) != 0u);
     assert(psx_machine_interrupt_eligible(&machine));
+
+    /* Acknowledge the one-shot Timer1 IRQ. Further HBlank pulses still
+     * advance Timer1 but do not retrigger its one-shot interrupt. */
+    psx_irq_write_stat(&machine.irq, (uint16_t)~(1u << 5u));
+    psx_machine_refresh_interrupts(&machine);
+    assert((psx_irq_read_stat(&machine.irq) & (1u << 5u)) == 0u);
+    assert(machine.timers.timer[1].counter == 1u);
+    assert(psx_machine_video_advance_scanline(&machine, &video));
+    assert(machine.timers.timer[1].counter == 2u);
+    assert((psx_irq_read_stat(&machine.irq) & (1u << 5u)) == 0u);
 
     /* IRQ0 remains level-asserted throughout VBlank, while I_STAT latches
      * the request. Entering the visible range deasserts the source line.
