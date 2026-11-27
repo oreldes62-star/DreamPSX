@@ -453,6 +453,31 @@ int main(void)
                                &reverb_value));
     }
 
+
+    /* Reverb work-area cursor starts at ESA, resolves relative offsets in
+     * eight-byte units, clamps below ESA, and wraps at the 512 KiB boundary. */
+    {
+        const uint32_t base = 0x7ff00u;
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                               PSX_SPU_REVERB_WORK_AREA_START_OFFSET,
+                               (uint16_t)(base / 8u)));
+        assert(spu.reverb_buffer_address == base);
+        assert(psx_spu_reverb_resolve_address(&spu, 0u) == base);
+        assert(psx_spu_reverb_resolve_address(&spu, 2u) == base + 16u);
+        assert(psx_spu_reverb_resolve_address(&spu, 0x0200u) ==
+               PSX_SPU_REVERB_BUFFER_END_ADDRESS);
+        spu.reverb_buffer_address = PSX_SPU_REVERB_BUFFER_END_ADDRESS;
+        psx_spu_reverb_advance(&spu);
+        assert(spu.reverb_buffer_address == base);
+        assert(psx_spu_reverb_resolve_address(&spu, 0u) == base);
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                               PSX_SPU_REVERB_WORK_AREA_START_OFFSET, 0u));
+        assert(spu.reverb_buffer_address == 0u);
+        assert(psx_spu_reverb_resolve_address(&spu, 0xffffu) ==
+               PSX_SPU_REVERB_BUFFER_END_ADDRESS);
+        assert(!psx_spu_reverb_resolve_address(NULL, 0u));
+    }
+
     /* Typed voice registers expose 24 independent parameter banks. */
     assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + 0x000u, 0x1111u));
     assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + 0x002u, 0x2222u));
