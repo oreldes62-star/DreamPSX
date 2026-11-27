@@ -9,6 +9,11 @@ void psx_bus_attach_dma(PsxBus *bus, PsxDmaController *dma)
     if (bus && bus->initialized) bus->dma = dma;
 }
 
+void psx_bus_attach_cdrom(PsxBus *bus, PsxCdrom *cdrom)
+{
+    if (bus && bus->initialized) bus->cdrom = cdrom;
+}
+
 static uint32_t physical_address(uint32_t address)
 {
     if ((address >= 0x80000000u && address <= 0x9fffffffu) ||
@@ -26,6 +31,7 @@ bool psx_bus_init(PsxBus *bus, PsxMemory *memory, PsxIrqController *irq,
     bus->gpu = gpu;
     bus->timers = timers;
     bus->dma = NULL;
+    bus->cdrom = NULL;
     bus->initialized = true;
     return true;
 }
@@ -34,6 +40,7 @@ bool psx_bus_read8(const PsxBus *bus, uint32_t address, uint8_t *value)
 {
     if (!bus || !bus->initialized || !value) return false;
     address = physical_address(address);
+    if (bus->cdrom && psx_cdrom_read8(bus->cdrom, address, value)) return true;
     if (psx_irq_mmio_read8(bus->irq, address, value)) return true;
     return psx_memory_read8(bus->memory, address, value);
 }
@@ -65,6 +72,10 @@ bool psx_bus_write8(PsxBus *bus, uint32_t address, uint8_t value)
 {
     if (!bus || !bus->initialized) return false;
     address = physical_address(address);
+    if (bus->cdrom && psx_cdrom_write8(bus->cdrom, address, value)) {
+        psx_irq_set_line(bus->irq, 2u, psx_cdrom_irq_output(bus->cdrom));
+        return true;
+    }
     if (psx_irq_mmio_write8(bus->irq, address, value)) return true;
     return psx_memory_write8(bus->memory, address, value);
 }
