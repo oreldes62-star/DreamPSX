@@ -65,6 +65,7 @@ typedef struct {
     uint16_t *vram;
     size_t vram_pixels;
     uint32_t status;
+    unsigned dma_direction;
     uint32_t command;
     uint32_t parameters[8];
     unsigned draw_area_left;
