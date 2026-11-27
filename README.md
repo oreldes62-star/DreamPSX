@@ -113,3 +113,6 @@ The display API now also derives effective output width and height from GP1(06h/
 The GPU now exposes an explicit odd/even field state for 480-line interlace and mirrors it to GPUSTAT bit 31. See [interlace field milestone 3.72](docs/GPU-INTERLACE-FIELD-MILESTONE-3.72.md).
 
 A first scanline scheduler now distinguishes NTSC and PAL field lengths, advances progressive frames and alternating interlaced fields, and reports VBlank transitions using GP1(07h). Half-line phase, CPU-clock integration and IRQ0 delivery remain future work. See [video timing milestone 3.73](docs/GPU-VIDEO-TIMING-MILESTONE-3.73.md).
+
+
+The machine layer now routes GPU VBlank level transitions to the PS1 interrupt controller's IRQ0 source and refreshes COP0 Cause.IP2. The scanline clock is still explicitly advanced by the frontend; CPU-cycle scheduling and IRQ delivery during normal instruction stepping remain future work. See [VBlank IRQ milestone 3.74](docs/GPU-VBLANK-IRQ-MILESTONE-3.74.md).
