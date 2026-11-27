@@ -37,6 +37,8 @@ void psx_spu_reset(PsxSpu *spu)
     memset(spu->registers, 0, sizeof(spu->registers));
     memset(spu->ram, 0, sizeof(spu->ram));
     spu->transfer_address = 0u;
+    spu->active_voices = 0u;
+    spu->control = 0u;
 }
 
 bool psx_spu_read16(PsxSpu *spu, uint32_t address, uint16_t *value)
@@ -46,6 +48,17 @@ bool psx_spu_read16(PsxSpu *spu, uint32_t address, uint16_t *value)
         (address & 1u) != 0u || !register_offset(address, &offset))
         return false;
 
+    if (offset == PSX_SPU_KEY_ON_LOW_OFFSET ||
+        offset == PSX_SPU_KEY_ON_HIGH_OFFSET ||
+        offset == PSX_SPU_KEY_OFF_LOW_OFFSET ||
+        offset == PSX_SPU_KEY_OFF_HIGH_OFFSET) {
+        *value = 0u; /* Key registers are write-only. */
+        return true;
+    }
+    if (offset == PSX_SPU_CONTROL_OFFSET) {
+        *value = spu->control;
+        return true;
+    }
     if (offset == PSX_SPU_TRANSFER_DATA_OFFSET) {
         const uint32_t ram_address = spu->transfer_address &
                                      (PSX_SPU_RAM_BYTES - 1u);
@@ -68,6 +81,28 @@ bool psx_spu_write16(PsxSpu *spu, uint32_t address, uint16_t value)
     if (offset == PSX_SPU_STATUS_OFFSET)
         return true; /* Read-only status register in this initial model. */
 
+    if (offset == PSX_SPU_KEY_ON_LOW_OFFSET) {
+        spu->active_voices |= value;
+        return true;
+    }
+    if (offset == PSX_SPU_KEY_ON_HIGH_OFFSET) {
+        spu->active_voices |= (uint32_t)(value & 0x00ffu) << 16u;
+        return true;
+    }
+    if (offset == PSX_SPU_KEY_OFF_LOW_OFFSET) {
+        spu->active_voices &= ~(uint32_t)value;
+        return true;
+    }
+    if (offset == PSX_SPU_KEY_OFF_HIGH_OFFSET) {
+        spu->active_voices &= ~((uint32_t)(value & 0x00ffu) << 16u);
+        return true;
+    }
+    if (offset == PSX_SPU_CONTROL_OFFSET) {
+        spu->control = value;
+        store_le16(&spu->registers[offset], value);
+        return true;
+    }
+
     if (offset == PSX_SPU_TRANSFER_ADDR_OFFSET) {
         store_le16(&spu->registers[offset], value);
         spu->transfer_address =
@@ -85,6 +120,11 @@ bool psx_spu_write16(PsxSpu *spu, uint32_t address, uint16_t value)
 
     store_le16(&spu->registers[offset], value);
     return true;
+}
+
+uint32_t psx_spu_active_voice_mask(const PsxSpu *spu)
+{
+    return (spu && spu->initialized) ? spu->active_voices : 0u;
 }
 
 bool psx_spu_read8(PsxSpu *spu, uint32_t address, uint8_t *value)
