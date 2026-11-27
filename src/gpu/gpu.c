@@ -594,6 +594,7 @@ void psx_gpu_reset(PsxGpu *gpu)
 {
     if (!gpu) return;
     gpu->status = GPU_STATUS_RESET;
+    gpu->dma_direction = 0u;
     gpu->command = 0u;
     gpu->parameters[0] = 0u;
     gpu->parameters[1] = 0u;
@@ -793,6 +794,9 @@ bool psx_gpu_gp1_write(PsxGpu *gpu, uint32_t value)
     case 0x00u: /* GP1(00h): GPU reset. */
         psx_gpu_reset(gpu);
         break;
+    case 0x04u: /* GP1(04h): DMA direction / data request mode. */
+        gpu->dma_direction = value & 3u;
+        break;
     case 0x03u: /* GP1(03h): display enable / disable. */
         gpu->display.disabled = (value & 1u) != 0u;
         if (gpu->display.disabled) gpu->status |= 1u << 23u;
@@ -881,11 +885,12 @@ bool psx_gpu_read_status(const PsxGpu *gpu, uint32_t *value)
     bool can_receive_command;
     bool can_receive_dma_block;
     bool can_send_vram;
+    bool dma_request;
 
     if (!gpu || !gpu->initialized || !value) return false;
 
-    status = gpu->status & ~((1u << 26u) | (1u << 27u) |
-                             (1u << 28u));
+    status = gpu->status & ~((1u << 25u) | (7u << 26u) |
+                             (3u << 29u));
     can_receive_command =
         gpu->parameter_expected == 0u &&
         gpu->transfer_mode == PSX_GPU_TRANSFER_IDLE;
@@ -897,6 +902,23 @@ bool psx_gpu_read_status(const PsxGpu *gpu, uint32_t *value)
     if (can_receive_command) status |= 1u << 26u;
     if (can_send_vram) status |= 1u << 27u;
     if (can_receive_dma_block) status |= 1u << 28u;
+    status |= (gpu->dma_direction & 3u) << 29u;
+
+    switch (gpu->dma_direction & 3u) {
+    case 1u: /* FIFO: request while GP0 can accept a word. */
+        dma_request = can_receive_command;
+        break;
+    case 2u: /* CPU to GP0: request while write FIFO is empty. */
+        dma_request = can_receive_dma_block;
+        break;
+    case 3u: /* GPUREAD to CPU: request while read data is available. */
+        dma_request = can_send_vram;
+        break;
+    default:
+        dma_request = false;
+        break;
+    }
+    if (dma_request) status |= 1u << 25u;
 
     *value = status;
     return true;
