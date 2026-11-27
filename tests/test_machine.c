@@ -14,6 +14,29 @@ int main(void)
     assert(ram && bios && gpu_vram);
     assert(psx_machine_init(&machine, ram, PSX_RAM_SIZE, bios, PSX_BIOS_SIZE,
                             gpu_vram, PSX_GPU_VRAM_WIDTH * PSX_GPU_VRAM_HEIGHT));
+    /* SPU output cadence is clocked at 44.1 kHz: 768 master cycles/frame. */
+    {
+        int16_t frame[2] = {1, 1};
+        assert(psx_machine_advance_system_cycles(&machine, 767u));
+        assert(machine.spu_audio_cycle_phase == 767u);
+        assert(machine.audio_output.frame_count == 0u);
+        assert(psx_machine_advance_system_cycles(&machine, 1u));
+        assert(machine.spu_audio_cycle_phase == 0u);
+        assert(machine.audio_output.frame_count == 1u);
+        assert(psx_machine_read_audio(&machine, frame, 1u) == 1u);
+        assert(frame[0] == 0 && frame[1] == 0);
+
+        psx_machine_reset(&machine);
+        assert(psx_machine_advance_system_cycles(&machine, 1537u));
+        assert(machine.audio_output.frame_count == 2u);
+        assert(machine.spu_audio_cycle_phase == 1u);
+        psx_machine_reset(&machine);
+        assert(psx_machine_advance_system_cycles(&machine, 768u));
+        assert(psx_machine_advance_system_cycles(&machine, 769u));
+        assert(machine.audio_output.frame_count == 2u);
+        assert(machine.spu_audio_cycle_phase == 1u);
+    }
+    psx_machine_reset(&machine);
     /* Machine-level SPU rendering feeds the bounded stereo output queue. */
     {
         int16_t output[PSX_AUDIO_BUFFER_CAPACITY_FRAMES * 2u] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
