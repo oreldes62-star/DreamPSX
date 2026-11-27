@@ -152,6 +152,8 @@ int main(void)
                            (1u << 25u) | (1u << 26u)));
     assert(psx_dma_read32(&dma, PSX_DMA_DICR_ADDR, &value));
     assert((value & (1u << 31u)) == 0u);
+    /* Clear the DICR control enables too; W1C only cleared status above. */
+    assert(psx_dma_write32(&dma, PSX_DMA_DICR_ADDR, 0u));
 
     assert(psx_dma_write32(&dma, PSX_DMA_DPCR_ADDR, 0x07654321u));
     assert(psx_dma_read32(&dma, PSX_DMA_DICR_ADDR, &value));
