@@ -63,6 +63,8 @@ int main(void)
     select_bank(&cdrom, 1u);
     assert(psx_cdrom_read8(&cdrom, PSX_CDROM_BASE_ADDR + 3u, &value));
     assert((value & 0x1fu) == 0x10u);
+    select_bank(&cdrom, 0u);
+    assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 3u, 0x10u));
 
     /* Mount an in-memory ISO, ReadN LBA 0 (00:02:00), then drain its
      * 2048-byte sector through the byte data register when DRQ is enabled. */
