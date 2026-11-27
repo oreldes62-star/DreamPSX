@@ -245,6 +245,19 @@ int main(void)
         assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 1u, 0x06u));
         assert(cdrom.data_count == 0u); /* Routed to XA, not CPU data FIFO. */
         assert(cdrom.xa_pcm_count == 4032u);
+        /* 18.9 kHz means one PCM frame every 1792 PS1 system cycles. */
+        psx_cdrom_advance_xa_audio_cycles(&cdrom, 1791u);
+        assert(psx_cdrom_read_xa_audio_timed(
+            &cdrom, left, right, 8u, &frames, &rate));
+        assert(frames == 0u);
+        psx_cdrom_advance_xa_audio_cycles(&cdrom, 1u);
+        assert(psx_cdrom_read_xa_audio_timed(
+            &cdrom, left, right, 8u, &frames, &rate));
+        assert(frames == 1u && rate == 18900u);
+        psx_cdrom_advance_xa_audio_cycles(&cdrom, 1792u);
+        assert(psx_cdrom_read_xa_audio_timed(
+            &cdrom, left, right, 8u, &frames, &rate));
+        assert(frames == 1u && rate == 18900u);
         assert(psx_cdrom_read_xa_audio(&cdrom, left, right, 64u,
                                        &frames, &rate));
         assert(frames == 64u && rate == 18900u);
@@ -254,7 +267,7 @@ int main(void)
         assert(psx_cdrom_read_xa_audio(&cdrom, left, right,
                                        PSX_XA_ADPCM_MAX_SECTOR_SAMPLES,
                                        &frames, &rate));
-        assert(frames == 4032u - 64u);
+        assert(frames == 4032u - 66u);
         assert(rate == 0u && cdrom.xa_pcm_count == 0u);
 
         /* The next sector has a different channel and is suppressed by the
