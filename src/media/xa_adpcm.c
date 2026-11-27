@@ -123,3 +123,66 @@ bool psx_xa_adpcm_decode_sound_group(
     *samples_per_channel = counts[0];
     return counts[0] == counts[1] || !stereo;
 }
+
+
+bool psx_xa_adpcm_decode_sector(
+    const uint8_t *payload, size_t payload_size,
+    const PsxDiscXaAudioFormat *format, PsxXaAdpcmState states[2],
+    int16_t *left, int16_t *right, size_t output_capacity,
+    size_t *samples_per_channel)
+{
+    PsxXaAdpcmState next_states[2];
+    int16_t group_left[PSX_XA_ADPCM_MAX_GROUP_SAMPLES];
+    int16_t group_right[PSX_XA_ADPCM_MAX_GROUP_SAMPLES];
+    size_t group_samples, required_samples;
+    bool stereo;
+    unsigned units, shift_limit;
+
+    if (!payload || payload_size < PSX_XA_ADPCM_SECTOR_PAYLOAD_SIZE ||
+        !format || !states || !left || !right || !samples_per_channel ||
+        (format->channels != 1u && format->channels != 2u) ||
+        (format->bits_per_sample != 4u && format->bits_per_sample != 8u))
+        return false;
+
+    stereo = format->channels == 2u;
+    units = format->bits_per_sample == 4u ? 8u : 4u;
+    shift_limit = format->bits_per_sample == 4u ? 12u : 8u;
+    group_samples = (size_t)units * PSX_XA_ADPCM_SAMPLES_PER_UNIT /
+                    (stereo ? 2u : 1u);
+    required_samples = group_samples * PSX_XA_ADPCM_SECTOR_GROUPS;
+    if (output_capacity < required_samples) return false;
+
+    /* Validate every group before decoding, so malformed headers cannot
+       partially advance the caller's predictor history. */
+    for (unsigned group = 0u; group < PSX_XA_ADPCM_SECTOR_GROUPS; ++group) {
+        const uint8_t *source =
+            payload + (size_t)group * PSX_XA_ADPCM_GROUP_SIZE;
+        for (unsigned unit = 0u; unit < units; ++unit) {
+            if ((source[4u + unit] & 0x0fu) > shift_limit) return false;
+        }
+    }
+
+    next_states[0] = states[0];
+    next_states[1] = states[1];
+    for (unsigned group = 0u; group < PSX_XA_ADPCM_SECTOR_GROUPS; ++group) {
+        const uint8_t *source =
+            payload + (size_t)group * PSX_XA_ADPCM_GROUP_SIZE;
+        size_t decoded = 0u;
+        if (!psx_xa_adpcm_decode_sound_group(
+                source, format->bits_per_sample, stereo, next_states,
+                group_left, group_right, &decoded) ||
+            decoded != group_samples)
+            return false;
+        for (size_t sample = 0u; sample < decoded; ++sample) {
+            size_t destination =
+                (size_t)group * group_samples + sample;
+            left[destination] = group_left[sample];
+            right[destination] = group_right[sample];
+        }
+    }
+
+    states[0] = next_states[0];
+    states[1] = next_states[1];
+    *samples_per_channel = required_samples;
+    return true;
+}
