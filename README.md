@@ -7,7 +7,7 @@ Experimental PlayStation emulator research project targeting Sega Dreamcast. Cur
 
 ## Current milestones
 - [AICA smoke-test telemetry milestone 4.46](docs/DREAMCAST-AICA-SMOKE-TELEMETRY-MILESTONE-4.46.md)
-- [Full DreamPSX core SH-4 cross-build milestone 4.46](docs/DREAMCAST-FULL-CORE-SH4-CROSS-BUILD-MILESTONE-4.46.md)
+- [Full DreamPSX core SH-4 cross-build milestone 4.47](docs/DREAMCAST-FULL-CORE-SH4-CROSS-BUILD-MILESTONE-4.47.md)
 - [Dreamcast AICA audio prefill and pacing milestone 4.45](docs/DREAMCAST-AICA-PREFILL-PACING-MILESTONE-4.45.md)
 - [Dreamcast AICA audio smoke-test milestone 4.44](docs/DREAMCAST-AICA-AUDIO-SMOKE-TEST-MILESTONE-4.44.md)
 - [KallistiOS AICA stream lifecycle milestone 4.43](docs/KALLISTIOS-AICA-STREAM-LIFECYCLE-MILESTONE-4.43.md)
