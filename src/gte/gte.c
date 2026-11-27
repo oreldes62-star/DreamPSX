@@ -1092,7 +1092,7 @@ static void gte_execute_avsz(PsxGte *gte, bool four)
     gte->control[31] = flags;
 }
 
-bool psx_gte_execute(PsxGte *gte, uint32_t instruction)
+static bool gte_execute_immediate(PsxGte *gte, uint32_t instruction)
 {
     uint32_t command;
     int64_t x0, y0, x1, y1, x2, y2, area;
@@ -1205,4 +1205,85 @@ bool psx_gte_execute(PsxGte *gte, uint32_t instruction)
     if (flags != 0u) flags |= 1u << 31;
     gte->control[31] = flags;
     return true;
+}
+
+
+/* Latencies use the documented PSX-SPX clock counts. The command issue
+ * cycle is consumed by the CPU instruction itself; busy_cycles therefore
+ * stores the remaining clocks after issue.
+ */
+uint8_t psx_gte_command_cycles(uint32_t instruction)
+{
+    switch (instruction & 0x3fu) {
+    case 0x01u: return 15u; /* RTPS */
+    case 0x06u: return 8u;  /* NCLIP */
+    case 0x0cu: return 6u;  /* OP */
+    case 0x10u: case 0x11u: case 0x12u: return 8u; /* DPCS, INTPL, MVMVA */
+    case 0x13u: return 19u; /* NCDS */
+    case 0x14u: return 13u; /* CDP */
+    case 0x16u: return 44u; /* NCDT */
+    case 0x1bu: return 17u; /* NCCS */
+    case 0x1cu: return 11u; /* CC */
+    case 0x1eu: return 14u; /* NCS */
+    case 0x20u: return 30u; /* NCT */
+    case 0x28u: return 5u;  /* SQR */
+    case 0x29u: return 8u;  /* DCPL */
+    case 0x2au: return 17u; /* DPCT */
+    case 0x2du: return 5u;  /* AVSZ3 */
+    case 0x2eu: return 6u;  /* AVSZ4 */
+    case 0x30u: return 23u; /* RTPT */
+    case 0x3du: case 0x3eu: return 5u; /* GPF, GPL */
+    case 0x3fu: return 39u; /* NCCT */
+    default: return 0u;
+    }
+}
+
+bool psx_gte_execute(PsxGte *gte, uint32_t instruction)
+{
+    return gte_execute_immediate(gte, instruction);
+}
+
+bool psx_gte_issue(PsxGte *gte, uint32_t instruction)
+{
+    PsxGte result;
+    uint8_t cycles;
+    if (!gte || gte->busy_cycles != 0u || gte->pending) return false;
+    cycles = psx_gte_command_cycles(instruction);
+    if (cycles == 0u) return false;
+
+    result = *gte;
+    result.busy_cycles = 0u;
+    result.pending = false;
+    if (!gte_execute_immediate(&result, instruction)) return false;
+
+    memcpy(gte->pending_data, result.data, sizeof(gte->pending_data));
+    memcpy(gte->pending_control, result.control,
+           sizeof(gte->pending_control));
+    gte->pending = true;
+    gte->busy_cycles = (uint8_t)(cycles - 1u);
+    if (gte->busy_cycles == 0u) {
+        memcpy(gte->data, gte->pending_data, sizeof(gte->data));
+        memcpy(gte->control, gte->pending_control, sizeof(gte->control));
+        gte->pending = false;
+    }
+    return true;
+}
+
+void psx_gte_advance_cycles(PsxGte *gte, uint32_t cycles)
+{
+    if (!gte || !gte->pending || gte->busy_cycles == 0u || cycles == 0u)
+        return;
+    if (cycles < gte->busy_cycles) {
+        gte->busy_cycles = (uint8_t)(gte->busy_cycles - cycles);
+        return;
+    }
+    memcpy(gte->data, gte->pending_data, sizeof(gte->data));
+    memcpy(gte->control, gte->pending_control, sizeof(gte->control));
+    gte->busy_cycles = 0u;
+    gte->pending = false;
+}
+
+uint8_t psx_gte_busy_cycles(const PsxGte *gte)
+{
+    return gte ? gte->busy_cycles : 0u;
 }
