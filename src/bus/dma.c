@@ -115,6 +115,9 @@ int psx_dma_begin_channel(PsxDmaController *dma)
 {
     int selected;
     if (!dma || !dma->initialized) return -1;
+    /* The PS1 DMA controller owns one transfer bus at a time. Do not
+     * claim another channel until the current channel completes or aborts. */
+    if (dma->active_mask != 0u) return -1;
     selected = psx_dma_select_channel(dma, dma->queued_mask);
     if (selected < 0) return -1;
     dma->queued_mask &= ~(1u << (unsigned)selected);
