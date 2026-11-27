@@ -39,6 +39,8 @@ typedef struct {
     uint8_t pending_command;
     uint32_t command_cycles_remaining;
     PsxDiscImage disc;
+    PsxDiscXaSubheader xa_subheader;
+    bool xa_subheader_valid;
     const uint8_t *iso_data;
     size_t iso_size;
     uint8_t location[3];
