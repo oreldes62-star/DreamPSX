@@ -297,3 +297,20 @@ bool psx_dma_execute_gpu_request(PsxDmaController *dma,
     dma->dicr |= 1u << 26u;
     return true;
 }
+
+
+/* DICR master interrupt output: force bit 15, or master enable combined
+ * with at least one enabled channel completion flag. */
+bool psx_dma_irq_output(const PsxDmaController *dma)
+{
+    uint32_t flags;
+    uint32_t enables;
+
+    if (!dma || !dma->initialized) return false;
+    flags = (dma->dicr >> 24u) & 0x7fu;
+    enables = (dma->dicr >> 16u) & 0x7fu;
+
+    return (dma->dicr & (1u << 15u)) != 0u ||
+           ((dma->dicr & (1u << 23u)) != 0u &&
+            (flags & enables) != 0u);
+}
