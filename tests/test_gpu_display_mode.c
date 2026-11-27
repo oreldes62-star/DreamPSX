@@ -35,10 +35,10 @@ int main(void)
     assert(info.interlaced && info.reverse);
     assert(info.field_valid && !info.field_odd);
 
-    /* 480i field parity is supplied by the future video timing core. */
-    assert(!psx_gpu_set_display_field(&gpu, false));
-    assert(!psx_gpu_set_display_field(&gpu, true));
-    assert(psx_gpu_gp1_write(&gpu, 0x08000024u)); /* 240i: not 480i */
+    /* 240i has scanline parity, not a held 480i field. */
+    assert(psx_gpu_gp1_write(&gpu, 0x08000020u));
+    assert(psx_gpu_get_display_mode_info(&gpu, &info));
+    assert(!info.field_valid && !info.field_odd);
     assert(!psx_gpu_set_display_field(&gpu, true));
     assert(psx_gpu_gp1_write(&gpu, 0x0800003cu)); /* 480i PAL 24-bit */
     assert(psx_gpu_get_display_mode_info(&gpu, &info));
