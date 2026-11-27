@@ -802,6 +802,105 @@ int main(void)
         psx_spu_reset(&spu);
     }
 
+    /* Per-voice reverb routing: voice 0 uses the low bitmap and voice
+     * 23 uses bit 7 of the high bitmap. Only selected voices reach the
+     * reflection input; dry mixing remains active in both cases. */
+    {
+        const unsigned routed_voices[2] = {0u, 23u};
+        for (unsigned test = 0u; test < 2u; ++test) {
+            const unsigned voice_index = routed_voices[test];
+            const uint32_t voice_bit = 1u << voice_index;
+            const uint32_t voice_register =
+                voice_index * PSX_SPU_VOICE_REGISTER_BYTES;
+            int16_t dry_left = 0;
+            int16_t dry_right = 0;
+            int16_t reflection_sample = 0;
+
+            psx_spu_reset(&spu);
+            assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                PSX_SPU_REVERB_WORK_AREA_START_OFFSET, 0x0020u));
+            assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                PSX_SPU_CONTROL_OFFSET, PSX_SPU_REVERB_MASTER_ENABLE));
+            assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                PSX_SPU_REVERB_CONFIG_VLIN_OFFSET, 0x7fffu));
+            assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                PSX_SPU_REVERB_CONFIG_VRIN_OFFSET, 0x7fffu));
+            assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                PSX_SPU_REVERB_CONFIG_VIIR_OFFSET, 0x7fffu));
+            /* Keep APF writes away from the reflection destination. */
+            assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                PSX_SPU_REVERB_CONFIG_MLAPF1_OFFSET, 0x0020u));
+            assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                PSX_SPU_REVERB_CONFIG_MRAPF1_OFFSET, 0x0024u));
+            assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                PSX_SPU_REVERB_CONFIG_MLAPF2_OFFSET, 0x0028u));
+            assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                PSX_SPU_REVERB_CONFIG_MRAPF2_OFFSET, 0x002cu));
+            assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                voice_register + 0x00u, 0x7fffu));
+            assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                voice_register + 0x02u, 0x7fffu));
+
+            spu.active_voices = voice_bit;
+            spu.voices[voice_index].current_sample = 4096;
+            spu.voices[voice_index].current_sample_valid = true;
+            spu.voices[voice_index].envelope_level = PSX_SPU_ENVELOPE_MAX;
+            spu.voices[voice_index].envelope_phase = PSX_SPU_ADSR_SUSTAIN;
+            spu.voices[voice_index].pitch = 0u;
+
+            /* Without the voice's send bit, the reverb work area receives
+             * silence even though the dry channel still produces audio. */
+            assert(psx_spu_mix_sample(&spu, &dry_left, &dry_right));
+            assert(dry_left > 0 && dry_right > 0);
+            assert(psx_spu_reverb_read16(&spu, 0u, &reflection_sample));
+            assert(reflection_sample == 0);
+
+            /* Re-run from a clean state with the correct low/high send bit. */
+            psx_spu_reset(&spu);
+            assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                PSX_SPU_REVERB_WORK_AREA_START_OFFSET, 0x0020u));
+            assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                PSX_SPU_CONTROL_OFFSET, PSX_SPU_REVERB_MASTER_ENABLE));
+            assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                PSX_SPU_REVERB_CONFIG_VLIN_OFFSET, 0x7fffu));
+            assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                PSX_SPU_REVERB_CONFIG_VRIN_OFFSET, 0x7fffu));
+            assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                PSX_SPU_REVERB_CONFIG_VIIR_OFFSET, 0x7fffu));
+            assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                PSX_SPU_REVERB_CONFIG_MLAPF1_OFFSET, 0x0020u));
+            assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                PSX_SPU_REVERB_CONFIG_MRAPF1_OFFSET, 0x0024u));
+            assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                PSX_SPU_REVERB_CONFIG_MLAPF2_OFFSET, 0x0028u));
+            assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                PSX_SPU_REVERB_CONFIG_MRAPF2_OFFSET, 0x002cu));
+            assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                voice_register + 0x00u, 0x7fffu));
+            assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                voice_register + 0x02u, 0x7fffu));
+            spu.active_voices = voice_bit;
+            spu.voices[voice_index].current_sample = 4096;
+            spu.voices[voice_index].current_sample_valid = true;
+            spu.voices[voice_index].envelope_level = PSX_SPU_ENVELOPE_MAX;
+            spu.voices[voice_index].envelope_phase = PSX_SPU_ADSR_SUSTAIN;
+            if (voice_index < 16u) {
+                assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                    PSX_SPU_REVERB_ENABLE_LOW_OFFSET,
+                    (uint16_t)voice_bit));
+            } else {
+                assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                    PSX_SPU_REVERB_ENABLE_HIGH_OFFSET,
+                    (uint16_t)(voice_bit >> 16u)));
+            }
+            assert(psx_spu_mix_sample(&spu, &dry_left, &dry_right));
+            assert(psx_spu_reverb_read16(&spu, 0u, &reflection_sample));
+            assert(reflection_sample > 0);
+            assert(spu.reverb_buffer_address == 0x102u);
+        }
+        psx_spu_reset(&spu);
+    }
+
     puts("DreamPSX SPU register/RAM tests: OK");
     return 0;
 }
