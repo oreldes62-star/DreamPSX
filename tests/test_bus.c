@@ -13,6 +13,7 @@ int main(void)
     PsxBus bus = {0};
     PsxGpu gpu;
     PsxTimers timers;
+    PsxSpu spu;
     static uint16_t gpu_vram[PSX_GPU_VRAM_WIDTH * PSX_GPU_VRAM_HEIGHT];
     uint32_t word = 0;
     uint16_t half = 0;
@@ -22,6 +23,8 @@ int main(void)
     assert(psx_gpu_init(&gpu, gpu_vram, PSX_GPU_VRAM_WIDTH * PSX_GPU_VRAM_HEIGHT));
     assert(psx_memory_init(&memory, ram, sizeof(ram), bios, sizeof(bios)));
     assert(psx_bus_init(&bus, &memory, &irq, &gpu, &timers));
+    assert(psx_spu_init(&spu));
+    bus.spu = &spu;
 
     /* RAM is visible through physical, cached and uncached segments. */
     assert(psx_bus_write32(&bus, 0x00000100u, 0x12345678u));
@@ -80,6 +83,20 @@ int main(void)
     assert(psx_bus_write32(&bus, 0x1f801810u, 2u | (1u << 16u)));
     assert(psx_bus_read32(&bus, 0xbf801810u, &word));
     assert(word == 0x56781234u);
+
+    /* SPU registers and transfer RAM share the CPU bus mapping. */
+    assert(psx_bus_write16(&bus, PSX_SPU_BASE_ADDR + 0x0e0u, 0x4567u));
+    assert(psx_bus_read16(&bus, PSX_SPU_BASE_ADDR + 0x0e0u, &half));
+    assert(half == 0x4567u);
+    assert(psx_bus_write16(&bus, PSX_SPU_BASE_ADDR +
+                           PSX_SPU_TRANSFER_ADDR_OFFSET, 0x0020u));
+    assert(psx_bus_write32(&bus, PSX_SPU_BASE_ADDR +
+                           PSX_SPU_TRANSFER_DATA_OFFSET, 0x89abcdefu));
+    assert(psx_bus_write16(&bus, PSX_SPU_BASE_ADDR +
+                           PSX_SPU_TRANSFER_ADDR_OFFSET, 0x0020u));
+    assert(psx_bus_read32(&bus, PSX_SPU_BASE_ADDR +
+                          PSX_SPU_TRANSFER_DATA_OFFSET, &word));
+    assert(word == 0x89abcdefu);
 
     /* Unknown hardware registers and invalid alignments are rejected. */
     assert(!psx_bus_read32(&bus, 0x1f801080u, &word));
