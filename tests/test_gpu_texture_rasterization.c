@@ -41,7 +41,7 @@ static void test_blend_modes(void)
         const unsigned x = 100u + mode * 10u;
         const unsigned y = 100u;
         vram[1u * PSX_GPU_VRAM_WIDTH + 1u] = 0x801fu;
-        vram[y * PSX_GPU_VRAM_WIDTH + x] = 0x03e0u;
+        vram[(y + 1u) * PSX_GPU_VRAM_WIDTH + x + 1u] = 0x03e0u;
         draw_raw_semitransparent(&gpu, x, y, mode);
         assert(pixel(&gpu, x + 1u, y + 1u) == expected[mode]);
     }
