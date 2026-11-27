@@ -64,6 +64,10 @@ static void reset_xa_audio(PsxCdrom *cdrom)
     cdrom->xa_pcm_count = 0u;
     cdrom->xa_pcm_sample_rate = 0u;
     cdrom->xa_dropped_sectors = 0u;
+    cdrom->xa_audio_clock_phase = 0u;
+    cdrom->xa_audio_clock_rate_hz = 0u;
+    cdrom->xa_audio_due_frames = 0u;
+    cdrom->xa_audio_underrun_frames = 0u;
 }
 
 /* Returns true when the sector is consumed by XA, including a bounded-queue drop. */
@@ -114,8 +118,11 @@ static bool queue_xa_sector(PsxCdrom *cdrom)
                wrapped * sizeof(cdrom->xa_pcm_right[0]));
     }
 
-    if (cdrom->xa_pcm_count == 0u)
+    if (cdrom->xa_pcm_count == 0u) {
         cdrom->xa_pcm_sample_rate = format.sample_rate_hz;
+        cdrom->xa_audio_clock_rate_hz = format.sample_rate_hz;
+        cdrom->xa_audio_clock_phase = 0u;
+    }
     cdrom->xa_decoder_state[0] = next_state[0];
     cdrom->xa_decoder_state[1] = next_state[1];
     cdrom->xa_pcm_count = (uint16_t)(cdrom->xa_pcm_count + frames);
@@ -613,5 +620,54 @@ bool psx_cdrom_read_xa_audio(PsxCdrom *cdrom, int16_t *left, int16_t *right,
         cdrom->xa_pcm_head = 0u;
         cdrom->xa_pcm_sample_rate = 0u;
     }
+    return true;
+}
+
+
+void psx_cdrom_advance_xa_audio_cycles(PsxCdrom *cdrom, uint32_t cycles)
+{
+    uint64_t accumulated;
+    uint64_t elapsed_frames;
+    uint32_t available;
+
+    if (!cdrom || !cdrom->initialized || cycles == 0u ||
+        cdrom->xa_audio_clock_rate_hz == 0u)
+        return;
+
+    accumulated = cdrom->xa_audio_clock_phase +
+        (uint64_t)cycles * cdrom->xa_audio_clock_rate_hz;
+    elapsed_frames = accumulated / PSX_CDROM_SYSTEM_CLOCK_HZ;
+    cdrom->xa_audio_clock_phase =
+        accumulated % PSX_CDROM_SYSTEM_CLOCK_HZ;
+    if (elapsed_frames == 0u) return;
+
+    available = cdrom->xa_pcm_count > cdrom->xa_audio_due_frames
+        ? (uint32_t)cdrom->xa_pcm_count - cdrom->xa_audio_due_frames : 0u;
+    if (elapsed_frames > available) {
+        uint64_t missing = elapsed_frames - available;
+        uint64_t total = (uint64_t)cdrom->xa_audio_underrun_frames + missing;
+        cdrom->xa_audio_underrun_frames = total > UINT32_MAX
+            ? UINT32_MAX : (uint32_t)total;
+        cdrom->xa_audio_due_frames += available;
+    } else {
+        cdrom->xa_audio_due_frames += (uint32_t)elapsed_frames;
+    }
+}
+
+bool psx_cdrom_read_xa_audio_timed(PsxCdrom *cdrom, int16_t *left,
+                                   int16_t *right, size_t max_frames,
+                                   size_t *frames_read,
+                                   uint16_t *sample_rate_hz)
+{
+    size_t allowed;
+    if (!cdrom || !cdrom->initialized || !left || !right ||
+        !frames_read || !sample_rate_hz)
+        return false;
+    allowed = max_frames < cdrom->xa_audio_due_frames
+        ? max_frames : cdrom->xa_audio_due_frames;
+    if (!psx_cdrom_read_xa_audio(cdrom, left, right, allowed,
+                                 frames_read, sample_rate_hz))
+        return false;
+    cdrom->xa_audio_due_frames -= (uint32_t)*frames_read;
     return true;
 }
