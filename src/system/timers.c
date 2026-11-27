@@ -21,6 +21,7 @@ void psx_timers_reset(PsxTimers *timers)
         timers->timer[i].counter = 0u;
         timers->timer[i].mode = 0u;
         timers->timer[i].target = 0u;
+        timers->timer[i].irq_fired = false;
     }
 }
 
@@ -66,6 +67,7 @@ bool psx_timers_write16(PsxTimers *timers, uint32_t address,
         /* Mode writes reset the counter and clear read-only event flags. */
         timer->counter = 0u;
         timer->mode = (uint16_t)(value & 0x03ffu);
+        timer->irq_fired = false;
     } else {
         timer->target = value;
     }
@@ -91,8 +93,60 @@ bool psx_timers_advance(PsxTimers *timers, unsigned index,
             if ((timer->mode & PSX_TIMER_MODE_RESET_AT_TARGET) != 0u)
                 timer->counter = 0u;
         }
-        if (timer->counter == 0u)
+        if (timer->counter == 0u &&
+            (timer->mode & PSX_TIMER_MODE_RESET_AT_TARGET) == 0u)
             timer->mode |= PSX_TIMER_MODE_REACHED_OVERFLOW;
+    }
+    return true;
+}
+
+static PsxTimerClock selected_clock(unsigned index, uint16_t mode)
+{
+    const unsigned source = (mode >> PSX_TIMER_MODE_CLOCK_SHIFT) & 3u;
+    if (index == 0u)
+        return source == 1u ? PSX_TIMER_CLOCK_DOT : PSX_TIMER_CLOCK_SYSTEM;
+    if (index == 1u)
+        return source == 1u ? PSX_TIMER_CLOCK_HBLANK : PSX_TIMER_CLOCK_SYSTEM;
+    return source == 1u ? PSX_TIMER_CLOCK_SYSTEM_DIV8 : PSX_TIMER_CLOCK_SYSTEM;
+}
+
+bool psx_timers_advance_clock(PsxTimers *timers, unsigned index,
+                              PsxTimerClock clock, uint32_t ticks,
+                              uint8_t *irq_sources)
+{
+    if (!timers || index >= PSX_TIMER_COUNT ||
+        clock > PSX_TIMER_CLOCK_SYSTEM_DIV8)
+        return false;
+    if (irq_sources) *irq_sources = 0u;
+    PsxTimer *timer = &timers->timer[index];
+    if (selected_clock(index, timer->mode) != clock) return true;
+
+    while (ticks-- != 0u) {
+        const uint16_t previous = timer->counter;
+        timer->counter = (uint16_t)(previous + 1u);
+        bool target = false;
+        bool overflow = false;
+
+        if (timer->counter == timer->target) {
+            target = true;
+            timer->mode |= PSX_TIMER_MODE_REACHED_TARGET;
+            if ((timer->mode & PSX_TIMER_MODE_RESET_AT_TARGET) != 0u)
+                timer->counter = 0u;
+        }
+        if (previous == 0xffffu) {
+            overflow = true;
+            timer->mode |= PSX_TIMER_MODE_REACHED_OVERFLOW;
+        }
+
+        const bool irq_event =
+            (target && (timer->mode & PSX_TIMER_MODE_IRQ_TARGET) != 0u) ||
+            (overflow && (timer->mode & PSX_TIMER_MODE_IRQ_OVERFLOW) != 0u);
+        if (irq_event &&
+            ((timer->mode & PSX_TIMER_MODE_IRQ_REPEAT) != 0u ||
+             !timer->irq_fired)) {
+            timer->irq_fired = true;
+            if (irq_sources) *irq_sources |= (uint8_t)(1u << index);
+        }
     }
     return true;
 }
