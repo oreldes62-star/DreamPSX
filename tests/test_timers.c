@@ -38,6 +38,27 @@ int main(void)
         PSX_TIMER_BASE_ADDR + 2u * PSX_TIMER_STRIDE + 4u, &half));
     assert((half & PSX_TIMER_MODE_REACHED_OVERFLOW) != 0u);
 
+    /* Clock selection: Timer 0 can be driven by dot clock; Timer 1 by HBlank;
+     * Timer 2 by system/8. IRQ request is emitted once unless repeat is set.
+     */
+    psx_timers_reset(&timers);
+    uint8_t irq = 0xffu;
+    assert(psx_timers_write16(&timers, PSX_TIMER_BASE_ADDR + 8u, 2u));
+    assert(psx_timers_write16(&timers, PSX_TIMER_BASE_ADDR + 4u,
+        (uint16_t)(1u << PSX_TIMER_MODE_CLOCK_SHIFT) |
+        PSX_TIMER_MODE_IRQ_TARGET));
+    assert(psx_timers_advance_clock(&timers, 0u, PSX_TIMER_CLOCK_SYSTEM,
+                                    4u, &irq));
+    assert(irq == 0u);
+    assert(psx_timers_advance_clock(&timers, 0u, PSX_TIMER_CLOCK_DOT,
+                                    2u, &irq));
+    assert(irq == 1u);
+    assert(psx_timers_advance_clock(&timers, 0u, PSX_TIMER_CLOCK_DOT,
+                                    2u, &irq));
+    assert(irq == 0u); /* one-shot IRQ */
+    assert(!psx_timers_advance_clock(&timers, 3u, PSX_TIMER_CLOCK_SYSTEM,
+                                     1u, &irq));
+
     assert(!psx_timers_advance(&timers, 3u, 1u));
     assert(!psx_timers_read16(&timers, PSX_TIMER_BASE_ADDR + 12u, &half));
     assert(!psx_timers_read32(&timers, PSX_TIMER_BASE_ADDR + 2u, &word));
