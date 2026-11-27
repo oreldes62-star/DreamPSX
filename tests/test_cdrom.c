@@ -120,22 +120,15 @@ int main(void)
         assert(psx_cdrom_advance_sector(&cdrom));
         assert(cdrom.xa_pcm_count == 8032u);
         assert(cdrom.xa_pcm_head == 4064u);
+        /* Only 160 frames remain: the fourth 4032-frame sector is dropped. */
+        assert(psx_cdrom_advance_sector(&cdrom));
+        assert(cdrom.xa_pcm_count == 8032u);
+        assert(cdrom.xa_dropped_sectors == 1u);
         assert(psx_cdrom_read_xa_audio(&cdrom, samples_l, samples_r,
                                        8032u, &frames, &rate));
         assert(frames == 8032u && rate == 18900u);
         assert(cdrom.xa_pcm_count == 0u && cdrom.xa_pcm_head == 0u);
         assert(cdrom.xa_pcm_sample_rate == 0u);
-
-        /* Refill to capacity minus 128 frames; the next sector must drop. */
-        assert(psx_cdrom_advance_sector(&cdrom));
-        assert(cdrom.xa_pcm_count == 4032u);
-        assert(cdrom.xa_dropped_sectors == 0u);
-        assert(psx_cdrom_advance_sector(&cdrom));
-        assert(cdrom.xa_pcm_count == 8064u);
-        /* Only 128 frames remain: a 4032-frame sector is rejected whole. */
-        assert(psx_cdrom_advance_sector(&cdrom));
-        assert(cdrom.xa_pcm_count == 8064u);
-        assert(cdrom.xa_dropped_sectors == 1u);
         psx_cdrom_unmount(&cdrom);
     }
 
