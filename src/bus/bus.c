@@ -25,6 +25,7 @@ bool psx_bus_init(PsxBus *bus, PsxMemory *memory, PsxIrqController *irq,
     bus->irq = irq;
     bus->gpu = gpu;
     bus->timers = timers;
+    bus->dma = NULL;
     bus->initialized = true;
     return true;
 }
