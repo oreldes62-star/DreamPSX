@@ -18,6 +18,6 @@ Move the first real payload through the PS1 DMA path instead of only exposing it
 
 ## Scope and limitations
 
-This is a synchronous first slice, not a complete DMA engine. It does not yet support GPU request/block mode, GPU linked-list mode, GPU-to-RAM readback, other DMA channels, arbitration/priority scheduling, chopping, cycle timing, or raising the system DMA IRQ line. A RAM read or GP0 write failure aborts the function and leaves the channel state available for diagnosis; rollback of already-submitted words is not attempted. The implementation is intentionally explicit about these limits rather than claiming general DMA compatibility.
+This is a synchronous first slice, not a complete DMA engine. It does not yet support GPU request/block mode, GPU linked-list mode, other DMA channels, arbitration/priority scheduling, chopping, cycle timing, or raising the system DMA IRQ line. GPU-to-RAM readback is added separately in milestone 3.87. A RAM read or GP0 write failure aborts the function and leaves the channel state available for diagnosis; rollback of already-submitted words is not attempted. The implementation is intentionally explicit about these limits rather than claiming general DMA compatibility.
 
 Tests have been added but have not been compiled or run in this environment.
