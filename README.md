@@ -2,7 +2,7 @@
 PlayStation emulator research and development for Sega Dreamcast.
 
 ## Development status
-Experimental project. The latest GPU work adds basic monochrome rectangle primitives (variable, 1x1, 8x8 and 16x16) with draw-area clipping and signed offsets, alongside textured-triangle coverage. The new host tests and complete CTest suite have not yet been executed; runtime validation is pending. Host tests do not validate Dreamcast hardware performance or compatibility.
+Experimental project. The latest GPU work adds monochrome and textured rectangle primitives (variable, 1x1, 8x8 and 16x16), including indexed/direct texture sampling, draw-area clipping and signed offsets, alongside textured-triangle coverage. The new host tests and complete CTest suite have not yet been executed; runtime validation is pending. Host tests do not validate Dreamcast hardware performance or compatibility.
 
 ## Current milestones
 - [COP2 CU2 milestone 1.2](docs/COP2-CU2-MILESTONE-1.2.md)
@@ -87,6 +87,7 @@ Experimental project. The latest GPU work adds basic monochrome rectangle primit
 - [GPU textured shared-edge validation milestone 3.62](docs/GPU-TEXTURE-SHARED-EDGES-MILESTONE-3.62.md)
 - [GPU indexed texture boundary milestone 3.63](docs/GPU-INDEXED-TEXTURE-BOUNDARIES-MILESTONE-3.63.md)
 - [GPU monochrome rectangle milestone 3.64](docs/GPU-MONOCHROME-RECTANGLES-MILESTONE-3.64.md)
+- [GPU textured rectangle milestone 3.65](docs/GPU-TEXTURED-RECTANGLES-MILESTONE-3.65.md)
 
 ## Target
 Sega Dreamcast with 16 MiB RAM. Long-term target: CDI test build for Flycast, then GDEMU.
