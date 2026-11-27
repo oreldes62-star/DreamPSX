@@ -976,8 +976,6 @@ bool psx_gpu_scanout_rgb565(const PsxGpu *gpu, unsigned width,
             }
         }
     }
-    info->field_valid = info->interlaced && info->height == 480u;
-    info->field_odd = info->field_valid && gpu->display.field_odd;
     return true;
 }
 
@@ -1033,5 +1031,7 @@ bool psx_gpu_get_display_mode_info(const PsxGpu *gpu,
             ((clocks / cycles_per_pixel[hres_index] + 2u) & ~3u);
         info->range_height = v_end - v_start;
     }
+    info->field_valid = info->interlaced && info->height == 480u;
+    info->field_odd = info->field_valid && gpu->display.field_odd;
     return true;
 }
