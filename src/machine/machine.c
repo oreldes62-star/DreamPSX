@@ -54,6 +54,16 @@ bool psx_machine_interrupt_eligible(const PsxMachine *machine)
 }
 
 
+bool psx_machine_cdrom_advance_sector(PsxMachine *machine)
+{
+    if (!machine || !psx_cdrom_advance_sector(&machine->cdrom))
+        return false;
+    psx_irq_set_line(&machine->irq, 2u,
+                     psx_cdrom_irq_output(&machine->cdrom));
+    psx_machine_refresh_interrupts(machine);
+    return true;
+}
+
 /* Timer IRQs map to interrupt controller sources 4, 5 and 6. */
 bool psx_machine_timer_advance_clock(PsxMachine *machine, unsigned timer,
                                      PsxTimerClock clock, uint32_t ticks)
