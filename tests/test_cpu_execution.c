@@ -1168,6 +1168,28 @@ int main(void)
     assert(psx_bus_read32(&machine.bus, 0x184u, &mac0));
     assert(mac0 == 10000u);
 
+    /* A GTE wait and an independent HI/LO operation share elapsed clocks. */
+    psx_cpu_reset(&machine.cpu);
+    psx_gte_reset(&machine.gte);
+    machine.cop0_status = 0x40000000u;
+    assert(psx_gte_write_data(&machine.gte, 12u, 0u));
+    assert(psx_gte_write_data(&machine.gte, 13u, 100u));
+    assert(psx_gte_write_data(&machine.gte, 14u, 0x00640000u));
+    assert(psx_gte_issue(&machine.gte, 0x4b400006u)); /* 7 remaining */
+    machine.cpu.hilo_pending = true;
+    machine.cpu.hilo_busy_cycles = 4u;
+    machine.cpu.hilo_pending_hi = 0x12345678u;
+    machine.cpu.hilo_pending_lo = 0x9abcdef0u;
+    put_word(ram, 0x690u, (0x12u << 26) | (8u << 16) | (24u << 11)); /* MFC2 */
+    machine.cpu.pc = 0x690u;
+    machine.cpu.next_pc = 0x694u;
+    assert(psx_machine_step(&machine));
+    assert(psx_cpu_last_step_cycles(&machine.cpu) == 8u);
+    assert(psx_gte_busy_cycles(&machine.gte) == 0u);
+    assert(!machine.cpu.hilo_pending && machine.cpu.hilo_busy_cycles == 0u);
+    assert(machine.cpu.hi == 0x12345678u);
+    assert(machine.cpu.lo == 0x9abcdef0u);
+
     free(bios); free(ram);
     puts("DreamPSX R3000A execution tests: OK");
     return 0;
