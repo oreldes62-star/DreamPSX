@@ -3,9 +3,10 @@
 PlayStation emulator research and development for Sega Dreamcast.
 
 ## Development status
-Experimental project. The latest GPU work adds monochrome and textured rectangle primitives (variable, 1x1, 8x8 and 16x16), including indexed/direct texture sampling, STP semi-transparency, modulation, draw-area clipping and signed offsets, alongside textured-triangle coverage. The new host tests and complete CTest suite have not yet been executed; runtime validation is pending. Host tests do not validate Dreamcast hardware performance or compatibility.
+Experimental PlayStation emulator research project targeting Sega Dreamcast. Current work includes GPU primitives and display scanout, CPU/GTE timing foundations, timers, and channel-2 GPU DMA in manual, linked-list and request/block modes, including DICR master interrupt routing to PS1 IRQ source 3. The implementation remains synchronous in several hardware paths. Recent host tests have been added but the full suite has not been compiled or executed in this environment; no runnable Dreamcast CDI image is currently validated. Host tests alone would not establish Dreamcast performance or game compatibility.
 
 ## Current milestones
+- [DMA master interrupt delivery milestone 3.90](docs/DMA-IRQ-DELIVERY-MILESTONE-3.90.md)
 - [GPU DMA request/block mode milestone 3.89](docs/GPU-DMA-REQUEST-BLOCK-MILESTONE-3.89.md)
 - [GPU DMA linked-list mode milestone 3.88](docs/GPU-DMA-LINKED-LIST-MILESTONE-3.88.md)
 - [GPU VRAM readback through manual DMA milestone 3.87](docs/GPU-DMA-READBACK-MILESTONE-3.87.md)
