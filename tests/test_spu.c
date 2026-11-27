@@ -20,6 +20,27 @@ int main(void)
     assert(psx_spu_read16(&spu, PSX_SPU_BASE_ADDR + 0x0e0u, &value));
     assert(value == 0x7fffu);
 
+    /* Typed voice registers expose 24 independent parameter banks. */
+    assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + 0x000u, 0x1111u));
+    assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + 0x002u, 0x2222u));
+    assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + 0x004u, 0xffffu));
+    assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + 0x006u, 0x0123u));
+    assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + 0x008u, 0x4567u));
+    assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + 0x00au, 0x89abu));
+    assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + 0x00eu, 0x0321u));
+    assert(spu.voices[0].volume_left == 0x1111u);
+    assert(spu.voices[0].volume_right == 0x2222u);
+    assert(spu.voices[0].pitch == 0x3fffu);
+    assert(spu.voices[0].start_address == 0x0123u);
+    assert(spu.voices[0].adsr1 == 0x4567u);
+    assert(spu.voices[0].adsr2 == 0x89abu);
+    assert(spu.voices[0].repeat_address == 0x0321u);
+    assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + 0x00cu, 0x7777u));
+    assert(psx_spu_read16(&spu, PSX_SPU_BASE_ADDR + 0x00cu, &value));
+    assert(value == 0u);
+    assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + 0x170u, 0x5a5au));
+    assert(spu.voices[23].volume_left == 0x5a5au);
+
     /* Key-on/off registers update the 24-voice active mask and read as zero. */
     assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
                            PSX_SPU_KEY_ON_LOW_OFFSET, 0x8001u));
@@ -85,6 +106,8 @@ int main(void)
     psx_spu_reset(&spu);
     assert(spu.transfer_address == 0u);
     assert(psx_spu_active_voice_mask(&spu) == 0u);
+    assert(spu.voices[0].volume_left == 0u);
+    assert(spu.voices[23].volume_left == 0u);
     assert(psx_spu_read16(&spu, PSX_SPU_BASE_ADDR, &value));
     assert(value == 0u);
     assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
