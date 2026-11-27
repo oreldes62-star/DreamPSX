@@ -215,6 +215,13 @@ int main(void)
     assert((half & (1u << 3u)) != 0u);
     assert((machine.irq.source_level & (1u << 3u)) != 0u);
     assert(psx_dma_data_words_transferred(&machine.dma) == 20u);
+    assert(psx_dma_manual_words_transferred(&machine.dma) == 10u);
+    assert(psx_dma_request_words_transferred(&machine.dma) == 7u);
+    assert(psx_dma_linked_list_words_transferred(&machine.dma) == 3u);
+    assert(psx_dma_manual_words_transferred(&machine.dma) +
+           psx_dma_request_words_transferred(&machine.dma) +
+           psx_dma_linked_list_words_transferred(&machine.dma) ==
+           psx_dma_data_words_transferred(&machine.dma));
 
     /* Clearing the DMA completion flag drops the source line, while the
      * latched I_STAT request remains until software acknowledges it. */
