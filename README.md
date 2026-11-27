@@ -125,3 +125,6 @@ Milestone 3.76 adds selectable root-counter clock domains and timer IRQ event ro
 
 
 CPU stepping is now connected to the shared system-cycle domain: milestone 3.79 supplies a clearly marked one-cycle baseline per attempted instruction, allowing system-clock root counters and Timer2 /8 to advance during machine execution. Instruction-specific latency, bus wait states, dot-clock timing and cycle accuracy remain future work. See [CPU system-cycle integration milestone 3.79](docs/CPU-SYSTEM-CYCLE-INTEGRATION-MILESTONE-3.79.md).
+
+
+Milestone 3.80 adds the R3000A multiply/divide unit's operand-dependent MULT/MULTU latency, fixed DIV/DIVU latency, deferred HI/LO results and instruction interlocks; independent instructions continue while the unit is busy and interlock waits feed the machine system clock. Full pipeline, cancellation, GTE and memory wait-state timing remain future work. See [R3000A HI/LO interlock milestone 3.80](docs/R3000A-HILO-INTERLOCK-MILESTONE-3.80.md).
