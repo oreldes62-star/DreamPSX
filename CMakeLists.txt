@@ -14,6 +14,7 @@ add_library(dreampsx_core STATIC
     src/bus/irq_mmio.c
     src/bus/memory.c
     src/bus/spu.c
+    src/audio/spu_adpcm.c
     src/cpu/cop0.c
     src/cpu/cop0_irq.c
     src/cpu/cpu.c
