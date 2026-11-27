@@ -83,6 +83,26 @@ int main(void)
     assert(psx_bus_read32(&machine.bus, 0x1f8010f4u, &word));
     assert((word & (1u << 26u)) != 0u);
 
+    /* A channel armed while DPCR disables GPU DMA remains pending. Enabling
+     * channel 2 later must launch the already-programmed transfer. */
+    assert(psx_bus_write32(&machine.bus, 0x1f8010f0u, 0x07654321u));
+    assert(psx_bus_write32(&machine.bus, 0x00000420u, 0x020000ffu));
+    assert(psx_bus_write32(&machine.bus, 0x00000424u, 0x00000028u));
+    assert(psx_bus_write32(&machine.bus, 0x00000428u, 0x00010010u));
+    assert(psx_bus_write32(&machine.bus, 0x1f8010a0u, 0x00000420u));
+    assert(psx_bus_write32(&machine.bus, 0x1f8010a4u, 3u));
+    assert(psx_bus_write32(&machine.bus, 0x1f8010a8u, 0x11000001u));
+    assert(psx_bus_read32(&machine.bus, 0x1f8010a8u, &word));
+    assert((word & (1u << 24u)) != 0u);
+    assert(psx_gpu_vram_read(&machine.gpu, 40u, 0u, &half));
+    assert(half == 0u);
+    assert(psx_bus_write32(&machine.bus, 0x1f8010f0u,
+                           0x07654321u | (1u << 11u)));
+    assert(psx_gpu_vram_read(&machine.gpu, 40u, 0u, &half));
+    assert(half == 0x001fu);
+    assert(psx_bus_read32(&machine.bus, 0x1f8010a8u, &word));
+    assert((word & (1u << 24u)) == 0u);
+
     /* GPU readback through channel 2: two VRAM pixels become one RAM word. */
     assert(psx_bus_write32(&machine.bus, 0x1f8010f4u, 1u << 26u));
     assert(psx_bus_write32(&machine.bus, 0x1f801810u, 0xc0000000u));
