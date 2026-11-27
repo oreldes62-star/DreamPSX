@@ -172,6 +172,43 @@ static unsigned interpolate_uv(unsigned uv0, unsigned uv1, unsigned uv2,
     return (unsigned)value;
 }
 
+static uint16_t sample_texture(PsxGpu *gpu, unsigned page_x,
+                                  unsigned page_y, unsigned depth,
+                                  unsigned u, unsigned v, unsigned clut)
+{
+    unsigned packed_x;
+    unsigned shift;
+    uint16_t packed;
+    unsigned index;
+    unsigned clut_x;
+    unsigned clut_y;
+
+    if (depth == 2u) {
+        return gpu->vram[((page_y + v) % PSX_GPU_VRAM_HEIGHT) *
+                         PSX_GPU_VRAM_WIDTH +
+                         ((page_x + u) % PSX_GPU_VRAM_WIDTH)];
+    }
+
+    if (depth == 0u) {
+        packed_x = page_x + (u >> 2u);
+        shift = (u & 3u) * 4u;
+    } else if (depth == 1u) {
+        packed_x = page_x + (u >> 1u);
+        shift = (u & 1u) * 8u;
+    } else {
+        return 0u;
+    }
+
+    packed = gpu->vram[((page_y + v) % PSX_GPU_VRAM_HEIGHT) *
+                       PSX_GPU_VRAM_WIDTH +
+                       (packed_x % PSX_GPU_VRAM_WIDTH)];
+    index = (packed >> shift) & (depth == 0u ? 0x0fu : 0xffu);
+    clut_x = (clut & 0x3fu) * 16u;
+    clut_y = (clut >> 6u) & 0x1ffu;
+    return gpu->vram[(clut_y * PSX_GPU_VRAM_WIDTH +
+                      ((clut_x + index) % PSX_GPU_VRAM_WIDTH))];
+}
+
 static void execute_raw_textured_triangle(PsxGpu *gpu)
 {
     const uint32_t xy0 = gpu->parameters[0];
@@ -202,8 +239,10 @@ static void execute_raw_textured_triangle(PsxGpu *gpu)
     const bool reverse = area > 0;
     int start_x, end_x, start_y, end_y;
 
-    /* This first texture path deliberately supports direct 15-bit pages only. */
-    if (depth != 2u || area == 0 ||
+    const unsigned clut = uv0 >> 16u;
+
+    /* Support 4-bit and 8-bit indexed pages through a VRAM CLUT. */
+    if (depth == 3u || area == 0 ||
         max_x < (int)gpu->draw_area_left ||
         max_y < (int)gpu->draw_area_top ||
         min_x > (int)gpu->draw_area_right ||
@@ -238,10 +277,8 @@ static void execute_raw_textured_triangle(PsxGpu *gpu)
                                                    e0, e1, e2, area, 0u);
                 const unsigned v = interpolate_uv(uv0, uv1, uv2,
                                                    e0, e1, e2, area, 8u);
-                const unsigned tx = (page_x + u) % PSX_GPU_VRAM_WIDTH;
-                const unsigned ty = (page_y + v) % PSX_GPU_VRAM_HEIGHT;
-                const uint16_t texel =
-                    gpu->vram[ty * PSX_GPU_VRAM_WIDTH + tx];
+                const uint16_t texel = sample_texture(
+                    gpu, page_x, page_y, depth, u, v, clut);
                 if (texel != 0u)
                     gpu->vram[(unsigned)y * PSX_GPU_VRAM_WIDTH +
                               (unsigned)x] = texel;
