@@ -171,6 +171,13 @@ bool psx_machine_step(PsxMachine *machine)
             &machine->cop0_cause, &machine->cop0_epc,
             &machine->cop0_badvaddr, &machine->gte);
 
+        /* Feed the CPU's current baseline timing into the shared hardware
+         * clock. Timer IRQs are therefore visible at the next instruction
+         * boundary, not in the middle of the instruction just executed. */
+        if (!psx_machine_advance_system_cycles(
+                machine, psx_cpu_last_step_cycles(cpu)))
+            return false;
+
         if (result == PSX_CPU_STEP_OK) return true;
 
         switch (result) {
