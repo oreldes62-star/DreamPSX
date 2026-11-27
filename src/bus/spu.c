@@ -421,6 +421,14 @@ bool psx_spu_mix_sample(PsxSpu *spu, int16_t *left, int16_t *right)
 {
     int64_t mix_left = 0;
     int64_t mix_right = 0;
+    int64_t send_left = 0;
+    int64_t send_right = 0;
+    int16_t wet_left = 0;
+    int16_t wet_right = 0;
+    const uint16_t reverb_mask_low = load_le16(&spu->registers[
+        PSX_SPU_REVERB_ENABLE_LOW_OFFSET]);
+    const uint16_t reverb_mask_high = load_le16(&spu->registers[
+        PSX_SPU_REVERB_ENABLE_HIGH_OFFSET]);
     bool produced = false;
 
     if (!spu || !spu->initialized || !left || !right)
@@ -433,6 +441,11 @@ bool psx_spu_mix_sample(PsxSpu *spu, int16_t *left, int16_t *right)
         int32_t volume_left;
         int32_t volume_right;
         int64_t enveloped;
+        int64_t voice_left;
+        int64_t voice_right;
+        const bool reverb_enabled = i < 16u ?
+            (reverb_mask_low & (1u << i)) != 0u :
+            (reverb_mask_high & (1u << (i - 16u))) != 0u;
 
         if ((spu->active_voices & (1u << i)) == 0u)
             continue;
@@ -441,21 +454,35 @@ bool psx_spu_mix_sample(PsxSpu *spu, int16_t *left, int16_t *right)
         if (!psx_spu_voice_render_sample(spu, i, &sample))
             continue;
 
-        /* Fixed-volume mode: signed 15-bit register value, scaled by ENVX.
-         * Sweep-mode registers are intentionally not implemented yet. */
+        /* Apply the voice envelope and fixed L/R volumes once. The same
+         * post-volume signal feeds dry output and, when selected by the
+         * hardware reverb-enable bitmap, the wet-send bus. */
         volume_left = (int16_t)voice->volume_left;
         volume_right = (int16_t)voice->volume_right;
         enveloped = ((int64_t)sample * envelope) / PSX_SPU_ENVELOPE_MAX;
-        mix_left += (enveloped * volume_left) / 32767;
-        mix_right += (enveloped * volume_right) / 32767;
+        voice_left = (enveloped * volume_left) / 32767;
+        voice_right = (enveloped * volume_right) / 32767;
+        mix_left += voice_left;
+        mix_right += voice_right;
+        if (reverb_enabled) {
+            send_left += voice_left;
+            send_right += voice_right;
+        }
         produced = true;
     }
 
-    *left = clamp_audio_sample(mix_left);
-    *right = clamp_audio_sample(mix_right);
+    /* The reverb input bus is 16-bit at the DSP boundary. Preserve the
+     * wide voice accumulation until this point, then add the returned wet
+     * signal to the dry mix with a final saturating sum. */
+    if (!psx_spu_reverb_process_sample(spu,
+            clamp_audio_sample(send_left), clamp_audio_sample(send_right),
+            &wet_left, &wet_right))
+        return false;
+
+    *left = clamp_audio_sample(mix_left + wet_left);
+    *right = clamp_audio_sample(mix_right + wet_right);
     return produced;
 }
-
 
 
 int16_t psx_spu_reverb_saturate(int32_t value)
