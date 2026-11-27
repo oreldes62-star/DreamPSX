@@ -48,6 +48,7 @@ set(DREAMPSX_TESTS
     test_gpu
     test_gpu_texture_clip
     test_gpu_texture_wrap
+    test_gpu_raw_texture
     test_machine
     test_machine_bus
     test_memory
