@@ -19,6 +19,7 @@ typedef struct {
     uint16_t sample_rate_hz;
     uint8_t channels;
     uint8_t bits_per_sample;
+    bool emphasis;
 } PsxDiscXaAudioFormat;
 
 typedef struct {
