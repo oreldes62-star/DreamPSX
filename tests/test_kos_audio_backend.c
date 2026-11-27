@@ -41,7 +41,7 @@ int main(void)
     assert(kos_stub_frequency() == 44100);
     assert(kos_stub_stereo() == 1);
     assert(kos_stub_buffer_size() ==
-           (int)(PSX_DREAMCAST_AUDIO_CALLBACK_MAX_FRAMES * sizeof(int16_t)));
+           (int)PSX_KOS_AUDIO_STREAM_BUFFER_BYTES);
 
     assert(psx_kos_audio_backend_poll(&backend));
     assert(kos_stub_poll_received() == 8);
