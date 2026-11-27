@@ -210,8 +210,14 @@ int main(void)
 
     psx_dma_reset(&dma);
     assert(psx_dma_data_words_transferred(&dma) == 0u);
+    assert(psx_dma_manual_words_transferred(&dma) == 0u);
+    assert(psx_dma_request_words_transferred(&dma) == 0u);
+    assert(psx_dma_linked_list_words_transferred(&dma) == 0u);
     assert(psx_dma_linked_list_headers_read(&dma) == 0u);
     assert(psx_dma_data_words_transferred(NULL) == 0u);
+    assert(psx_dma_manual_words_transferred(NULL) == 0u);
+    assert(psx_dma_request_words_transferred(NULL) == 0u);
+    assert(psx_dma_linked_list_words_transferred(NULL) == 0u);
     assert(psx_dma_linked_list_headers_read(NULL) == 0u);
     assert(psx_dma_read32(&dma, PSX_DMA_BASE_ADDR + 0x28u, &value));
     assert(value == 0u);
