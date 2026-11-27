@@ -24,7 +24,7 @@ bool psx_boot_config_parse(const char *text, size_t size, PsxBootConfig *config)
     n=value_end-(start+6);
     if(n==1 || n>=sizeof(config->boot_path)) return false;
     config->boot_path[0]='/';
-    { size_t i; for(i=1;i<n;++i) { char ch=text[start+6+i]; config->boot_path[i]=(ch=='\\\\')?'/':ch; } }
+    { size_t i; for(i=1;i<n;++i) { char ch=text[start+6+i]; config->boot_path[i]=(ch==0x5c)?'/':ch; } }
     config->boot_path[n]='\0'; config->boot2=boot2; return true;
    }
   }
