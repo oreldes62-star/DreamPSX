@@ -657,6 +657,64 @@ bool psx_spu_reverb_process_comb(const PsxSpu *spu,
     return true;
 }
 
+static bool reverb_process_allpass_stage(PsxSpu *spu, int32_t input,
+                                           uint16_t address_register,
+                                           uint16_t delay_register,
+                                           int16_t coefficient,
+                                           int32_t *output)
+{
+    const uint16_t destination_relative = load_le16(
+        &spu->registers[address_register]);
+    const uint16_t delay = load_le16(&spu->registers[delay_register]);
+    const uint16_t delayed_relative =
+        (uint16_t)(destination_relative - delay);
+    const int32_t delayed = reverb_read_absolute(
+        spu, psx_spu_reverb_resolve_address(spu, delayed_relative));
+    const int32_t feedback = input -
+        reverb_multiply_q15_wide(delayed, coefficient);
+
+    reverb_write_absolute(spu,
+        psx_spu_reverb_resolve_address(spu, destination_relative), feedback);
+    *output = reverb_multiply_q15_wide(input, coefficient) + delayed;
+    return true;
+}
+
+bool psx_spu_reverb_process_allpass(PsxSpu *spu,
+                                    int16_t comb_left, int16_t comb_right,
+                                    int16_t *left_output,
+                                    int16_t *right_output)
+{
+    int16_t apf1_volume;
+    int16_t apf2_volume;
+    int32_t left = comb_left;
+    int32_t right = comb_right;
+
+    if (!spu || !spu->initialized || !left_output || !right_output)
+        return false;
+
+    apf1_volume = (int16_t)load_le16(&spu->registers[
+        PSX_SPU_REVERB_CONFIG_VAPF1_OFFSET]);
+    apf2_volume = (int16_t)load_le16(&spu->registers[
+        PSX_SPU_REVERB_CONFIG_VAPF2_OFFSET]);
+
+    (void)reverb_process_allpass_stage(spu, left,
+        PSX_SPU_REVERB_CONFIG_MLAPF1_OFFSET,
+        PSX_SPU_REVERB_CONFIG_DAPF1_OFFSET, apf1_volume, &left);
+    (void)reverb_process_allpass_stage(spu, right,
+        PSX_SPU_REVERB_CONFIG_MRAPF1_OFFSET,
+        PSX_SPU_REVERB_CONFIG_DAPF1_OFFSET, apf1_volume, &right);
+    (void)reverb_process_allpass_stage(spu, left,
+        PSX_SPU_REVERB_CONFIG_MLAPF2_OFFSET,
+        PSX_SPU_REVERB_CONFIG_DAPF2_OFFSET, apf2_volume, &left);
+    (void)reverb_process_allpass_stage(spu, right,
+        PSX_SPU_REVERB_CONFIG_MRAPF2_OFFSET,
+        PSX_SPU_REVERB_CONFIG_DAPF2_OFFSET, apf2_volume, &right);
+
+    *left_output = psx_spu_reverb_saturate(left);
+    *right_output = psx_spu_reverb_saturate(right);
+    return true;
+}
+
 bool psx_spu_reverb_read16(const PsxSpu *spu, uint16_t relative_address,
                            int16_t *value)
 {
