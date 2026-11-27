@@ -66,10 +66,14 @@ bool psx_bus_read32(const PsxBus *bus, uint32_t address, uint32_t *value)
     if (address == PSX_GPU_GP1_ADDR)
         return psx_gpu_read_status(bus->gpu, value);
     if (bus->spu && address >= PSX_SPU_BASE_ADDR &&
-        address + 2u < PSX_SPU_BASE_ADDR + PSX_SPU_REGISTER_BYTES) {
+        address <= PSX_SPU_BASE_ADDR + PSX_SPU_REGISTER_BYTES - 4u) {
         uint16_t low, high;
-        if (!psx_spu_read16(bus->spu, address, &low) ||
-            !psx_spu_read16(bus->spu, address + 2u, &high)) return false;
+        if (!psx_spu_read16(bus->spu, address, &low)) return false;
+        if (address == PSX_SPU_BASE_ADDR + PSX_SPU_TRANSFER_DATA_OFFSET) {
+            if (!psx_spu_read16(bus->spu, address, &high)) return false;
+        } else if (!psx_spu_read16(bus->spu, address + 2u, &high)) {
+            return false;
+        }
         *value = (uint32_t)low | ((uint32_t)high << 16u);
         return true;
     }
@@ -166,9 +170,13 @@ bool psx_bus_write32(PsxBus *bus, uint32_t address, uint32_t value)
         return transfer_ok;
     }
     if (bus->spu && address >= PSX_SPU_BASE_ADDR &&
-        address + 2u < PSX_SPU_BASE_ADDR + PSX_SPU_REGISTER_BYTES) {
-        return psx_spu_write16(bus->spu, address, (uint16_t)value) &&
-               psx_spu_write16(bus->spu, address + 2u,
+        address <= PSX_SPU_BASE_ADDR + PSX_SPU_REGISTER_BYTES - 4u) {
+        if (!psx_spu_write16(bus->spu, address, (uint16_t)value))
+            return false;
+        if (address == PSX_SPU_BASE_ADDR + PSX_SPU_TRANSFER_DATA_OFFSET)
+            return psx_spu_write16(bus->spu, address,
+                                   (uint16_t)(value >> 16u));
+        return psx_spu_write16(bus->spu, address + 2u,
                                (uint16_t)(value >> 16u));
     }
     if (address == PSX_GPU_GP0_ADDR) {
