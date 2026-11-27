@@ -22,7 +22,7 @@ int main(void)
     assert(psx_dma_write32(&dma, PSX_DMA_BASE_ADDR + 0x28u,
                            0x01000201u));
     assert(psx_dma_read32(&dma, PSX_DMA_BASE_ADDR + 0x20u, &value));
-    assert(value == 0x00123457u); /* MADR is 24-bit and word-aligned. */
+    assert(value == 0x00123454u); /* MADR is 24-bit and word-aligned. */
     assert(psx_dma_read32(&dma, PSX_DMA_BASE_ADDR + 0x24u, &value));
     assert(value == 0x00030010u);
     assert(psx_dma_read32(&dma, PSX_DMA_BASE_ADDR + 0x28u, &value));
