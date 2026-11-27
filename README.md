@@ -2,7 +2,7 @@
 PlayStation emulator research and development for Sega Dreamcast.
 
 ## Development status
-Experimental project. The latest GPU work adds monochrome and textured rectangle primitives (variable, 1x1, 8x8 and 16x16), including indexed/direct texture sampling, draw-area clipping and signed offsets, alongside textured-triangle coverage. The new host tests and complete CTest suite have not yet been executed; runtime validation is pending. Host tests do not validate Dreamcast hardware performance or compatibility.
+Experimental project. The latest GPU work adds monochrome and textured rectangle primitives (variable, 1x1, 8x8 and 16x16), including indexed/direct texture sampling, STP semi-transparency, modulation, draw-area clipping and signed offsets, alongside textured-triangle coverage. The new host tests and complete CTest suite have not yet been executed; runtime validation is pending. Host tests do not validate Dreamcast hardware performance or compatibility.
 
 ## Current milestones
 - [COP2 CU2 milestone 1.2](docs/COP2-CU2-MILESTONE-1.2.md)
