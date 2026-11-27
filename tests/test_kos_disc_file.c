@@ -14,7 +14,7 @@ static const char cue_text[] =
 static size_t cursor;
 static int opened, closed, fail_seek, fail_open;
 static ssize_t reported_size = (ssize_t)sizeof(backing);
-static ssize_t fs_total(file_t handle)
+ssize_t fs_total(file_t handle)
 {
     if (handle == 4) return (ssize_t)(sizeof(cue_text) - 1u);
     assert(handle == 3);
