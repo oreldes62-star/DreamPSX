@@ -72,8 +72,16 @@ static bool load_current_sector(PsxCdrom *cdrom)
         return false;
     offset = (size_t)(absolute_frame - 150u);
     if (cdrom->disc.mounted) {
-        if (!psx_disc_read_sector(&cdrom->disc, offset, cdrom->sector_data))
-            return false;
+        if (cdrom->disc.mode == PSX_DISC_MODE2_2352 &&
+            psx_disc_read_sector_form2(&cdrom->disc, offset,
+                                       cdrom->sector_data)) {
+            cdrom->data_count = PSX_DISC_SECTOR_FORM2_DATA_SIZE;
+        } else {
+            if (!psx_disc_read_sector(&cdrom->disc, offset,
+                                      cdrom->sector_data))
+                return false;
+            cdrom->data_count = PSX_CDROM_SECTOR_SIZE;
+        }
     } else {
         offset *= PSX_CDROM_SECTOR_SIZE;
         if (offset > cdrom->iso_size ||
@@ -81,9 +89,9 @@ static bool load_current_sector(PsxCdrom *cdrom)
             return false;
         memcpy(cdrom->sector_data, cdrom->iso_data + offset,
                PSX_CDROM_SECTOR_SIZE);
+        cdrom->data_count = PSX_CDROM_SECTOR_SIZE;
     }
     cdrom->data_index = 0u;
-    cdrom->data_count = PSX_CDROM_SECTOR_SIZE;
     cdrom->drive_status &= (uint8_t)~0x01u;
     cdrom->drive_status |= 0x22u;
     command_complete(cdrom, 1u);
