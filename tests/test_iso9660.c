@@ -46,6 +46,7 @@ int main(void)
     uint8_t *pvd = image + 16u * PSX_ISO9660_SECTOR_SIZE;
     uint8_t *root = image + 20u * PSX_ISO9660_SECTOR_SIZE;
     uint8_t *game = image + 21u * PSX_ISO9660_SECTOR_SIZE;
+    uint8_t *p;
 
     pvd[0] = 1u; memcpy(pvd + 1u, "CD001", 5u); pvd[6] = 1u;
     put_both32(pvd + 80u, 24u);
