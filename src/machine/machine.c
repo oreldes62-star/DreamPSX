@@ -25,6 +25,24 @@ bool psx_machine_boot_from_iso(PsxMachine *machine, const PsxIso9660 *iso,
     return true;
 }
 
+bool psx_machine_boot_from_disc(PsxMachine *machine, const uint8_t *image,
+                                size_t image_size, PsxBootConfig *config)
+{
+    PsxIso9660 iso;
+    if (!machine || !image ||
+        !psx_iso9660_mount(&iso, image, image_size) ||
+        !psx_cdrom_mount_iso(&machine->cdrom, image, image_size))
+        return false;
+    if (!psx_machine_boot_from_iso(machine, &iso, config)) {
+        psx_cdrom_unmount(&machine->cdrom);
+        psx_irq_set_line(&machine->irq, 2u,
+                         psx_cdrom_irq_output(&machine->cdrom));
+        psx_machine_refresh_interrupts(machine);
+        return false;
+    }
+    return true;
+}
+
 bool psx_machine_init(PsxMachine *machine,
                       uint8_t *ram, size_t ram_size,
                       const uint8_t *bios, size_t bios_size,
