@@ -181,6 +181,26 @@ int main(void)
     assert(psx_gte_read_data(&gte, 24u, &value) && value == 10000u);
     assert(psx_gte_read_control(&gte, 31u, &value) && value == 0u);
 
+    /* Timed issue keeps old registers visible until the command retires. */
+    psx_gte_reset(&gte);
+    assert(psx_gte_write_data(&gte, 12u, 0x00000000u));
+    assert(psx_gte_write_data(&gte, 13u, 0x00000064u));
+    assert(psx_gte_write_data(&gte, 14u, 0x00640000u));
+    assert(psx_gte_issue(&gte, 0x4b400006u)); /* NCLIP: 8 clocks */
+    assert(psx_gte_busy_cycles(&gte) == 7u);
+    assert(gte.pending);
+    assert(psx_gte_read_data(&gte, 24u, &value) && value == 0u);
+    psx_gte_advance_cycles(&gte, 6u);
+    assert(psx_gte_busy_cycles(&gte) == 1u);
+    assert(psx_gte_read_data(&gte, 24u, &value) && value == 0u);
+    psx_gte_advance_cycles(&gte, 1u);
+    assert(psx_gte_busy_cycles(&gte) == 0u && !gte.pending);
+    assert(psx_gte_read_data(&gte, 24u, &value) && value == 10000u);
+    assert(psx_gte_command_cycles(0x4b400001u) == 15u);
+    assert(psx_gte_command_cycles(0x4b400030u) == 23u);
+    assert(psx_gte_command_cycles(0x4b400016u) == 44u);
+    assert(psx_gte_command_cycles(0x4b400006u) == 8u);
+
     /* RTPS: identity projection, screen offsets and SZ FIFO output. */
     psx_gte_reset(&gte);
     assert(psx_gte_write_control(&gte, 0u, 0x00001000u));
