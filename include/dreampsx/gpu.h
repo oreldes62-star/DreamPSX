@@ -29,6 +29,7 @@ typedef struct {
     unsigned draw_area_bottom;
     int draw_offset_x;
     int draw_offset_y;
+    unsigned draw_mode;
     unsigned parameter_count;
     unsigned parameter_expected;
     PsxGpuTransferMode transfer_mode;
