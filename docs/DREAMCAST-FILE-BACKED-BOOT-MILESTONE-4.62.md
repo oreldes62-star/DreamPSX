@@ -15,6 +15,9 @@ Connect the KallistiOS VFS-backed sector reader to the existing ISO9660 and mach
 
 The caller owns the `PsxDiscImage` reader context and any backing file handle. It must remain valid while the machine's CD-ROM is mounted. On Dreamcast, the `PsxKosDiscFile` object and its VFS handle must therefore outlive the mounted machine disc; close/unmount the CD-ROM before closing the file.
 
-## Validation scope
+## Validation
+
+- Host build and CTest passed on commit `545470d6f86a57b269621b660d81df142dfd36ed`: workflow run 46080120480, 45/45 tests passed. The existing `test_machine_boot` now also exercises the file-backed callback boot path.
+- The pinned KallistiOS/Dreamcast build is still running as workflow 46080120557. Its SH-4 compilation and ELF verification are not yet confirmed.
 
 The host test exercises the same callback-based path used by the KallistiOS file adapter. This does not yet prove that a retail PS1 title boots in Flycast or on hardware. BIOS startup sequencing, game-specific compatibility, CDI packaging and Flycast runtime remain separate validation steps.
