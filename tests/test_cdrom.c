@@ -417,8 +417,9 @@ int main(void)
         assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 1u, 0x02u));
         assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 1u, 0x06u));
         assert(reader_state.reads == 1u);
-        assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR, 0x00u));
+        select_bank(&cdrom, 2u);
         assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 2u, 0x80u));
+        select_bank(&cdrom, 0u);
         assert(psx_cdrom_read8(&cdrom, PSX_CDROM_BASE_ADDR + 2u, &first));
         assert(first == 0x5au);
         assert(reader_state.reads == 1u);
