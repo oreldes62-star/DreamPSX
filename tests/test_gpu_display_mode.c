@@ -24,8 +24,8 @@ int main(void)
     assert(info.width == 256u && info.height == 240u);
     assert(!info.pal && !info.color_24bit);
     assert(!info.interlaced && !info.reverse);
-    assert(!info.range_valid && info.range_width == 0u &&
-           info.range_height == 0u);
+    assert(info.range_valid && info.range_width == 256u &&
+           info.range_height == 240u);
 
     /* HDS2 selects 368 pixels; exercise all remaining display flags too. */
     assert(psx_gpu_gp1_write(&gpu, 0x080000fdu));
