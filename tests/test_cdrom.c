@@ -12,6 +12,8 @@ int main(void)
 {
     PsxCdrom cdrom;
     uint8_t value = 0u;
+    static uint8_t iso[PSX_CDROM_SECTOR_SIZE * 2u];
+    unsigned i;
 
     assert(psx_cdrom_init(&cdrom));
     assert(psx_cdrom_read8(&cdrom, PSX_CDROM_BASE_ADDR, &value));
@@ -20,9 +22,9 @@ int main(void)
 
     /* Program INT3 enable in bank 1, register 2. */
     select_bank(&cdrom, 1u);
-    assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 2u, 0x14u));
+    assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 2u, 0x15u));
     assert(psx_cdrom_read8(&cdrom, PSX_CDROM_BASE_ADDR + 2u, &value));
-    assert(value == 0x14u);
+    assert(value == 0x15u);
 
     /* Setloc consumes three parameter bytes in FIFO order. */
     select_bank(&cdrom, 0u);
@@ -62,7 +64,35 @@ int main(void)
     assert(psx_cdrom_read8(&cdrom, PSX_CDROM_BASE_ADDR + 3u, &value));
     assert((value & 0x1fu) == 0x10u);
 
+    /* Mount an in-memory ISO, ReadN LBA 0 (00:02:00), then drain its
+     * 2048-byte sector through the byte data register when DRQ is enabled. */
+    for (i = 0u; i < sizeof(iso); ++i) iso[i] = (uint8_t)(i & 0xffu);
+    assert(psx_cdrom_mount_iso(&cdrom, iso, sizeof(iso)));
+    assert(!psx_cdrom_mount_iso(&cdrom, iso, sizeof(iso) - 1u));
+    assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 3u, 0x10u));
+    select_bank(&cdrom, 0u);
+    assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 2u, 0x00u));
+    assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 2u, 0x02u));
+    assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 2u, 0x00u));
+    assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 1u, 0x02u));
+    assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 1u, 0x06u));
+    assert(cdrom.data_count == PSX_CDROM_SECTOR_SIZE);
+    select_bank(&cdrom, 2u);
+    assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 2u, 0x80u));
+    select_bank(&cdrom, 0u);
+    assert(psx_cdrom_read8(&cdrom, PSX_CDROM_BASE_ADDR + 2u, &value));
+    assert(value == 0u);
+    assert(psx_cdrom_read8(&cdrom, PSX_CDROM_BASE_ADDR + 2u, &value));
+    assert(value == 1u);
+    for (i = 2u; i < PSX_CDROM_SECTOR_SIZE; ++i)
+        assert(psx_cdrom_read8(&cdrom, PSX_CDROM_BASE_ADDR + 2u, &value));
+    assert(value == (uint8_t)((PSX_CDROM_SECTOR_SIZE - 1u) & 0xffu));
+    assert(cdrom.data_count == 0u);
+    assert((cdrom.drive_status & 0x20u) == 0u);
+    assert(psx_cdrom_irq_output(&cdrom)); /* INT1 remains latched to ack. */
+
     psx_cdrom_reset(&cdrom);
+    assert(cdrom.iso_data == iso); /* reset does not eject mounted media */
     assert(!psx_cdrom_irq_output(&cdrom));
     assert(psx_cdrom_read8(&cdrom, PSX_CDROM_BASE_ADDR, &value));
     assert((value & 0x18u) == 0x18u);
