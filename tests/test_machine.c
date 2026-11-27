@@ -14,6 +14,26 @@ int main(void)
     assert(ram && bios && gpu_vram);
     assert(psx_machine_init(&machine, ram, PSX_RAM_SIZE, bios, PSX_BIOS_SIZE,
                             gpu_vram, PSX_GPU_VRAM_WIDTH * PSX_GPU_VRAM_HEIGHT));
+    /* Machine-level SPU rendering feeds the bounded stereo output queue. */
+    {
+        int16_t output[12] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+        size_t queued = 0u;
+        assert(psx_machine_render_audio(&machine, 4u, &queued));
+        assert(queued == 4u);
+        assert(psx_machine_read_audio(&machine, output, 6u) == 4u);
+        for (unsigned i = 0u; i < 12u; ++i) assert(output[i] == 0);
+        assert(machine.audio_output.underrun_frames == 2u);
+        assert(psx_machine_render_audio(
+            &machine, PSX_AUDIO_BUFFER_CAPACITY_FRAMES + 8u, &queued));
+        assert(queued == PSX_AUDIO_BUFFER_CAPACITY_FRAMES);
+        assert(machine.audio_output.dropped_frames == 8u);
+        assert(psx_machine_read_audio(&machine, output,
+                                      PSX_AUDIO_BUFFER_CAPACITY_FRAMES) ==
+               PSX_AUDIO_BUFFER_CAPACITY_FRAMES);
+        psx_machine_reset(&machine);
+        assert(machine.audio_output.frame_count == 0u);
+        assert(machine.audio_output.dropped_frames == 0u);
+    }
     assert(psx_memory_write32(&machine.memory, 0u, 0xdecafbad));
     uint32_t memory_probe = 0u;
     assert(psx_memory_read32(&machine.memory, 0x80000000u, &memory_probe));
