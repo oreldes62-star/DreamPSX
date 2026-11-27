@@ -146,7 +146,8 @@ PsxCpuStepResult psx_cpu_step_result_with_cop0_gte(PsxCpu *cpu, PsxBus *bus,
     shamt = (instruction >> 6) & 31u;
     funct = instruction & 63u;
     imm = (uint16_t)instruction;
-    gte_interlock = op == 0x12u && gte &&
+    gte_interlock = op == 0x12u && gte && cop0_status &&
+                    ((*cop0_status & 0x40000000u) != 0u) &&
                     psx_gte_busy_cycles(gte) != 0u;
     if (gte && psx_gte_busy_cycles(gte) != 0u) {
         if (gte_interlock) {
