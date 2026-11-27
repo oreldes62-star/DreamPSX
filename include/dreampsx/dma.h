@@ -40,4 +40,7 @@ bool psx_dma_execute_gpu_linked_list(PsxDmaController *dma,
 bool psx_dma_execute_gpu_request(PsxDmaController *dma,
                                   PsxMemory *memory, PsxGpu *gpu);
 
+/* True when DICR's master interrupt condition is asserted. */
+bool psx_dma_irq_output(const PsxDmaController *dma);
+
 #endif
