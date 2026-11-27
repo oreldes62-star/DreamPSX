@@ -14,6 +14,8 @@ int main(void)
     uint8_t adpcm_flags = 0u;
     int16_t voice_sample = 0;
     int16_t rendered_sample = 0;
+    int16_t mixed_left = 0;
+    int16_t mixed_right = 0;
 
     psx_spu_adpcm_reset(&adpcm_state);
     adpcm_block[1] = 0x05u;
@@ -145,6 +147,37 @@ int main(void)
         assert(!psx_spu_voice_envelope_tick(&spu, 1u, &envelope));
         assert(envelope == 0u);
         assert((psx_spu_active_voice_mask(&spu) & 0x0002u) == 0u);
+    }
+
+
+    /* First stereo mixer path: ADPCM sample * ADSR envelope * fixed L/R
+     * voice volumes. The right channel is muted independently. */
+    {
+        uint8_t mix_block[PSX_SPU_ADPCM_BLOCK_BYTES] = {0};
+        mix_block[2] = 0x01u; /* first decoded sample = 4096 */
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + 0x000u, 0x7fffu));
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + 0x002u, 0x0000u));
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + 0x004u, 0x1000u));
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + 0x006u, 0x0040u));
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + 0x008u, 0x000fu));
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + 0x00au, 0x0000u));
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                               PSX_SPU_TRANSFER_ADDR_OFFSET, 0x0040u));
+        for (unsigned i = 0u; i < PSX_SPU_ADPCM_BLOCK_BYTES; i += 2u) {
+            const uint16_t word = (uint16_t)(mix_block[i] |
+                                    ((uint16_t)mix_block[i + 1u] << 8u));
+            assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                                   PSX_SPU_TRANSFER_DATA_OFFSET, word));
+        }
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                               PSX_SPU_KEY_ON_LOW_OFFSET, 0x0001u));
+        assert(psx_spu_mix_sample(&spu, &mixed_left, &mixed_right));
+        assert(mixed_left > 0);
+        assert(mixed_right == 0);
+        assert(spu.voices[0].envelope_level > 0u);
+        assert(!psx_spu_mix_sample(NULL, &mixed_left, &mixed_right));
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                               PSX_SPU_KEY_OFF_LOW_OFFSET, 0x0001u));
     }
 
     /* Typed voice registers expose 24 independent parameter banks. */
