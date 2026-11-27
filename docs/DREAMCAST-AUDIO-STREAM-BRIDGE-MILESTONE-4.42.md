@@ -6,7 +6,7 @@ Prepare a bounded handoff from DreamPSX machine PCM output to the KallistiOS AIC
 
 ## KallistiOS contract reviewed
 
-The current KallistiOS `dc/sound/stream.h` defines `snd_stream_callback_t` as a callback receiving a stream handle, requested sample count and output count pointer, and returning a sample buffer. Its documentation specifies interleaved samples for stereo and recommends 32-byte alignment. The stream API provides `snd_stream_start()` for 16-bit PCM and `snd_stream_poll()`, which must be called periodically to keep streaming output supplied.
+The pinned KallistiOS implementation calls the callback with the total interleaved byte count required by `snd_stream_fill()` and expects the returned count in bytes. For stereo PCM16, four bytes represent one L/R frame. The callback data is interleaved and the stream bridge's scratch buffer is 32-byte aligned. `snd_stream_poll()` must be called periodically to keep streaming output supplied.
 
 Sources:
 - https://kos-docs.dreamcast.wiki/stream_8h.html
@@ -16,15 +16,15 @@ Sources:
 
 - `PsxDreamcastAudioStream` binds to the machine-owned `PsxAudioBuffer`.
 - Its fixed callback scratch buffer is 32-byte aligned and holds up to 1024 stereo frames.
-- The callback returns interleaved signed 16-bit PCM and reports the number of frames supplied.
+- The callback returns interleaved signed 16-bit PCM and reports the number of bytes supplied, matching the pinned KallistiOS implementation. Internally, the source queue is still read in stereo frames.
 - Short reads are zero-filled, so no stale samples escape into the AICA stream.
 - Oversized requests are safely clamped and counted; invalid arguments are rejected.
 - The adapter is independent of KallistiOS and is testable in the host CI.
 
 ## Validation
 
-The new host test checks alignment, stereo order, queue consumption, zero-fill on underrun, oversized requests, telemetry, invalid arguments and reset behavior.
+The host tests check alignment, stereo order, byte-count units, complete-frame handling, queue consumption, zero-fill on underrun, oversized requests, telemetry, invalid arguments and reset behavior.
 
 ## Limitations
 
-This milestone does not yet call `snd_stream_init`, allocate or start a KallistiOS stream, or call `snd_stream_poll`. It is the host-tested callback payload adapter, not a compiled KallistiOS backend. The KallistiOS toolchain and Dreamcast hardware/Flycast playback have not been validated. The adapter is single-threaded; concurrency between emulation and audio callbacks still requires a safe producer/consumer design before enabling asynchronous playback.
+The byte-count contract was cross-checked against the pinned KallistiOS `snd_stream.c` implementation: `snd_stream_fill()` passes `needed_bytes` to the callback and consumes `got_bytes` as bytes. A later integration review corrected the original adapter's mistaken frame-count interpretation and added byte-level regression coverage. The adapter remains single-threaded; concurrency between emulation and audio callbacks still requires a safe producer/consumer design. The AICA application has cross-compiled, but Flycast and physical-hardware playback remain untested.
