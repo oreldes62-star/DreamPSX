@@ -41,6 +41,8 @@ typedef struct {
     PsxDiscImage disc;
     PsxDiscXaSubheader xa_subheader;
     bool xa_subheader_valid;
+    uint8_t xa_filter_file;
+    uint8_t xa_filter_channel;
     const uint8_t *iso_data;
     size_t iso_size;
     uint8_t location[3];
@@ -70,5 +72,7 @@ bool psx_cdrom_irq_output(const PsxCdrom *cdrom);
 /* Returns the format only when the currently loaded sector is XA audio. */
 bool psx_cdrom_get_xa_audio_format(const PsxCdrom *cdrom,
                                    PsxDiscXaAudioFormat *format);
+/* True when the current XA audio sector matches the programmed Setfilter. */
+bool psx_cdrom_xa_sector_matches_filter(const PsxCdrom *cdrom);
 
 #endif
