@@ -216,7 +216,7 @@ int main(void)
     assert(machine.cdrom.pending_command == 0u);
     assert((machine.cdrom.interrupt_flags & (1u << 1u)) != 0u);
     assert((machine.irq.source_level & (1u << 2u)) != 0u);
-    assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR + 3u, 0x02u));
+    assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR + 3u, 0x06u));
     assert((machine.irq.source_level & (1u << 2u)) == 0u);
 
     /* GPU registers share the machine bus and update its VRAM state. */
