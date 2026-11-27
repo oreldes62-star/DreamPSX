@@ -147,7 +147,7 @@ bool psx_bus_write32(PsxBus *bus, uint32_t address, uint32_t value)
              address < PSX_DMA_BASE_ADDR + 0x70u &&
              ((address - PSX_DMA_BASE_ADDR) & 0x0fu) == 0x08u) ||
             address == PSX_DMA_DPCR_ADDR)
-            transfer_ok = bus_try_gpu_dma(bus);
+            transfer_ok = bus_try_dma(bus);
         /* PS1 DMA is IRQ source 3. Keep the controller input synchronized
          * after DICR writes and after a channel completion changes its flags. */
         psx_irq_set_line(bus->irq, 3u, psx_dma_irq_output(bus->dma));
