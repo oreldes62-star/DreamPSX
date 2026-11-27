@@ -97,6 +97,13 @@ int main(void)
     assert(psx_bus_read32(&bus, PSX_SPU_BASE_ADDR +
                           PSX_SPU_TRANSFER_DATA_OFFSET, &word));
     assert(word == 0x89abcdefu);
+    assert(spu.transfer_address == 0x104u);
+    assert(psx_bus_write16(&bus, PSX_SPU_BASE_ADDR +
+                           PSX_SPU_KEY_ON_LOW_OFFSET, 0x0005u));
+    assert(psx_spu_active_voice_mask(&spu) == 0x00000005u);
+    assert(psx_bus_write16(&bus, PSX_SPU_BASE_ADDR +
+                           PSX_SPU_KEY_OFF_LOW_OFFSET, 0x0001u));
+    assert(psx_spu_active_voice_mask(&spu) == 0x00000004u);
 
     /* Unknown hardware registers and invalid alignments are rejected. */
     assert(!psx_bus_read32(&bus, 0x1f801080u, &word));
