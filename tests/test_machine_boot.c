@@ -14,6 +14,8 @@ static uint8_t *record(uint8_t *p,uint32_t lba,uint32_t size,uint8_t flags,const
 }
 int main(void) {
  static uint8_t iso_image[25u*PSX_ISO9660_SECTOR_SIZE];
+ static uint8_t raw_disc[25u*2352u];
+ static const char cue[] = "FILE \"boot.bin\" BINARY\nTRACK 01 MODE1/2352\nINDEX 01 00:00:00\n";
  static uint8_t ram[PSX_RAM_SIZE], bios[PSX_BIOS_SIZE];
  static uint16_t vram[1024u*512u];
  PsxMachine machine; PsxBootConfig config;
@@ -35,9 +37,21 @@ int main(void) {
  put32(exe+0x14u,0x80018000u); put32(exe+0x18u,0x80010000u);
  put32(exe+0x1cu,4u); put32(exe+0x30u,0x801fff00u); put32(exe+0x34u,0x100u);
  put32(exe+PSX_EXE_HEADER_SIZE,0x2402002au); /* addiu v0, zero, 42 */
+ /* Wrap every ISO user-data sector in a raw MODE1/2352 sector. */
+ for (unsigned sector = 0u; sector < 25u; ++sector) {
+  uint8_t *raw = raw_disc + (size_t)sector * 2352u;
+  memset(raw, 0, 2352u);
+  for (unsigned sync = 1u; sync <= 10u; ++sync) raw[sync] = 0xffu;
+  raw[15] = 1u;
+  memcpy(raw + 16u, iso_image + (size_t)sector * PSX_ISO9660_SECTOR_SIZE,
+         PSX_ISO9660_SECTOR_SIZE);
+ }
  assert(psx_machine_init(&machine,ram,sizeof(ram),bios,sizeof(bios),vram,1024u*512u));
- assert(psx_machine_boot_from_disc(&machine,iso_image,sizeof(iso_image),&config));
- assert(machine.cdrom.iso_data==iso_image && machine.cdrom.iso_size==sizeof(iso_image));
+ assert(psx_machine_boot_from_cue(&machine,cue,sizeof(cue)-1u,
+                                  raw_disc,sizeof(raw_disc),&config));
+ assert(machine.cdrom.disc.mounted && machine.cdrom.iso_data==NULL);
+ assert(machine.cdrom.disc.source==raw_disc &&
+        machine.cdrom.disc.sector_count==25u);
  assert(strcmp(config.boot_path,"/GAME/SLUS_123.45;1")==0);
  assert(machine.cpu.pc==0x80010000u && machine.cpu.next_pc==0x80010004u);
  assert(psx_cpu_read_gpr(&machine.cpu,28u)==0x80018000u);
@@ -57,6 +71,6 @@ int main(void) {
    assert(psx_cdrom_read_data32(&machine.cdrom,&sector_word));
    assert(sector_word==0x78563412u);
  }
- puts("machine ISO boot and first instruction tests: OK");
+ puts("machine raw CUE BIN boot and first instruction tests: OK");
  return 0;
 }
