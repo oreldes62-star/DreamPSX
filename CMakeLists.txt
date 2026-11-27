@@ -52,6 +52,7 @@ set(DREAMPSX_TESTS
     test_gpu_texture_opcodes
     test_gpu_texture_rasterization
     test_gpu_texture_shared_edges
+    test_gpu_indexed_texture_boundaries
     test_machine
     test_machine_bus
     test_memory
