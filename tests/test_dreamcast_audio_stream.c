@@ -17,28 +17,33 @@ int main(void)
     assert(((uintptr_t)stream.pcm & 31u) == 0u);
 
     assert(psx_audio_buffer_write(&queue, source, 4u) == 4u);
-    pcm = (int16_t *)psx_dreamcast_audio_stream_callback(&stream, 3, &received);
-    assert(pcm != NULL && received == 3);
+    /* KOS asks for 12 interleaved bytes, i.e. three stereo PCM16 frames. */
+    pcm = (int16_t *)psx_dreamcast_audio_stream_callback(&stream, 12, &received);
+    assert(pcm != NULL && received == 12);
     assert(pcm[0] == 100 && pcm[1] == -100);
     assert(pcm[4] == 300 && pcm[5] == -300);
     assert(queue.frame_count == 1u);
 
-    pcm = (int16_t *)psx_dreamcast_audio_stream_callback(&stream, 3, &received);
-    assert(pcm != NULL && received == 3);
+    pcm = (int16_t *)psx_dreamcast_audio_stream_callback(&stream, 12, &received);
+    assert(pcm != NULL && received == 12);
     assert(pcm[0] == 400 && pcm[1] == -400);
     assert(pcm[2] == 0 && pcm[3] == 0);
     assert(pcm[4] == 0 && pcm[5] == 0);
     assert(stream.silence_frames == 2u);
     assert(queue.underrun_frames == 2u);
 
+    /* A non-frame-aligned request is rounded down to complete stereo frames. */
+    pcm = (int16_t *)psx_dreamcast_audio_stream_callback(&stream, 11, &received);
+    assert(pcm != NULL && received == 8);
+
     pcm = (int16_t *)psx_dreamcast_audio_stream_callback(
-        &stream, (int)PSX_DREAMCAST_AUDIO_CALLBACK_MAX_FRAMES + 10, &received);
+        &stream, (int)(sizeof(stream.pcm) + 32u), &received);
     assert(pcm != NULL);
-    assert(received == (int)PSX_DREAMCAST_AUDIO_CALLBACK_MAX_FRAMES);
+    assert(received == (int)sizeof(stream.pcm));
     assert(stream.oversized_requests == 1u);
     assert(stream.silence_frames ==
-           2u + PSX_DREAMCAST_AUDIO_CALLBACK_MAX_FRAMES);
-    assert(stream.callback_count == 3u);
+           2u + 2u + PSX_DREAMCAST_AUDIO_CALLBACK_MAX_FRAMES);
+    assert(stream.callback_count == 4u);
 
     received = 123;
     assert(psx_dreamcast_audio_stream_callback(&stream, -1, &received) == NULL);
