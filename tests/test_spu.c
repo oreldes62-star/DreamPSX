@@ -814,7 +814,7 @@ int main(void)
                 voice_index * PSX_SPU_VOICE_REGISTER_BYTES;
             int16_t dry_left = 0;
             int16_t dry_right = 0;
-            int16_t reflection_sample = 0;
+            const uint32_t reflection_address = 0x100u;
 
             psx_spu_reset(&spu);
             assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
@@ -852,8 +852,8 @@ int main(void)
              * silence even though the dry channel still produces audio. */
             assert(psx_spu_mix_sample(&spu, &dry_left, &dry_right));
             assert(dry_left > 0 && dry_right > 0);
-            assert(psx_spu_reverb_read16(&spu, 0u, &reflection_sample));
-            assert(reflection_sample == 0);
+            assert(spu.ram[reflection_address] == 0u);
+            assert(spu.ram[reflection_address + 1u] == 0u);
 
             /* Re-run from a clean state with the correct low/high send bit. */
             psx_spu_reset(&spu);
@@ -894,8 +894,8 @@ int main(void)
                     (uint16_t)(voice_bit >> 16u)));
             }
             assert(psx_spu_mix_sample(&spu, &dry_left, &dry_right));
-            assert(psx_spu_reverb_read16(&spu, 0u, &reflection_sample));
-            assert(reflection_sample > 0);
+            assert(spu.ram[reflection_address] != 0u ||
+                   spu.ram[reflection_address + 1u] != 0u);
             assert(spu.reverb_buffer_address == 0x102u);
         }
         psx_spu_reset(&spu);
