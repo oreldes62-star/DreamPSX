@@ -16,6 +16,12 @@ typedef enum {
 } PsxDiscTrackMode;
 
 typedef struct {
+    uint16_t sample_rate_hz;
+    uint8_t channels;
+    uint8_t bits_per_sample;
+} PsxDiscXaAudioFormat;
+
+typedef struct {
     uint8_t file;
     uint8_t channel;
     uint8_t submode;
@@ -51,5 +57,8 @@ bool psx_disc_read_sector_form2_ex(
     const PsxDiscImage *disc, size_t lba,
     uint8_t destination[PSX_DISC_SECTOR_FORM2_DATA_SIZE],
     PsxDiscXaSubheader *subheader);
+/* Decodes XA audio flags and coding byte; rejects non-audio/unsupported modes. */
+bool psx_disc_xa_audio_format(const PsxDiscXaSubheader *subheader,
+                              PsxDiscXaAudioFormat *format);
 
 #endif
