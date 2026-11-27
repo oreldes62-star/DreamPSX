@@ -2,6 +2,29 @@
 #include "dreampsx/cop0_irq.h"
 #include "dreampsx/cop0.h"
 
+bool psx_machine_boot_from_iso(PsxMachine *machine, const PsxIso9660 *iso,
+                               PsxBootConfig *config)
+{
+    PsxBootConfig parsed_config;
+    PsxExeInfo exe_info;
+    if (!machine || !machine->memory.initialized ||
+        !psx_boot_load_from_iso(&machine->memory, iso, &parsed_config,
+                                &exe_info))
+        return false;
+
+    psx_cpu_reset(&machine->cpu);
+    psx_cpu_write_gpr(&machine->cpu, 28u, exe_info.global_pointer);
+    psx_cpu_write_gpr(&machine->cpu, 29u, exe_info.initial_stack_pointer);
+    machine->cpu.pc = exe_info.entry_pc;
+    machine->cpu.next_pc = exe_info.entry_pc + 4u;
+    machine->cpu.delay_slot_pending = false;
+    machine->cpu.load_delay_pending = false;
+    machine->cpu.load_delay_mergeable = false;
+    if (config)
+        *config = parsed_config;
+    return true;
+}
+
 bool psx_machine_init(PsxMachine *machine,
                       uint8_t *ram, size_t ram_size,
                       const uint8_t *bios, size_t bios_size,
