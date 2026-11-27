@@ -69,7 +69,7 @@ bool psx_spu_voice_volume_tick(PsxSpu *spu, unsigned voice_index)
             (0x8000u >> (shift - 11u)) : 0x8000u;
         step = 7 - (int32_t)step_code;
         if (subtract)
-            step = ~step;
+            step = -step - 1;
         if (shift < 11u)
             step *= (int32_t)(1u << (11u - shift));
 
@@ -252,14 +252,18 @@ bool psx_spu_write16(PsxSpu *spu, uint32_t address, uint16_t value)
         case 0x00u:
             voice->volume_left = value;
             voice->volume_left_counter = 0u;
-            voice->volume_left_sweep_active = (value & 0x8000u) != 0u;
+            voice->volume_left_sweep_active =
+                (value & 0x8000u) != 0u &&
+                (value & 0x007fu) != 0x007fu;
             if ((value & 0x8000u) == 0u)
                 voice->volume_left_level = psx_spu_decode_direct_volume(value);
             break;
         case 0x02u:
             voice->volume_right = value;
             voice->volume_right_counter = 0u;
-            voice->volume_right_sweep_active = (value & 0x8000u) != 0u;
+            voice->volume_right_sweep_active =
+                (value & 0x8000u) != 0u &&
+                (value & 0x007fu) != 0x007fu;
             if ((value & 0x8000u) == 0u)
                 voice->volume_right_level = psx_spu_decode_direct_volume(value);
             break;
