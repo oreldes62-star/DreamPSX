@@ -80,6 +80,11 @@ bool psx_xa_adpcm_decode_sound_group(
     units = bits_per_sample == 4u ? 8u : 4u;
     shift_limit = bits_per_sample == 4u ? 12u : 8u;
 
+    /* Validate every unit header before changing predictor state or output. */
+    for (unsigned unit = 0u; unit < units; ++unit) {
+        if ((group[4u + unit] & 0x0fu) > shift_limit) return false;
+    }
+
     for (unsigned unit = 0u; unit < units; ++unit) {
         unsigned channel = stereo ? (unit & 1u) : 0u;
         uint8_t parameter = group[4u + unit];
@@ -87,8 +92,6 @@ bool psx_xa_adpcm_decode_sound_group(
         unsigned filter = (parameter >> 4u) & 0x03u;
         int8_t codes[PSX_XA_ADPCM_SAMPLES_PER_UNIT];
         int16_t decoded[PSX_XA_ADPCM_SAMPLES_PER_UNIT];
-
-        if (shift > shift_limit) return false;
 
         for (unsigned sample = 0u; sample < PSX_XA_ADPCM_SAMPLES_PER_UNIT;
              ++sample) {
@@ -99,7 +102,8 @@ bool psx_xa_adpcm_decode_sound_group(
                 codes[sample] = (int8_t)(nibble >= 8u ?
                                          (int)nibble - 16 : (int)nibble);
             } else {
-                codes[sample] = (int8_t)packed;
+                codes[sample] = (int8_t)(packed < 0x80u ?
+                                         (int)packed : (int)packed - 256);
             }
         }
 
