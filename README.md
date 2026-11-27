@@ -209,3 +209,6 @@ Latest SPU milestone: 4.52 adds cascaded stereo APF1/APF2 all-pass processing (v
 
 
 SPU milestone 4.55 adds signed direct voice volume and independently clocked left/right sweep control. Milestone 4.56 extends the same sweep model to the main stereo volume registers and applies master gain after dry/wet summation. Host regression coverage includes sweep cadence during silent output; see [SPU volume control milestones 4.55–4.56](docs/SPU-VOICE-VOLUME-SWEEP-MILESTONE-4.55.md). The earlier 4.55 host suite passed 44/44 and its Dreamcast KallistiOS/AICA smoke ELF was built and verified; the new 4.56 changes pass the host CMake build and CTest 44/44 (run 46075603036); the matching KallistiOS build and runtime testing remain pending.
+
+
+Disc I/O milestone 4.59 adds a random-access sector source for raw single-track images. The CD-ROM now fetches only the requested 2048- or 2352-byte sector instead of requiring a complete image buffer; host tests cover a sparse 64 MiB source and the CD-ROM ReadN path. CUE-to-file resolution and the Dreamcast KallistiOS filesystem adapter remain the next integration steps. See [random-access disc reader milestone 4.59](docs/DISC-IMAGE-RANDOM-ACCESS-READER-MILESTONE-4.59.md).
