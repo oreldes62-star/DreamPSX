@@ -62,6 +62,7 @@ set(DREAMPSX_TESTS
     test_gpu_video_timing
     test_machine_video_irq
     test_timers
+    test_timers_bus
     test_gpu_scanout
     test_machine
     test_machine_bus
