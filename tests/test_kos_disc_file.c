@@ -55,7 +55,7 @@ int main(void)
 {
     PsxKosDiscFile file;
     PsxDiscImage disc;
-    uint8_t output[32];
+    uint8_t output[PSX_DISC_SECTOR_DATA_SIZE];
     size_t i;
 
     memset(&file, 0, sizeof(file));
@@ -75,7 +75,7 @@ int main(void)
        image allocation. MODE1/2048 data begins at byte zero. */
     assert(psx_disc_read_sector(&disc, 1u, output));
     assert(output[0] == backing[2048u]);
-    assert(output[31] == backing[2079u]);
+    assert(output[PSX_DISC_SECTOR_DATA_SIZE - 1u] == backing[4095u]);
 
     fail_seek = 1;
     assert(!psx_kos_disc_file_read_at(&file, 0u, output, sizeof(output)));
