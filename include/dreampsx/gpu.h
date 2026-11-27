@@ -54,5 +54,11 @@ bool psx_gpu_read_data(PsxGpu *gpu, uint32_t *value);
 bool psx_gpu_read_status(const PsxGpu *gpu, uint32_t *value);
 bool psx_gpu_vram_read(const PsxGpu *gpu, unsigned x, unsigned y,
                        uint16_t *value);
+/* Convert a rectangular RGB555 VRAM region to packed RGB565 output.
+ * dst_stride is measured in uint16_t pixels and may exceed width.
+ */
+bool psx_gpu_copy_rgb565(const PsxGpu *gpu, unsigned x, unsigned y,
+                         unsigned width, unsigned height,
+                         uint16_t *dst, size_t dst_stride);
 
 #endif
