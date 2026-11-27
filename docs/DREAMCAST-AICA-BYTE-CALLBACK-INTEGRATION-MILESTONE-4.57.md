@@ -43,7 +43,7 @@ The dedicated callback tests also cover byte counts, partial-frame rounding, ove
 
 - Host CMake build and CTest: 44/44 passed after callback correction and machine-to-callback integration (GitHub Actions run 46077164459).
 - The earlier KallistiOS SH-4 build after the byte-count correction passed, compiling the core archive, linking the audio smoke ELF, verifying ELF32 little-endian SuperH and uploading artifact ID 15234764907 (run 46076903036).
-- A further KallistiOS build for the latest integration commit is running separately; its result must be checked before claiming that exact head has cross-build validation.
+- The KallistiOS SH-4 build for the machine-to-callback integration commit passed (run 46077164540): all 23 core/platform translation units compiled, the AICA smoke-test ELF linked, ELF32 little-endian SuperH verification passed, and artifact `dreampsx-dreamcast-build` (ID 15235761926) was uploaded.
 
 ## Limitations
 
