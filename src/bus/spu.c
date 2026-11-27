@@ -317,6 +317,11 @@ bool psx_spu_voice_envelope_tick(PsxSpu *spu, unsigned voice_index,
         if (!decreasing && next > (int32_t)PSX_SPU_ENVELOPE_MAX)
             next = (int32_t)PSX_SPU_ENVELOPE_MAX;
         if (decreasing && next < 0) next = 0;
+        if (voice->envelope_phase == PSX_SPU_ADSR_DECAY) {
+            const int32_t sustain =
+                (int32_t)(((voice->adsr1 & 0x0fu) + 1u) << 11u);
+            if (next < sustain) next = sustain;
+        }
         voice->envelope_level = (uint16_t)next;
     }
 
