@@ -17,6 +17,13 @@ void psx_dma_reset(PsxDmaController *dma)
     dma->request_words_transferred = 0u;
     dma->linked_list_words_transferred = 0u;
     dma->linked_list_headers_read = 0u;
+    dma->last_transfer.sequence = 0u;
+    dma->last_transfer.payload_words = 0u;
+    dma->last_transfer.packet_headers = 0u;
+    dma->last_transfer.channel = 0u;
+    dma->last_transfer.sync_mode = 0u;
+    dma->last_transfer.ram_to_device = false;
+    dma->last_transfer.completed = false;
 }
 
 bool psx_dma_init(PsxDmaController *dma)
@@ -174,6 +181,35 @@ uint64_t psx_dma_linked_list_headers_read(const PsxDmaController *dma)
 {
     if (!dma || !dma->initialized) return 0u;
     return dma->linked_list_headers_read;
+}
+
+bool psx_dma_last_transfer_event(const PsxDmaController *dma,
+                                 PsxDmaTransferEvent *event)
+{
+    if (!dma || !dma->initialized || !event ||
+        dma->last_transfer.sequence == 0u)
+        return false;
+    *event = dma->last_transfer;
+    return true;
+}
+
+void psx_dma_record_transfer_event(PsxDmaController *dma, unsigned channel,
+                                   uint32_t control,
+                                   uint64_t payload_before,
+                                   uint64_t headers_before,
+                                   bool completed)
+{
+    if (!dma || !dma->initialized || channel >= PSX_DMA_CHANNEL_COUNT)
+        return;
+    ++dma->last_transfer.sequence;
+    dma->last_transfer.channel = (uint8_t)channel;
+    dma->last_transfer.sync_mode = (uint8_t)((control >> 9u) & 3u);
+    dma->last_transfer.ram_to_device = (control & 1u) != 0u;
+    dma->last_transfer.payload_words =
+        dma->data_words_transferred - payload_before;
+    dma->last_transfer.packet_headers =
+        dma->linked_list_headers_read - headers_before;
+    dma->last_transfer.completed = completed;
 }
 
 bool psx_dma_complete_channel(PsxDmaController *dma, unsigned channel)
