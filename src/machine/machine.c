@@ -101,6 +101,7 @@ void psx_machine_reset(PsxMachine *machine)
     psx_audio_buffer_reset(&machine->audio_output);
     machine->timer2_div8_phase = 0u;
     machine->cdrom_sector_cycle_phase = 0u;
+    machine->spu_audio_cycle_phase = 0u;
     machine->cop0_status = 0u;
     machine->cop0_cause = 0u;
     machine->cop0_epc = 0u;
@@ -177,6 +178,22 @@ bool psx_machine_advance_system_cycles(PsxMachine *machine, uint32_t cycles)
         return false;
 
     /* CD-ROM command completion and sector cadence share the PS1 clock. */
+    /* The PS1 master clock is 33.8688 MHz; the SPU output cadence is
+     * 44.1 kHz (one stereo frame per 768 master-clock cycles). Preserve
+     * fractional phase across calls so instruction-sized chunks do not drift.
+     */
+    {
+        const uint64_t audio_cycles =
+            (uint64_t)machine->spu_audio_cycle_phase + (uint64_t)cycles;
+        const size_t due_frames = (size_t)(audio_cycles / 768u);
+        machine->spu_audio_cycle_phase = (uint32_t)(audio_cycles % 768u);
+        if (due_frames != 0u) {
+            size_t queued = 0u;
+            if (!psx_machine_render_audio(machine, due_frames, &queued))
+                return false;
+        }
+    }
+
     psx_cdrom_advance_cycles(&machine->cdrom, cycles);
     psx_cdrom_advance_xa_audio_cycles(&machine->cdrom, cycles);
     psx_irq_set_line(&machine->irq, 2u,
