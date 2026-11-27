@@ -164,3 +164,68 @@ bool psx_dma_execute_gpu_manual(PsxDmaController *dma,
     dma->dicr |= 1u << 26u; /* Channel 2 completion flag. */
     return true;
 }
+
+
+/* Channel 2 GPU linked-list mode. Packet headers are never sent to GP0:
+ * bits 31..24 contain the payload word count and bits 23..0 the next
+ * header address. The all-ones 24-bit pointer terminates the chain. */
+bool psx_dma_execute_gpu_linked_list(PsxDmaController *dma,
+                                     PsxMemory *memory, PsxGpu *gpu)
+{
+    PsxDmaChannel *channel;
+    uint32_t control;
+    uint32_t address;
+    uint32_t packet_count = 0u;
+    uint32_t total_words = 0u;
+
+    if (!dma || !dma->initialized || !memory || !memory->initialized ||
+        !gpu || !gpu->initialized)
+        return false;
+
+    channel = &dma->channel[2];
+    control = channel->chcr;
+
+    /* Linked-list mode is device-directed RAM-to-GP0 only. CHCR bit 28
+     * is a manual-mode trigger and is deliberately not required here. */
+    if ((control & (1u << 24u)) == 0u ||
+        (control & 1u) == 0u ||
+        ((control >> 9u) & 3u) != 2u ||
+        (dma->dpcr & (1u << 11u)) == 0u)
+        return true;
+    if (gpu->dma_direction != 2u) return false;
+
+    address = channel->madr & 0x00fffffcu;
+    for (;;) {
+        uint32_t header;
+        uint32_t count;
+        uint32_t next;
+        uint32_t payload_address;
+
+        if (++packet_count > 65536u) return false;
+        channel->madr = address;
+        if (!psx_memory_read32(memory, address, &header)) return false;
+
+        count = header >> 24u;
+        next = header & 0x00ffffffu;
+        payload_address = (address + 4u) & 0x00fffffcu;
+
+        if (total_words > 1048576u - count) return false;
+        for (uint32_t i = 0u; i < count; ++i) {
+            uint32_t data;
+            if (!psx_memory_read32(memory, payload_address, &data) ||
+                !psx_gpu_gp0_write(gpu, data))
+                return false;
+            payload_address = (payload_address + 4u) & 0x00fffffcu;
+            ++total_words;
+        }
+
+        if (next == 0x00ffffffu) {
+            channel->madr = 0x00ffffffu;
+            channel->chcr &= ~(1u << 24u);
+            dma->dicr |= 1u << 26u;
+            return true;
+        }
+        if ((next & 3u) != 0u) return false;
+        address = next;
+    }
+}
