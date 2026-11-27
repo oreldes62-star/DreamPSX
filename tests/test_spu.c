@@ -931,6 +931,23 @@ int main(void)
                                0xffffu));
         assert(psx_spu_voice_volume_tick(&spu, 0u));
         assert(spu.voices[0].volume_left_level == 16383);
+
+        /* Shift 12 halves the rate accumulator: two samples per step. */
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR, 0x2000u));
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR,
+                               0x8000u | (12u << 2u)));
+        assert(psx_spu_voice_volume_tick(&spu, 0u));
+        assert(spu.voices[0].volume_left_level == 16384);
+        assert(psx_spu_voice_volume_tick(&spu, 0u));
+        assert(spu.voices[0].volume_left_level == 16391);
+
+        /* Exponential decrease scales the -8 step by current / 0x8000. */
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR, 0x2000u));
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR,
+                               0x8000u | 0x4000u | 0x2000u |
+                               (11u << 2u)));
+        assert(psx_spu_voice_volume_tick(&spu, 0u));
+        assert(spu.voices[0].volume_left_level == 16380);
         assert(!psx_spu_voice_volume_tick(NULL, 0u));
         assert(!psx_spu_voice_volume_tick(&spu, PSX_SPU_VOICE_COUNT));
         psx_spu_reset(&spu);
