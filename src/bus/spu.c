@@ -429,6 +429,27 @@ bool psx_spu_mix_sample(PsxSpu *spu, int16_t *left, int16_t *right)
     return produced;
 }
 
+
+bool psx_spu_mix_block(PsxSpu *spu, int16_t *interleaved_stereo,
+                       size_t frame_capacity, size_t *frames_written)
+{
+    if (frames_written)
+        *frames_written = 0u;
+    if (!spu || !spu->initialized ||
+        (!interleaved_stereo && frame_capacity != 0u) || !frames_written)
+        return false;
+
+    for (size_t frame = 0u; frame < frame_capacity; ++frame) {
+        int16_t left = 0;
+        int16_t right = 0;
+        (void)psx_spu_mix_sample(spu, &left, &right);
+        interleaved_stereo[frame * 2u] = left;
+        interleaved_stereo[frame * 2u + 1u] = right;
+    }
+    *frames_written = frame_capacity;
+    return true;
+}
+
 uint32_t psx_spu_active_voice_mask(const PsxSpu *spu)
 {
     return (spu && spu->initialized) ? spu->active_voices : 0u;
