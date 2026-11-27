@@ -125,6 +125,10 @@ int main(void)
         assert(psx_spu_voice_envelope_tick(&spu, 1u, &envelope));
         assert(envelope == 14336u);
         assert(psx_spu_voice_envelope_tick(&spu, 1u, &envelope));
+        assert(envelope == 14336u); /* divider has not overflowed yet */
+        assert(psx_spu_voice_envelope_tick(&spu, 1u, &envelope));
+        assert(envelope == 28672u);
+        assert(psx_spu_voice_envelope_tick(&spu, 1u, &envelope));
         assert(envelope == 28672u);
         assert(psx_spu_voice_envelope_tick(&spu, 1u, &envelope));
         assert(envelope == PSX_SPU_ENVELOPE_MAX);
@@ -134,6 +138,8 @@ int main(void)
         assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
                                PSX_SPU_KEY_OFF_LOW_OFFSET, 0x0002u));
         assert(spu.voices[1].envelope_phase == PSX_SPU_ADSR_RELEASE);
+        assert(psx_spu_voice_envelope_tick(&spu, 1u, &envelope));
+        assert(envelope == 16383u);
         assert(psx_spu_voice_envelope_tick(&spu, 1u, &envelope));
         assert(envelope == 16383u);
         assert(!psx_spu_voice_envelope_tick(&spu, 1u, &envelope));
