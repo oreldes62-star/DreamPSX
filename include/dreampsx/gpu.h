@@ -15,6 +15,9 @@ typedef struct {
     bool color_24bit;
     bool interlaced;
     bool reverse;
+    unsigned range_width;
+    unsigned range_height;
+    bool range_valid;
 } PsxGpuDisplayModeInfo;
 
 typedef struct {
