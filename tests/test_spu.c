@@ -197,7 +197,7 @@ int main(void)
     assert(spu.voices[0].repeat_address == 0x0321u);
     assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + 0x00cu, 0x7777u));
     assert(psx_spu_read16(&spu, PSX_SPU_BASE_ADDR + 0x00cu, &value));
-    assert(value == 0u);
+    assert(value == spu.voices[0].envelope_level);
     assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + 0x170u, 0x5a5au));
     assert(spu.voices[23].volume_left == 0x5a5au);
 
