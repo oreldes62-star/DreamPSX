@@ -13,6 +13,7 @@ int main(void)
     PsxSpuAdpcmState adpcm_state;
     uint8_t adpcm_flags = 0u;
     int16_t voice_sample = 0;
+    int16_t rendered_sample = 0;
 
     psx_spu_adpcm_reset(&adpcm_state);
     adpcm_block[1] = 0x05u;
@@ -77,6 +78,38 @@ int main(void)
         assert(psx_spu_voice_next_sample(&spu, 0u, &voice_sample));
     assert(psx_spu_active_voice_mask(&spu) == 0u);
     assert(!psx_spu_voice_next_sample(&spu, 0u, &voice_sample));
+
+    /* Pitch phase holds/repeats source samples below 1x and advances
+     * multiple decoded samples above 1x. */
+    {
+        uint8_t pitch_block[PSX_SPU_ADPCM_BLOCK_BYTES] = {0};
+        pitch_block[2] = 0x21u; /* decoded samples: 4096, 8192 */
+        pitch_block[3] = 0x43u; /* then 12288, 16384 */
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + 0x004u, 0x0800u));
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + 0x006u, 0x0030u));
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                               PSX_SPU_TRANSFER_ADDR_OFFSET, 0x0030u));
+        for (unsigned i = 0u; i < PSX_SPU_ADPCM_BLOCK_BYTES; i += 2u) {
+            const uint16_t word = (uint16_t)(pitch_block[i] |
+                                    ((uint16_t)pitch_block[i + 1u] << 8u));
+            assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                                   PSX_SPU_TRANSFER_DATA_OFFSET, word));
+        }
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                               PSX_SPU_KEY_ON_LOW_OFFSET, 0x0001u));
+        assert(psx_spu_voice_render_sample(&spu, 0u, &rendered_sample));
+        assert(rendered_sample == 4096);
+        assert(psx_spu_voice_render_sample(&spu, 0u, &rendered_sample));
+        assert(rendered_sample == 4096);
+        assert(psx_spu_voice_render_sample(&spu, 0u, &rendered_sample));
+        assert(rendered_sample == 8192);
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + 0x004u, 0x2000u));
+        assert(psx_spu_voice_render_sample(&spu, 0u, &rendered_sample));
+        assert(rendered_sample == 16384);
+        assert(spu.voices[0].pitch_phase == 0u);
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                               PSX_SPU_KEY_OFF_LOW_OFFSET, 0x0001u));
+    }
 
     /* Typed voice registers expose 24 independent parameter banks. */
     assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + 0x000u, 0x1111u));
