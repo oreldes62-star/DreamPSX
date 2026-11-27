@@ -218,3 +218,6 @@ Disc I/O milestone 4.60 connects the random-access sector source to the Dreamcas
 Disc I/O milestone 4.61 adds a bounded KallistiOS CUE loader. It reads a single-track CUE file, resolves the relative BIN/ISO path, applies INDEX 01, and mounts the referenced data through the sector-at-a-time VFS reader. Multi-track and CDDA discs remain unsupported. See [CUE loader milestone 4.61](docs/DREAMCAST-CUE-LOADER-MILESTONE-4.61.md).
 
 Milestone 4.62 connects the random-access KallistiOS disc reader to ISO9660 and the machine boot path. `psx_machine_boot_from_disc_image()` now supports file-backed readers without a whole-disc RAM copy, and host integration tests cover SYSTEM.CNF, PS-X EXE loading, the first MIPS instruction and CD-ROM sector access. See [file-backed boot milestone 4.62](docs/DREAMCAST-FILE-BACKED-BOOT-MILESTONE-4.62.md).
+
+
+Milestone 4.63 adds a dedicated Dreamcast VFS boot smoke ELF. It loads a user-supplied 512 KiB BIOS from `/cd/PSX/BIOS.BIN`, opens `/cd/PSX/GAME.CUE` and its relative BIN, boots the PS-X EXE through the file-backed ISO/CD-ROM path, and starts the AICA output loop. The build now emits both the audio-only smoke ELF and the boot smoke ELF. See [Dreamcast boot smoke milestone 4.63](docs/DREAMCAST-FILE-BACKED-BOOT-SMOKE-MILESTONE-4.63.md).
