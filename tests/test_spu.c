@@ -3,6 +3,15 @@
 #include <assert.h>
 #include <stdio.h>
 
+static void reset_spu_for_audio_tests(PsxSpu *spu)
+{
+    psx_spu_reset(spu);
+    assert(psx_spu_write16(spu, PSX_SPU_BASE_ADDR +
+                           PSX_SPU_MAIN_VOLUME_LEFT_OFFSET, 0x3fffu));
+    assert(psx_spu_write16(spu, PSX_SPU_BASE_ADDR +
+                           PSX_SPU_MAIN_VOLUME_RIGHT_OFFSET, 0x3fffu));
+}
+
 int main(void)
 {
     PsxSpu spu;
@@ -282,7 +291,7 @@ int main(void)
     {
         uint16_t envelope0 = 0u;
         uint16_t envelope1 = 0u;
-        psx_spu_reset(&spu);
+        reset_spu_for_audio_tests(&spu);
         assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + 0x008u, 0x000fu));
         assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + 0x018u, 0x7f00u));
         assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
@@ -335,7 +344,7 @@ int main(void)
     /* Two full-scale voices must saturate the stereo accumulator rather
      * than wrap when their positive samples are summed. */
     {
-        psx_spu_reset(&spu);
+        reset_spu_for_audio_tests(&spu);
         spu.active_voices = 0x00000003u;
         for (unsigned i = 0u; i < 2u; ++i) {
             PsxSpuVoice *voice = &spu.voices[i];
@@ -362,7 +371,7 @@ int main(void)
     /* All 24 voices contribute to both channels at once. Positive and
      * negative peaks must saturate symmetrically without losing voices. */
     {
-        psx_spu_reset(&spu);
+        reset_spu_for_audio_tests(&spu);
         spu.active_voices = 0x00ffffffu;
         for (unsigned i = 0u; i < PSX_SPU_VOICE_COUNT; ++i) {
             PsxSpuVoice *voice = &spu.voices[i];
@@ -391,7 +400,25 @@ int main(void)
         assert(psx_spu_active_voice_mask(&spu) == 0x00ffffffu);
         for (unsigned i = 0u; i < PSX_SPU_VOICE_COUNT; ++i)
             assert(spu.voices[i].sample_index == 2u);
+        reset_spu_for_audio_tests(&spu);
+    }
+
+    /* Main stereo volume is applied after dry + wet summation. Its sweep
+     * clocks once per mixed output sample, even when no voice is active. */
+    {
         psx_spu_reset(&spu);
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                               PSX_SPU_MAIN_VOLUME_LEFT_OFFSET,
+                               0x8000u | (11u << 2u)));
+        assert(spu.main_volume_left_level == 88);
+        assert(spu.main_volume_left_sweep_active);
+        assert(!psx_spu_mix_sample(&spu, &mixed_left, &mixed_right));
+        assert(spu.main_volume_left_level == 95);
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                               PSX_SPU_MAIN_VOLUME_RIGHT_OFFSET, 0u));
+        assert(spu.main_volume_right_level == 0);
+        assert(!spu.main_volume_right_sweep_active);
+        reset_spu_for_audio_tests(&spu);
     }
 
     /* Fixed-size interleaved stereo PCM blocks: active voice samples are
@@ -501,7 +528,7 @@ int main(void)
         const uint32_t cursor = 0x100u;
         const uint32_t reg_base = PSX_SPU_BASE_ADDR;
         int16_t sample;
-        psx_spu_reset(&spu);
+        reset_spu_for_audio_tests(&spu);
         assert(psx_spu_write16(&spu, reg_base +
             PSX_SPU_REVERB_WORK_AREA_START_OFFSET, 0u));
         spu.reverb_buffer_address = cursor;
@@ -546,7 +573,7 @@ int main(void)
         assert(psx_spu_reverb_read16(&spu, 14u, &sample));
         assert(sample == 900);
         assert(!psx_spu_reverb_process_reflections(NULL, 0, 0));
-        psx_spu_reset(&spu);
+        reset_spu_for_audio_tests(&spu);
     }
 
     /* Reverb sample accesses are signed little-endian halfwords and remain
@@ -566,7 +593,7 @@ int main(void)
         assert(sample == 23456);
         assert(!psx_spu_reverb_read16(&spu, 0u, NULL));
         assert(!psx_spu_reverb_write16(NULL, 0u, 1));
-        psx_spu_reset(&spu);
+        reset_spu_for_audio_tests(&spu);
     }
 
     /* Typed voice registers expose 24 independent parameter banks. */
@@ -652,7 +679,7 @@ int main(void)
     assert(spu.transfer_address == PSX_SPU_RAM_BYTES - 6u);
 
     /* Reset clears registers, RAM and transfer position. */
-    psx_spu_reset(&spu);
+    reset_spu_for_audio_tests(&spu);
     assert(spu.transfer_address == 0u);
     assert(psx_spu_active_voice_mask(&spu) == 0u);
     assert(spu.voices[0].volume_left == 0u);
@@ -694,7 +721,7 @@ int main(void)
             PSX_SPU_REVERB_CONFIG_VCOMB3_OFFSET,
             PSX_SPU_REVERB_CONFIG_VCOMB4_OFFSET
         };
-        psx_spu_reset(&spu);
+        reset_spu_for_audio_tests(&spu);
         assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
             PSX_SPU_REVERB_WORK_AREA_START_OFFSET, 0u));
         for (unsigned i = 0u; i < 4u; ++i) {
@@ -723,7 +750,7 @@ int main(void)
         assert(comb_left == 32767);
         assert(!psx_spu_reverb_process_comb(NULL, &comb_left, &comb_right));
         assert(!psx_spu_reverb_process_comb(&spu, NULL, &comb_right));
-        psx_spu_reset(&spu);
+        reset_spu_for_audio_tests(&spu);
     }
 
     /* Cascaded APF1/APF2 stages, including feedback writes and signed
@@ -732,7 +759,7 @@ int main(void)
         int16_t apf_left = 0;
         int16_t apf_right = 0;
         int16_t sample = 0;
-        psx_spu_reset(&spu);
+        reset_spu_for_audio_tests(&spu);
         assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
             PSX_SPU_REVERB_WORK_AREA_START_OFFSET, 0u));
         spu.reverb_buffer_address = 0x100u;
@@ -773,7 +800,7 @@ int main(void)
                                                 &apf_left, &apf_right));
         assert(!psx_spu_reverb_process_allpass(&spu, 0, 0,
                                                 NULL, &apf_right));
-        psx_spu_reset(&spu);
+        reset_spu_for_audio_tests(&spu);
     }
 
     /* Full wet-path orchestration: disabled mode is transparent and does
@@ -781,7 +808,7 @@ int main(void)
     {
         int16_t wet_left = 123;
         int16_t wet_right = -123;
-        psx_spu_reset(&spu);
+        reset_spu_for_audio_tests(&spu);
         assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
             PSX_SPU_REVERB_WORK_AREA_START_OFFSET, 0u));
         spu.reverb_buffer_address = 0x200u;
@@ -803,7 +830,7 @@ int main(void)
                                                &wet_left, &wet_right));
         assert(!psx_spu_reverb_process_sample(&spu, 0, 0,
                                                NULL, &wet_right));
-        psx_spu_reset(&spu);
+        reset_spu_for_audio_tests(&spu);
     }
 
     /* Per-voice reverb routing: voice 0 uses the low bitmap and voice
@@ -820,7 +847,7 @@ int main(void)
             int16_t dry_right = 0;
             const uint32_t reflection_address = 0x100u;
 
-            psx_spu_reset(&spu);
+            reset_spu_for_audio_tests(&spu);
             assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
                 PSX_SPU_REVERB_WORK_AREA_START_OFFSET, 0x0020u));
             assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
@@ -860,7 +887,7 @@ int main(void)
             assert(spu.ram[reflection_address + 1u] == 0u);
 
             /* Re-run from a clean state with the correct low/high send bit. */
-            psx_spu_reset(&spu);
+            reset_spu_for_audio_tests(&spu);
             assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
                 PSX_SPU_REVERB_WORK_AREA_START_OFFSET, 0x0020u));
             assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
@@ -902,13 +929,13 @@ int main(void)
                    spu.ram[reflection_address + 1u] != 0u);
             assert(spu.reverb_buffer_address == 0x102u);
         }
-        psx_spu_reset(&spu);
+        reset_spu_for_audio_tests(&spu);
     }
 
     /* Direct volume is signed 15-bit doubled data. Sweep mode advances
      * independently on left and right at the SPU sample cadence. */
     {
-        psx_spu_reset(&spu);
+        reset_spu_for_audio_tests(&spu);
         assert(psx_spu_decode_direct_volume(0x3fffu) == 32766);
         assert(psx_spu_decode_direct_volume(0x4000u) == -32768);
         assert(psx_spu_decode_direct_volume(0x7fffu) == -2);
@@ -962,7 +989,7 @@ int main(void)
         assert(!spu.voices[0].volume_left_sweep_active);
         assert(!psx_spu_voice_volume_tick(NULL, 0u));
         assert(!psx_spu_voice_volume_tick(&spu, PSX_SPU_VOICE_COUNT));
-        psx_spu_reset(&spu);
+        reset_spu_for_audio_tests(&spu);
     }
 
     puts("DreamPSX SPU register/RAM tests: OK");
