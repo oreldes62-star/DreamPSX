@@ -10,8 +10,8 @@
 
 ## Validation
 
-- Added a deterministic GP0(36h) test using a white STP texel, white Gouraud vertex colors, a red destination pixel and average blending.
-- Expected output is 0x3DEF, confirming the texture modulation and STP-controlled blend are both applied.
+- Added deterministic GP0(36h) tests for all four semi-transparency modes, plus an STP-clear texel that must bypass blending.
+- The tests verify Gouraud modulation, destination blending and STP gating together.
 - GitHub Actions host build and CTest are the required validation gate; this change has not been tested on physical PlayStation or Dreamcast hardware.
 
 ## Accuracy limits
