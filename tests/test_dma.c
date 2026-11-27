@@ -209,6 +209,10 @@ int main(void)
     assert(!psx_dma_write32(&dma, PSX_DMA_BASE_ADDR + 0x0cu, 0u));
 
     psx_dma_reset(&dma);
+    assert(psx_dma_data_words_transferred(&dma) == 0u);
+    assert(psx_dma_linked_list_headers_read(&dma) == 0u);
+    assert(psx_dma_data_words_transferred(NULL) == 0u);
+    assert(psx_dma_linked_list_headers_read(NULL) == 0u);
     assert(psx_dma_read32(&dma, PSX_DMA_BASE_ADDR + 0x28u, &value));
     assert(value == 0u);
     assert(psx_dma_read32(&dma, PSX_DMA_DPCR_ADDR, &value));
