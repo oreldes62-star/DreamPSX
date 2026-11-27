@@ -229,3 +229,71 @@ bool psx_dma_execute_gpu_linked_list(PsxDmaController *dma,
         address = next;
     }
 }
+
+
+/* Channel 2 request mode transfers block_size * block_count words.
+ * This first implementation is synchronous and models the programmed
+ * block geometry; FIFO arbitration and per-block GPU request stalls are
+ * intentionally deferred. */
+bool psx_dma_execute_gpu_request(PsxDmaController *dma,
+                                  PsxMemory *memory, PsxGpu *gpu)
+{
+    PsxDmaChannel *channel;
+    uint32_t control;
+    uint32_t block_size;
+    uint32_t block_count;
+    uint32_t words;
+    uint32_t address;
+    int32_t step;
+    bool ram_to_gpu;
+
+    if (!dma || !dma->initialized || !memory || !memory->initialized ||
+        !gpu || !gpu->initialized)
+        return false;
+
+    channel = &dma->channel[2];
+    control = channel->chcr;
+    if ((control & (1u << 24u)) == 0u ||
+        ((control >> 9u) & 3u) != 1u ||
+        (dma->dpcr & (1u << 11u)) == 0u)
+        return true;
+
+    ram_to_gpu = (control & 1u) != 0u;
+    if (ram_to_gpu) {
+        if (gpu->dma_direction != 2u) return false;
+    } else if (gpu->dma_direction != 3u ||
+               gpu->transfer_mode != PSX_GPU_TRANSFER_VRAM_TO_CPU) {
+        return false;
+    }
+
+    block_size = channel->bcr & 0xffffu;
+    block_count = channel->bcr >> 16u;
+    if (block_size == 0u) block_size = 0x10000u;
+    if (block_count == 0u) block_count = 0x10000u;
+    if (block_size > 1048576u / block_count) return false;
+    words = block_size * block_count;
+    if (words > 1048576u) return false;
+
+    address = channel->madr;
+    step = (control & 2u) != 0u ? -4 : 4;
+    for (uint32_t i = 0u; i < words; ++i) {
+        uint32_t data;
+        if (ram_to_gpu) {
+            if (!psx_memory_read32(memory, address, &data) ||
+                !psx_gpu_gp0_write(gpu, data))
+                return false;
+        } else {
+            if (gpu->transfer_mode != PSX_GPU_TRANSFER_VRAM_TO_CPU ||
+                !psx_gpu_read_data(gpu, &data) ||
+                !psx_memory_write32(memory, address, data))
+                return false;
+        }
+        address = (uint32_t)(address + step) & 0x00fffffcu;
+    }
+
+    channel->madr = address;
+    channel->bcr = 0u;
+    channel->chcr &= ~(1u << 24u);
+    dma->dicr |= 1u << 26u;
+    return true;
+}
