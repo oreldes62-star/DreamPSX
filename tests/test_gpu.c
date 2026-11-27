@@ -236,6 +236,58 @@ int main(void)
     assert(psx_gpu_vram_read(&gpu, 701u, 451u, &pixel));
     assert(pixel == 0x6318u);
 
+
+    /* GP0(E2h) remaps direct 15-bit texture coordinates before sampling. */
+    vram[8u * PSX_GPU_VRAM_WIDTH + 8u] = 0x4210u;
+    assert(psx_gpu_gp0_write(&gpu, 0xe2000000u | 1u | (1u << 5u) |
+                             (2u << 10u) | (2u << 15u)));
+    assert(psx_gpu_gp0_write(&gpu, 0x25000000u));
+    assert(psx_gpu_gp0_write(&gpu, 800u | (100u << 16u)));
+    assert(psx_gpu_gp0_write(&gpu, 1u | (1u << 8u)));
+    assert(psx_gpu_gp0_write(&gpu, 804u | (100u << 16u)));
+    assert(psx_gpu_gp0_write(&gpu, 0x01000000u | 1u | (1u << 8u)));
+    assert(psx_gpu_gp0_write(&gpu, 800u | (104u << 16u)));
+    assert(psx_gpu_gp0_write(&gpu, 1u | (1u << 8u)));
+    assert(psx_gpu_vram_read(&gpu, 801u, 101u, &pixel));
+    assert(pixel == 0x4210u);
+
+    /* The same transform is applied before indexed 4-bit CLUT lookup. */
+    vram[264u * PSX_GPU_VRAM_WIDTH + 2u] = 0x0003u;
+    vram[30u * PSX_GPU_VRAM_WIDTH + 3u] = 0x4210u;
+    assert(psx_gpu_gp0_write(&gpu, 0xe2000000u | 1u | (1u << 5u) |
+                             (2u << 10u) | (2u << 15u)));
+    assert(psx_gpu_gp0_write(&gpu, 0x25000000u));
+    assert(psx_gpu_gp0_write(&gpu, 820u | (100u << 16u)));
+    assert(psx_gpu_gp0_write(&gpu, (30u << 22u) | 1u | (1u << 8u)));
+    assert(psx_gpu_gp0_write(&gpu, 824u | (100u << 16u)));
+    assert(psx_gpu_gp0_write(&gpu, 0x00100000u | 1u | (1u << 8u)));
+    assert(psx_gpu_gp0_write(&gpu, 820u | (104u << 16u)));
+    assert(psx_gpu_gp0_write(&gpu, 1u | (1u << 8u)));
+    assert(psx_gpu_vram_read(&gpu, 821u, 101u, &pixel));
+    assert(pixel == 0x4210u);
+
+    /* 8-bit indexed textures use the same remapped U/V coordinates. */
+    vram[264u * PSX_GPU_VRAM_WIDTH + 4u] = 0x0005u;
+    vram[50u * PSX_GPU_VRAM_WIDTH + 5u] = 0x6318u;
+    assert(psx_gpu_gp0_write(&gpu, 0xe2000000u | 1u | (1u << 5u) |
+                             (2u << 10u) | (2u << 15u)));
+    assert(psx_gpu_gp0_write(&gpu, 0x25000000u));
+    assert(psx_gpu_gp0_write(&gpu, 840u | (100u << 16u)));
+    assert(psx_gpu_gp0_write(&gpu, (50u << 22u) | 1u | (1u << 8u)));
+    assert(psx_gpu_gp0_write(&gpu, 844u | (100u << 16u)));
+    assert(psx_gpu_gp0_write(&gpu, 0x00800000u | 1u | (1u << 8u)));
+    assert(psx_gpu_gp0_write(&gpu, 840u | (104u << 16u)));
+    assert(psx_gpu_gp0_write(&gpu, 1u | (1u << 8u)));
+    assert(psx_gpu_vram_read(&gpu, 841u, 101u, &pixel));
+    assert(pixel == 0x6318u);
+
+    /* GPU reset clears texture-window state. */
+    assert(psx_gpu_gp1_write(&gpu, 0x00000000u));
+    assert(gpu.texture_window_mask_x == 0u);
+    assert(gpu.texture_window_mask_y == 0u);
+    assert(gpu.texture_window_offset_x == 0u);
+    assert(gpu.texture_window_offset_y == 0u);
+
     /* GPU reset preserves VRAM but restores status and parser state. */
     assert(psx_gpu_gp1_write(&gpu, 0x00000000u));
     assert(psx_gpu_read_status(&gpu, &status));
