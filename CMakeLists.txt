@@ -17,6 +17,7 @@ add_library(dreampsx_core STATIC
     src/gte/gte.c
     src/gpu/gpu.c
     src/machine/machine.c
+    src/system/timers.c
 )
 
 target_include_directories(dreampsx_core
@@ -60,6 +61,7 @@ set(DREAMPSX_TESTS
     test_gpu_display_mode
     test_gpu_video_timing
     test_machine_video_irq
+    test_timers
     test_gpu_scanout
     test_machine
     test_machine_bus
