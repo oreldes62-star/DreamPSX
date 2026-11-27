@@ -18,6 +18,91 @@ static uint16_t load_le16(const uint8_t *bytes)
                       ((uint16_t)bytes[1] << 8u));
 }
 
+/* Direct voice volume is a signed 15-bit value doubled by the SPU. */
+int16_t psx_spu_decode_direct_volume(uint16_t value)
+{
+    int32_t signed_value = (int32_t)(value & 0x7fffu);
+    if ((signed_value & 0x4000) != 0)
+        signed_value -= 0x8000;
+    return (int16_t)(signed_value * 2);
+}
+
+bool psx_spu_voice_volume_tick(PsxSpu *spu, unsigned voice_index)
+{
+    PsxSpuVoice *voice;
+    uint16_t *registers[2];
+    int16_t *levels[2];
+    uint16_t *counters[2];
+
+    if (!spu || !spu->initialized || voice_index >= PSX_SPU_VOICE_COUNT)
+        return false;
+    voice = &spu->voices[voice_index];
+    registers[0] = &voice->volume_left;
+    registers[1] = &voice->volume_right;
+    levels[0] = &voice->volume_left_level;
+    levels[1] = &voice->volume_right_level;
+    counters[0] = &voice->volume_left_counter;
+    counters[1] = &voice->volume_right_counter;
+
+    for (unsigned channel = 0u; channel < 2u; ++channel) {
+        const uint16_t control = *registers[channel];
+        unsigned shift;
+        unsigned step_code;
+        uint32_t period;
+        int32_t magnitude;
+        int32_t step;
+        int32_t signed_level;
+        const bool exponential = (control & 0x4000u) != 0u;
+        const bool decreasing = (control & 0x2000u) != 0u;
+        const bool negative_phase = (control & 0x1000u) != 0u;
+
+        if ((control & 0x8000u) == 0u)
+            continue;
+
+        shift = (control >> 2u) & 0x1fu;
+        step_code = control & 3u;
+        period = shift > 11u ? (1u << (shift - 11u)) : 1u;
+        signed_level = *levels[channel];
+        magnitude = signed_level < 0 ? -signed_level : signed_level;
+
+        /* Exponential attack slows near full scale; exponential decay
+         * reduces the step in proportion to the current magnitude. */
+        if (exponential && !decreasing && magnitude > 0x6000)
+            period *= 4u;
+        if (++(*counters[channel]) < period)
+            continue;
+        *counters[channel] = 0u;
+
+        step = decreasing ? -(8 - (int32_t)step_code) :
+                             (7 - (int32_t)step_code);
+        if (shift < 11u)
+            step *= (int32_t)(1u << (11u - shift));
+        if (exponential && decreasing)
+            step = (step * magnitude) / 0x8000;
+        if (negative_phase)
+            step = -step;
+
+        signed_level += step;
+        if (negative_phase) {
+            if (decreasing && signed_level > 0)
+                signed_level = 0;
+            if (!decreasing && signed_level < -32768)
+                signed_level = -32768;
+            if (signed_level < -32768)
+                signed_level = -32768;
+        } else {
+            if (decreasing && signed_level < 0)
+                signed_level = 0;
+            if (!decreasing && signed_level > 32767)
+                signed_level = 32767;
+            if (signed_level > 32767)
+                signed_level = 32767;
+        }
+        *levels[channel] = (int16_t)signed_level;
+    }
+    return true;
+}
+
 static void store_le16(uint8_t *bytes, uint16_t value)
 {
     bytes[0] = (uint8_t)value;
@@ -151,8 +236,18 @@ bool psx_spu_write16(PsxSpu *spu, uint32_t address, uint16_t value)
         const unsigned voice_offset = offset % PSX_SPU_VOICE_REGISTER_BYTES;
         PsxSpuVoice *voice = &spu->voices[voice_index];
         switch (voice_offset) {
-        case 0x00u: voice->volume_left = value; break;
-        case 0x02u: voice->volume_right = value; break;
+        case 0x00u:
+            voice->volume_left = value;
+            voice->volume_left_counter = 0u;
+            if ((value & 0x8000u) == 0u)
+                voice->volume_left_level = psx_spu_decode_direct_volume(value);
+            break;
+        case 0x02u:
+            voice->volume_right = value;
+            voice->volume_right_counter = 0u;
+            if ((value & 0x8000u) == 0u)
+                voice->volume_right_level = psx_spu_decode_direct_volume(value);
+            break;
         case 0x04u: voice->pitch = (uint16_t)(value & 0x3fffu); break;
         case 0x06u: voice->start_address = value; break;
         case 0x08u: voice->adsr1 = value; break;
@@ -452,6 +547,8 @@ bool psx_spu_mix_sample(PsxSpu *spu, int16_t *left, int16_t *right)
 
         if ((spu->active_voices & (1u << i)) == 0u)
             continue;
+        if (!psx_spu_voice_volume_tick(spu, i))
+            return false;
         if (!psx_spu_voice_envelope_tick(spu, i, &envelope))
             continue;
         if (!psx_spu_voice_render_sample(spu, i, &sample))
@@ -460,11 +557,11 @@ bool psx_spu_mix_sample(PsxSpu *spu, int16_t *left, int16_t *right)
         /* Apply the voice envelope and fixed L/R volumes once. The same
          * post-volume signal feeds dry output and, when selected by the
          * hardware reverb-enable bitmap, the wet-send bus. */
-        volume_left = (int16_t)voice->volume_left;
-        volume_right = (int16_t)voice->volume_right;
+        volume_left = voice->volume_left_level;
+        volume_right = voice->volume_right_level;
         enveloped = ((int64_t)sample * envelope) / PSX_SPU_ENVELOPE_MAX;
-        voice_left = (enveloped * volume_left) / 32767;
-        voice_right = (enveloped * volume_right) / 32767;
+        voice_left = (enveloped * volume_left) / 32768;
+        voice_right = (enveloped * volume_right) / 32768;
         mix_left += voice_left;
         mix_right += voice_right;
         if (reverb_enabled) {
