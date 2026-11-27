@@ -1,0 +1,68 @@
+name: Dreamcast KallistiOS audio smoke build
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "platform/dreamcast/**"
+      - "src/audio/**"
+      - "include/dreampsx/**"
+      - ".github/workflows/dreamcast-kos-audio.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "platform/dreamcast/**"
+      - "src/audio/**"
+      - "include/dreampsx/**"
+      - ".github/workflows/dreamcast-kos-audio.yml"
+  workflow_dispatch:
+
+jobs:
+  build-audio-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Check out DreamPSX
+        uses: actions/checkout@v4
+
+      - name: Check out pinned KallistiOS source
+        uses: actions/checkout@v4
+        with:
+          repository: KallistiOS/KallistiOS
+          ref: 9926b70aeafc8398675caef98813f10d15d8a329
+          path: kos
+
+      - name: Pull official KallistiOS toolchain image
+        run: docker pull pcercuei/dreamcast-toolchain:stable
+
+      - name: Build KallistiOS for Dreamcast
+        run: |
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE/kos:/workspace" \
+            -w /workspace \
+            pcercuei/dreamcast-toolchain:stable \
+            sh .github/build-kos.sh dreamcast
+
+      - name: Build DreamPSX AICA audio smoke-test ELF
+        run: |
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE/kos:/workspace" \
+            -v "$GITHUB_WORKSPACE:/project" \
+            -w /project/platform/dreamcast/audio-smoke \
+            pcercuei/dreamcast-toolchain:stable \
+            sh -lc '. /workspace/environ.sh && make clean && make'
+
+      - name: Verify Dreamcast executable
+        run: |
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE:/project" \
+            -w /project/platform/dreamcast/audio-smoke \
+            pcercuei/dreamcast-toolchain:stable \
+            sh -lc '. /workspace/environ.sh && sh-elf-readelf -h dreampsx-audio-smoke.elf'
+
+      - name: Upload Dreamcast ELF
+        uses: actions/upload-artifact@v4
+        with:
+          name: dreampsx-audio-smoke-elf
+          path: platform/dreamcast/audio-smoke/dreampsx-audio-smoke.elf
+          if-no-files-found: error
