@@ -1,4 +1,6 @@
 # DreamPSX
+
+- [GPUSTAT readiness state milestone 3.83](docs/GPU-STATUS-READINESS-MILESTONE-3.83.md)
 PlayStation emulator research and development for Sega Dreamcast.
 
 ## Development status
