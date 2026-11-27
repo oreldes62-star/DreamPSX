@@ -8,6 +8,17 @@
 #define PSX_GPU_VRAM_WIDTH  1024u
 #define PSX_GPU_VRAM_HEIGHT 512u
 
+typedef struct {
+    unsigned start_x;
+    unsigned start_y;
+    unsigned horizontal_start;
+    unsigned horizontal_end;
+    unsigned vertical_start;
+    unsigned vertical_end;
+    unsigned mode;
+    bool disabled;
+} PsxGpuDisplay;
+
 typedef enum {
     PSX_GPU_TRANSFER_IDLE = 0,
     PSX_GPU_TRANSFER_CPU_TO_VRAM,
@@ -43,6 +54,7 @@ typedef struct {
     unsigned transfer_height;
     size_t transfer_pixel_index;
     size_t transfer_pixel_count;
+    PsxGpuDisplay display;
     bool initialized;
 } PsxGpu;
 
@@ -52,6 +64,7 @@ bool psx_gpu_gp0_write(PsxGpu *gpu, uint32_t value);
 bool psx_gpu_gp1_write(PsxGpu *gpu, uint32_t value);
 bool psx_gpu_read_data(PsxGpu *gpu, uint32_t *value);
 bool psx_gpu_read_status(const PsxGpu *gpu, uint32_t *value);
+bool psx_gpu_get_display(const PsxGpu *gpu, PsxGpuDisplay *display);
 bool psx_gpu_vram_read(const PsxGpu *gpu, unsigned x, unsigned y,
                        uint16_t *value);
 /* Convert a rectangular RGB555 VRAM region to packed RGB565 output.
