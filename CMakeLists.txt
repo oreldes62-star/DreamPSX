@@ -19,6 +19,7 @@ add_library(dreampsx_core STATIC
     src/gte/gte.c
     src/gpu/gpu.c
     src/media/iso9660.c
+    src/media/disc_image.c
     src/media/boot_config.c
     src/media/psx_exe.c
     src/machine/machine.c
@@ -44,6 +45,7 @@ set(DREAMPSX_TESTS
     test_dma
     test_cdrom
     test_iso9660
+    test_disc_image
     test_boot_config
     test_psx_exe
     test_bus
