@@ -100,7 +100,8 @@ int main(void)
     /* A request transitions queued -> active -> queued on abort, and
      * queued -> active -> completed on success. */
     psx_dma_reset(&dma);
-    assert(psx_dma_write32(&dma, PSX_DMA_DPCR_ADDR, 1u << 11u));
+    assert(psx_dma_write32(&dma, PSX_DMA_DPCR_ADDR,
+                           (1u << 11u) | (1u << 15u)));
     assert(psx_dma_write32(&dma, PSX_DMA_BASE_ADDR + 0x28u, 0x11000000u));
     psx_dma_refresh_queue(&dma);
     assert(psx_dma_queued_mask(&dma) == (1u << 2u));
@@ -113,7 +114,7 @@ int main(void)
     assert(psx_dma_begin_channel(&dma) == -1);
     psx_dma_abort_channel(&dma, 2u);
     assert(psx_dma_active_mask(&dma) == 0u);
-    assert(psx_dma_queued_mask(&dma) == (1u << 2u));
+    assert(psx_dma_queued_mask(&dma) == ((1u << 2u) | (1u << 3u)));
     assert(psx_dma_begin_channel(&dma) == 2);
     assert(psx_dma_complete_channel(&dma, 2u));
     assert(psx_dma_active_mask(&dma) == 0u);
