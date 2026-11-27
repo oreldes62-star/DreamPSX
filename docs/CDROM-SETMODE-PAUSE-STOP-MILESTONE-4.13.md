@@ -17,6 +17,10 @@ The delay constants use the measured average command-response timings published 
 
 Reference: https://psx-spx.consoledev.net/psx-spx.pdf (CDROM response timings); command and mode definitions: https://github.com/psx-spx/psx-spx.github.io/blob/master/docs/cdromdrive.md
 
+## Validation
+
+GitHub Actions host build and CTest passed on commit `0b578c25c67fc6491764d6c7f0ff4856348ea219` (34/34 tests).
+
 ## Limitations
 
 - Setmode currently models only speed bit 7; XA, sector-size, filter, report, autopause and CD-DA mode bits are not implemented.
