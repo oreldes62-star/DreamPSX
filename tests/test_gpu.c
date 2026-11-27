@@ -95,7 +95,7 @@ int main(void)
     assert(psx_gpu_vram_read(&gpu, 111u, 121u, &pixel));
     assert(pixel == 0x03e0u);
     assert(psx_gpu_vram_read(&gpu, 101u, 101u, &pixel));
-    assert(pixel == 0u);
+    assert(pixel == 0x03e0u); /* Existing primitive remains untouched. */
 
     /* GPU reset preserves VRAM but restores status and parser state. */
     assert(psx_gpu_gp1_write(&gpu, 0x00000000u));
