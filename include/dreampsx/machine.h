@@ -36,6 +36,10 @@ typedef struct {
 /* Load SYSTEM.CNF's PS-X EXE and initialize CPU entry, GP and SP. */
 bool psx_machine_boot_from_iso(PsxMachine *machine, const PsxIso9660 *iso,
                                PsxBootConfig *config);
+/* Boots from a caller-owned 2048-byte-sector ISO image and mounts the same
+ * image as CD-ROM media for subsequent guest reads. */
+bool psx_machine_boot_from_disc(PsxMachine *machine, const uint8_t *image,
+                                size_t image_size, PsxBootConfig *config);
 bool psx_machine_init(PsxMachine *machine,
                       uint8_t *ram, size_t ram_size,
                       const uint8_t *bios, size_t bios_size,
