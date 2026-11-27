@@ -297,21 +297,46 @@ int main(void)
     assert(psx_gpu_vram_read(&gpu, 901u, 300u, &pixel));
     assert(pixel == 0x1efeu);
 
-    /* GP0(36h) combines Gouraud modulation with STP-controlled blending. */
-    vram[1u * PSX_GPU_VRAM_WIDTH + 1u] = 0xffffu;
-    vram[461u * PSX_GPU_VRAM_WIDTH + 961u] = 0x001fu;
-    assert(psx_gpu_gp0_write(&gpu, 0xe1000000u)); /* Average blend mode. */
-    assert(psx_gpu_gp0_write(&gpu, 0x36808080u)); /* White vertex 0. */
-    assert(psx_gpu_gp0_write(&gpu, 960u | (460u << 16u)));
-    assert(psx_gpu_gp0_write(&gpu, 1u | (1u << 8u)));
-    assert(psx_gpu_gp0_write(&gpu, 0x00808080u)); /* White vertex 1. */
-    assert(psx_gpu_gp0_write(&gpu, 964u | (460u << 16u)));
-    assert(psx_gpu_gp0_write(&gpu, 0x01000000u | 1u | (1u << 8u)));
-    assert(psx_gpu_gp0_write(&gpu, 0x00808080u)); /* White vertex 2. */
-    assert(psx_gpu_gp0_write(&gpu, 960u | (464u << 16u)));
-    assert(psx_gpu_gp0_write(&gpu, 1u | (1u << 8u)));
-    assert(psx_gpu_vram_read(&gpu, 961u, 461u, &pixel));
-    assert(pixel == 0x3dffu); /* Red remains full; green and blue are halved. */
+    /* GP0(36h): Gouraud modulation and STP blending in all four modes. */
+    {
+        static const uint16_t expected_blends[4] = {
+            0x3dffu, 0x7fffu, 0x0000u, 0x1cdfu
+        };
+        vram[1u * PSX_GPU_VRAM_WIDTH + 1u] = 0xffffu;
+        for (unsigned mode = 0u; mode < 4u; ++mode) {
+            vram[461u * PSX_GPU_VRAM_WIDTH + 961u] = 0x001fu;
+            assert(psx_gpu_gp0_write(&gpu,
+                                     0xe1000000u | (mode << 5u)));
+            assert(psx_gpu_gp0_write(&gpu, 0x36808080u));
+            assert(psx_gpu_gp0_write(&gpu, 960u | (460u << 16u)));
+            assert(psx_gpu_gp0_write(&gpu, 1u | (1u << 8u)));
+            assert(psx_gpu_gp0_write(&gpu, 0x00808080u));
+            assert(psx_gpu_gp0_write(&gpu, 964u | (460u << 16u)));
+            assert(psx_gpu_gp0_write(&gpu,
+                                     0x01000000u | 1u | (1u << 8u)));
+            assert(psx_gpu_gp0_write(&gpu, 0x00808080u));
+            assert(psx_gpu_gp0_write(&gpu, 960u | (464u << 16u)));
+            assert(psx_gpu_gp0_write(&gpu, 1u | (1u << 8u)));
+            assert(psx_gpu_vram_read(&gpu, 961u, 461u, &pixel));
+            assert(pixel == expected_blends[mode]);
+        }
+
+        /* An STP-clear texel is copied without blending, even in mode 1. */
+        vram[1u * PSX_GPU_VRAM_WIDTH + 1u] = 0x7fffu;
+        vram[461u * PSX_GPU_VRAM_WIDTH + 961u] = 0x001fu;
+        assert(psx_gpu_gp0_write(&gpu, 0xe1000020u));
+        assert(psx_gpu_gp0_write(&gpu, 0x36808080u));
+        assert(psx_gpu_gp0_write(&gpu, 960u | (460u << 16u)));
+        assert(psx_gpu_gp0_write(&gpu, 1u | (1u << 8u)));
+        assert(psx_gpu_gp0_write(&gpu, 0x00808080u));
+        assert(psx_gpu_gp0_write(&gpu, 964u | (460u << 16u)));
+        assert(psx_gpu_gp0_write(&gpu, 0x01000000u | 1u | (1u << 8u)));
+        assert(psx_gpu_gp0_write(&gpu, 0x00808080u));
+        assert(psx_gpu_gp0_write(&gpu, 960u | (464u << 16u)));
+        assert(psx_gpu_gp0_write(&gpu, 1u | (1u << 8u)));
+        assert(psx_gpu_vram_read(&gpu, 961u, 461u, &pixel));
+        assert(pixel == 0x7fffu);
+    }
 
     /* GPU reset clears texture-window state. */
     assert(psx_gpu_gp1_write(&gpu, 0x00000000u));
