@@ -26,10 +26,27 @@ The Makefile builds only the audio queue, callback bridge, KallistiOS wrapper an
 - compiles the audio smoke-test ELF;
 - verifies its ELF header and uploads the executable as a workflow artifact.
 
+## Cross-compilation result
+
+The real KallistiOS toolchain workflow completed successfully:
+https://github.com/oreldes62-star/DreamPSX/actions/runs/46069028372
+
+The resulting executable was inspected by the SH-ELF readelf tool and reported:
+- ELF32
+- little-endian
+- executable file type
+- Renesas / SuperH SH machine
+
+The ELF was uploaded as the `dreampsx-audio-smoke-elf` workflow artifact:
+https://github.com/oreldes62-star/DreamPSX/actions/runs/46069028372/artifacts/15231972235
+
+The host test suite also remains green at 44/44 tests:
+https://github.com/oreldes62-star/DreamPSX/actions/runs/46069001718
+
 ## Runtime test
 
 When the ELF is launched on Flycast or a Dreamcast, the expected result is a continuous 440 Hz stereo tone. This checks the KallistiOS audio stream startup, polling, callback delivery and AICA output path independently of PS1 game playback.
 
 ## Limitations
 
-The smoke application has not been validated on physical Dreamcast hardware. Successful cross-compilation and ELF creation do not establish CDI packaging, Flycast playback, real-time performance, or game compatibility. It does not yet initialize the PS1 machine or feed the SPU mixer into AICA; it deliberately emits a diagnostic tone only.
+The smoke application has not yet been launched and auditioned in Flycast or on physical Dreamcast hardware. Successful cross-compilation and ELF creation do not establish CDI packaging, Flycast playback, real-time performance, or game compatibility. It does not yet initialize the PS1 machine or feed the SPU mixer into AICA; it deliberately emits a diagnostic tone only.
