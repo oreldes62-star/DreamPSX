@@ -366,8 +366,10 @@ int main(void)
         spu.active_voices = 0x00ffffffu;
         for (unsigned i = 0u; i < PSX_SPU_VOICE_COUNT; ++i) {
             PsxSpuVoice *voice = &spu.voices[i];
-            voice->volume_left = 0x7fffu;
-            voice->volume_right = 0x7fffu;
+            voice->volume_left = 0x3fffu;
+            voice->volume_right = 0x3fffu;
+            voice->volume_left_level = 32766;
+            voice->volume_right_level = 32766;
             voice->pitch = 0x1000u;
             voice->envelope_level = PSX_SPU_ENVELOPE_MAX;
             voice->envelope_phase = PSX_SPU_ADSR_SUSTAIN;
@@ -398,7 +400,7 @@ int main(void)
         uint8_t pcm_adpcm[PSX_SPU_ADPCM_BLOCK_BYTES] = {0};
         pcm_adpcm[1] = 0x01u; /* End-of-sound marker */
         pcm_adpcm[2] = 0x11u;
-        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + 0x000u, 0x7fffu));
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + 0x000u, 0x3fffu));
         assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + 0x002u, 0x3fffu));
         assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + 0x004u, 0x1000u));
         assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + 0x006u, 0x0050u));
@@ -878,9 +880,9 @@ int main(void)
             assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
                 PSX_SPU_REVERB_CONFIG_MRAPF2_OFFSET, 0x002cu));
             assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
-                voice_register + 0x00u, 0x7fffu));
+                voice_register + 0x00u, 0x3fffu));
             assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
-                voice_register + 0x02u, 0x7fffu));
+                voice_register + 0x02u, 0x3fffu));
             spu.active_voices = voice_bit;
             spu.voices[voice_index].current_sample = 4096;
             spu.voices[voice_index].current_sample_valid = true;
