@@ -101,6 +101,9 @@ bool psx_spu_write16(PsxSpu *spu, uint32_t address, uint16_t value)
                 (PSX_SPU_RAM_BYTES - 1u);
             voice->sample_index = 0u;
             voice->block_flags = 0u;
+            voice->pitch_phase = 0u;
+            voice->current_sample = 0;
+            voice->current_sample_valid = false;
             voice->block_valid = false;
         }
         spu->active_voices |= mask;
@@ -113,7 +116,10 @@ bool psx_spu_write16(PsxSpu *spu, uint32_t address, uint16_t value)
         spu->active_voices &= ~mask;
         for (unsigned i = 0u; i < PSX_SPU_VOICE_COUNT; ++i)
             if ((mask & (1u << i)) != 0u)
+            {
                 spu->voices[i].block_valid = false;
+                spu->voices[i].current_sample_valid = false;
+            }
         return true;
     }
     if (offset == PSX_SPU_CONTROL_OFFSET) {
@@ -194,6 +200,41 @@ bool psx_spu_voice_next_sample(PsxSpu *spu, unsigned voice_index,
         spu->active_voices &= ~(1u << voice_index);
         voice->block_valid = false;
     }
+    return true;
+}
+
+bool psx_spu_voice_render_sample(PsxSpu *spu, unsigned voice_index,
+                                 int16_t *sample)
+{
+    PsxSpuVoice *voice;
+    uint32_t phase;
+
+    if (!spu || !spu->initialized || !sample ||
+        voice_index >= PSX_SPU_VOICE_COUNT ||
+        (spu->active_voices & (1u << voice_index)) == 0u)
+        return false;
+
+    voice = &spu->voices[voice_index];
+    if (!voice->current_sample_valid) {
+        if (!psx_spu_voice_next_sample(spu, voice_index,
+                                       &voice->current_sample))
+            return false;
+        voice->current_sample_valid = true;
+        *sample = voice->current_sample;
+        return true;
+    }
+
+    phase = (uint32_t)voice->pitch_phase + voice->pitch;
+    while (phase >= 0x1000u) {
+        phase -= 0x1000u;
+        if (!psx_spu_voice_next_sample(spu, voice_index,
+                                       &voice->current_sample)) {
+            voice->current_sample_valid = false;
+            return false;
+        }
+    }
+    voice->pitch_phase = (uint16_t)phase;
+    *sample = voice->current_sample;
     return true;
 }
 
