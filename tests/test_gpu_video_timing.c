@@ -32,11 +32,15 @@ int main(void)
     advance(&gpu, &state, 1u);
     assert(state.scanline == 1u && !state.pal);
     assert(state.vblank && state.vblank_started);
+    assert(psx_gpu_read_status(&gpu, &status));
+    assert((status & (1u << 10u)) != 0u);
     advance(&gpu, &state, 14u);
     assert(state.scanline == 15u && state.vblank);
     advance(&gpu, &state, 1u);
     assert(state.scanline == 16u && !state.vblank);
     assert(state.vblank_ended);
+    assert(psx_gpu_read_status(&gpu, &status));
+    assert((status & (1u << 10u)) == 0u);
     advance(&gpu, &state, 240u);
     assert(state.scanline == 256u && state.vblank);
     advance(&gpu, &state, 7u);
