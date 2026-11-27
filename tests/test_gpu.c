@@ -145,6 +145,18 @@ int main(void)
     assert(psx_gpu_vram_read(&gpu, 601u, 451u, &pixel));
     assert(pixel == 0x1234u);
 
+    /* 24h modulates a white texel by the command's red vertex color. */
+    vram[1u * PSX_GPU_VRAM_WIDTH + 1u] = 0x7fffu;
+    assert(psx_gpu_gp0_write(&gpu, 0x240000ffu));
+    assert(psx_gpu_gp0_write(&gpu, 750u | (450u << 16u)));
+    assert(psx_gpu_gp0_write(&gpu, 1u | (1u << 8u)));
+    assert(psx_gpu_gp0_write(&gpu, 754u | (450u << 16u)));
+    assert(psx_gpu_gp0_write(&gpu, 0x01000000u | 1u | (1u << 8u)));
+    assert(psx_gpu_gp0_write(&gpu, 750u | (454u << 16u)));
+    assert(psx_gpu_gp0_write(&gpu, 1u | (1u << 8u)));
+    assert(psx_gpu_vram_read(&gpu, 751u, 451u, &pixel));
+    assert(pixel == 0x001fu);
+
     /* 4-bit indexed texture: packed nibble is resolved through CLUT. */
     vram[257u * PSX_GPU_VRAM_WIDTH] = 0x0030u;
     vram[30u * PSX_GPU_VRAM_WIDTH + 3u] = 0x4210u;
