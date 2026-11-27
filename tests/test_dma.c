@@ -60,8 +60,8 @@ int main(void)
     assert(psx_dma_write32(&dma, PSX_DMA_DPCR_ADDR, 0x0000aac0u));
     assert(psx_dma_take_channel(&dma) == 2);
     assert(psx_dma_queued_mask(&dma) == ((1u << 1u) | (1u << 3u)));
-    assert(psx_dma_take_channel(&dma) == 1);
     assert(psx_dma_take_channel(&dma) == 3);
+    assert(psx_dma_take_channel(&dma) == 1);
     assert(psx_dma_take_channel(&dma) == -1);
     assert(psx_dma_enqueue_channel(&dma, 4u));
     psx_dma_reset(&dma);
