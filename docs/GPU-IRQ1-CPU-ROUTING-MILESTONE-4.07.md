@@ -15,4 +15,4 @@ This milestone implements the GPU command and interrupt path only. It does not a
 
 ## Validation
 
-Pending GitHub Actions host build and CTest.
+- GitHub Actions run `46046065924`: host configure and build succeeded; CTest passed all 33/33 tests.
