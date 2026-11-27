@@ -158,6 +158,98 @@ static void execute_gouraud_triangle(PsxGpu *gpu)
     }
 }
 
+static unsigned interpolate_uv(unsigned uv0, unsigned uv1, unsigned uv2,
+                                    int64_t e0, int64_t e1, int64_t e2,
+                                    int64_t area, unsigned shift)
+{
+    const unsigned c0 = (uv0 >> shift) & 0xffu;
+    const unsigned c1 = (uv1 >> shift) & 0xffu;
+    const unsigned c2 = (uv2 >> shift) & 0xffu;
+    int64_t value = ((int64_t)c0 * e1 + (int64_t)c1 * e2 +
+                     (int64_t)c2 * e0) / area;
+    if (value < 0) value = 0;
+    if (value > 255) value = 255;
+    return (unsigned)value;
+}
+
+static void execute_raw_textured_triangle(PsxGpu *gpu)
+{
+    const uint32_t xy0 = gpu->parameters[0];
+    const uint32_t uv0 = gpu->parameters[1];
+    const uint32_t xy1 = gpu->parameters[2];
+    const uint32_t uv1 = gpu->parameters[3];
+    const uint32_t xy2 = gpu->parameters[4];
+    const uint32_t uv2 = gpu->parameters[5];
+    const unsigned tpage = uv1 >> 16u;
+    const unsigned depth = (tpage >> 7u) & 3u;
+    const unsigned page_x = (tpage & 0x0fu) * 64u;
+    const unsigned page_y = ((tpage >> 4u) & 1u) * 256u;
+    const int x0 = sign_extend_11(xy0) + gpu->draw_offset_x;
+    const int y0 = sign_extend_11(xy0 >> 16u) + gpu->draw_offset_y;
+    const int x1 = sign_extend_11(xy1) + gpu->draw_offset_x;
+    const int y1 = sign_extend_11(xy1 >> 16u) + gpu->draw_offset_y;
+    const int x2 = sign_extend_11(xy2) + gpu->draw_offset_x;
+    const int y2 = sign_extend_11(xy2 >> 16u) + gpu->draw_offset_y;
+    const int min_x = x0 < x1 ? (x0 < x2 ? x0 : x2) :
+                                (x1 < x2 ? x1 : x2);
+    const int max_x = x0 > x1 ? (x0 > x2 ? x0 : x2) :
+                                (x1 > x2 ? x1 : x2);
+    const int min_y = y0 < y1 ? (y0 < y2 ? y0 : y2) :
+                                (y1 < y2 ? y1 : y2);
+    const int max_y = y0 > y1 ? (y0 > y2 ? y0 : y2) :
+                                (y1 > y2 ? y1 : y2);
+    const int64_t area = triangle_edge(x0, y0, x1, y1, 2 * x2, 2 * y2);
+    const bool reverse = area > 0;
+    int start_x, end_x, start_y, end_y;
+
+    /* This first texture path deliberately supports direct 15-bit pages only. */
+    if (depth != 2u || area == 0 ||
+        max_x < (int)gpu->draw_area_left ||
+        max_y < (int)gpu->draw_area_top ||
+        min_x > (int)gpu->draw_area_right ||
+        min_y > (int)gpu->draw_area_bottom)
+        return;
+
+    start_x = min_x < (int)gpu->draw_area_left ?
+              (int)gpu->draw_area_left : min_x;
+    end_x = max_x > (int)gpu->draw_area_right ?
+            (int)gpu->draw_area_right : max_x;
+    start_y = min_y < (int)gpu->draw_area_top ?
+              (int)gpu->draw_area_top : min_y;
+    end_y = max_y > (int)gpu->draw_area_bottom ?
+            (int)gpu->draw_area_bottom : max_y;
+
+    for (int y = start_y; y <= end_y; ++y) {
+        for (int x = start_x; x <= end_x; ++x) {
+            const int px2 = 2 * x + 1;
+            const int py2 = 2 * y + 1;
+            const int64_t e0 = triangle_edge(x0, y0, x1, y1, px2, py2);
+            const int64_t e1 = triangle_edge(x1, y1, x2, y2, px2, py2);
+            const int64_t e2 = triangle_edge(x2, y2, x0, y0, px2, py2);
+            const bool inside =
+                triangle_edge_inside(e0, x0, y0, x1, y1,
+                                     reverse, area > 0) &&
+                triangle_edge_inside(e1, x1, y1, x2, y2,
+                                     reverse, area > 0) &&
+                triangle_edge_inside(e2, x2, y2, x0, y0,
+                                     reverse, area > 0);
+            if (inside) {
+                const unsigned u = interpolate_uv(uv0, uv1, uv2,
+                                                   e0, e1, e2, area, 0u);
+                const unsigned v = interpolate_uv(uv0, uv1, uv2,
+                                                   e0, e1, e2, area, 8u);
+                const unsigned tx = (page_x + u) % PSX_GPU_VRAM_WIDTH;
+                const unsigned ty = (page_y + v) % PSX_GPU_VRAM_HEIGHT;
+                const uint16_t texel =
+                    gpu->vram[ty * PSX_GPU_VRAM_WIDTH + tx];
+                if (texel != 0u)
+                    gpu->vram[(unsigned)y * PSX_GPU_VRAM_WIDTH +
+                              (unsigned)x] = texel;
+            }
+        }
+    }
+}
+
 static void execute_flat_triangle(PsxGpu *gpu)
 {
     const uint32_t xy0 = gpu->parameters[0];
@@ -315,6 +407,8 @@ bool psx_gpu_gp0_write(PsxGpu *gpu, uint32_t value)
                 execute_flat_triangle(gpu);
             else if (opcode == 0x30u)
                 execute_gouraud_triangle(gpu);
+            else if (opcode == 0x25u)
+                execute_raw_textured_triangle(gpu);
             gpu->parameter_count = 0u;
             gpu->parameter_expected = 0u;
         }
@@ -341,6 +435,10 @@ bool psx_gpu_gp0_write(PsxGpu *gpu, uint32_t value)
         break;
     case 0x30u: /* Gouraud-shaded triangle */
         gpu->parameter_expected = 5u;
+        gpu->parameter_count = 0u;
+        break;
+    case 0x25u: /* Raw textured triangle */
+        gpu->parameter_expected = 6u;
         gpu->parameter_count = 0u;
         break;
     case 0x02u: /* Fill rectangle */
