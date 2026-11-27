@@ -110,6 +110,16 @@ int main(void)
     assert(psx_gpu_vram_read(&gpu, 302u, 301u, &pixel));
     assert(pixel == 0x03e0u);
 
+    /* GP0 30h interpolates the three vertex colors across a triangle. */
+    assert(psx_gpu_gp0_write(&gpu, 0x300000ffu)); /* Vertex 0 red. */
+    assert(psx_gpu_gp0_write(&gpu, 400u | (400u << 16u)));
+    assert(psx_gpu_gp0_write(&gpu, 0x0000ff00u)); /* Vertex 1 green. */
+    assert(psx_gpu_gp0_write(&gpu, 404u | (400u << 16u)));
+    assert(psx_gpu_gp0_write(&gpu, 0x00ff0000u)); /* Vertex 2 blue. */
+    assert(psx_gpu_gp0_write(&gpu, 400u | (404u << 16u)));
+    assert(psx_gpu_vram_read(&gpu, 401u, 401u, &pixel));
+    assert(pixel == 0x2d67u);
+
     /* GPU reset preserves VRAM but restores status and parser state. */
     assert(psx_gpu_gp1_write(&gpu, 0x00000000u));
     assert(psx_gpu_read_status(&gpu, &status));
