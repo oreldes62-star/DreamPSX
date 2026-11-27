@@ -33,7 +33,29 @@ int main(void)
     assert(info.width == 368u && info.height == 480u);
     assert(info.pal && info.color_24bit);
     assert(info.interlaced && info.reverse);
+    assert(info.field_valid && !info.field_odd);
 
+    /* 480i field parity is supplied by the future video timing core. */
+    assert(!psx_gpu_set_display_field(&gpu, false));
+    assert(!psx_gpu_set_display_field(&gpu, true));
+    assert(psx_gpu_gp1_write(&gpu, 0x08000024u)); /* 240i: not 480i */
+    assert(!psx_gpu_set_display_field(&gpu, true));
+    assert(psx_gpu_gp1_write(&gpu, 0x0800003cu)); /* 480i PAL 24-bit */
+    assert(psx_gpu_get_display_mode_info(&gpu, &info));
+    assert(info.field_valid && !info.field_odd);
+    assert(psx_gpu_set_display_field(&gpu, true));
+    assert(psx_gpu_get_display_mode_info(&gpu, &info));
+    assert(info.field_valid && info.field_odd);
+    assert(psx_gpu_read_status(&gpu, &status));
+    assert((status & (1u << 31u)) != 0u);
+    assert(psx_gpu_set_display_field(&gpu, false));
+    assert(psx_gpu_get_display_mode_info(&gpu, &info));
+    assert(!info.field_odd);
+    assert(psx_gpu_read_status(&gpu, &status));
+    assert((status & (1u << 31u)) == 0u);
+
+    /* Return to the original mode for the remaining mode/status checks. */
+    assert(psx_gpu_gp1_write(&gpu, 0x080000fdu));
     assert(psx_gpu_read_status(&gpu, &status));
     assert((status & (1u << 16u)) != 0u);
     assert((status & (1u << 17u)) != 0u);
