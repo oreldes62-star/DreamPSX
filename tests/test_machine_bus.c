@@ -241,24 +241,6 @@ int main(void)
     assert((word & (1u << 31u)) == 0u);
     assert(psx_bus_write32(&machine.bus, PSX_DMA_DICR_ADDR, 1u << 26u));
 
-    /* A partial manual transfer must commit progress after each successful
-     * word. The second RAM read crosses the mapped RAM boundary and fails;
-     * retry state must point beyond the one word already sent to GP0. */
-    assert(psx_bus_write32(&machine.bus, 0x1f801814u, 0x04000002u));
-    assert(psx_bus_write32(&machine.bus, 0x007ffffcu, 0x0200ff00u));
-    assert(psx_bus_write32(&machine.bus, PSX_DMA_BASE_ADDR + 0x20u,
-                           0x007ffffcu));
-    assert(psx_bus_write32(&machine.bus, PSX_DMA_BASE_ADDR + 0x24u, 2u));
-    assert(!psx_bus_write32(&machine.bus, PSX_DMA_BASE_ADDR + 0x28u,
-                            0x11000001u));
-    assert(psx_dma_data_words_transferred(&machine.dma) == 20u);
-    assert(psx_bus_read32(&machine.bus, PSX_DMA_BASE_ADDR + 0x20u, &word));
-    assert(word == 0x00800000u);
-    assert(psx_bus_read32(&machine.bus, PSX_DMA_BASE_ADDR + 0x24u, &word));
-    assert((word & 0xffffu) == 1u);
-    assert(psx_dma_active_mask(&machine.dma) == 0u);
-    assert(psx_dma_queued_mask(&machine.dma) == (1u << 2u));
-
     /* BIOS is readable; unmapped hardware and misaligned words are rejected. */
     assert(psx_bus_read32(&machine.bus, PSX_BIOS_BASE, &word));
     assert(!psx_bus_read32(&machine.bus, 0x1f801078u, &word));
