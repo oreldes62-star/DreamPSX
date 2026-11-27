@@ -27,9 +27,10 @@ typedef struct {
 bool psx_dreamcast_audio_stream_init(PsxDreamcastAudioStream *stream,
                                      PsxAudioBuffer *source);
 void psx_dreamcast_audio_stream_reset(PsxDreamcastAudioStream *stream);
-/* Equivalent payload semantics to snd_stream_callback_t:
- * requested/received are frames per channel; returned data is interleaved.
- * Short source reads are completed with silence to prevent stale audio.
+/* Matches KallistiOS snd_stream_callback_t payload units: requested/received
+ * are total interleaved bytes, not frames. The source queue remains frame-based.
+ * Short source reads are completed with silence; partial stereo PCM16 frames
+ * are never returned.
  */
 void *psx_dreamcast_audio_stream_callback(PsxDreamcastAudioStream *stream,
                                           int samples_requested,
