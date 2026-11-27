@@ -425,14 +425,17 @@ bool psx_spu_mix_sample(PsxSpu *spu, int16_t *left, int16_t *right)
     int64_t send_right = 0;
     int16_t wet_left = 0;
     int16_t wet_right = 0;
-    const uint16_t reverb_mask_low = load_le16(&spu->registers[
-        PSX_SPU_REVERB_ENABLE_LOW_OFFSET]);
-    const uint16_t reverb_mask_high = load_le16(&spu->registers[
-        PSX_SPU_REVERB_ENABLE_HIGH_OFFSET]);
+    uint16_t reverb_mask_low;
+    uint16_t reverb_mask_high;
     bool produced = false;
 
     if (!spu || !spu->initialized || !left || !right)
         return false;
+
+    reverb_mask_low = load_le16(&spu->registers[
+        PSX_SPU_REVERB_ENABLE_LOW_OFFSET]);
+    reverb_mask_high = load_le16(&spu->registers[
+        PSX_SPU_REVERB_ENABLE_HIGH_OFFSET]);
 
     for (unsigned i = 0u; i < PSX_SPU_VOICE_COUNT; ++i) {
         PsxSpuVoice *voice = &spu->voices[i];
