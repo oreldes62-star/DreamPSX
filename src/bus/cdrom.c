@@ -130,14 +130,12 @@ bool psx_cdrom_read8(PsxCdrom *cdrom, uint32_t address, uint8_t *value)
                     (cdrom->response_head + 1u) % PSX_CDROM_FIFO_CAPACITY);
                 --cdrom->response_count;
             }
-        } else if (cdrom->index == 1u) {
-            *value = cdrom->interrupt_enable;
         } else {
             *value = 0u;
         }
         return true;
     case 2u:
-        *value = 0u; /* Data FIFO is introduced with sector delivery. */
+        *value = cdrom->index == 1u ? cdrom->interrupt_enable : 0u;
         return true;
     case 3u:
         *value = cdrom->index == 1u
@@ -163,8 +161,6 @@ bool psx_cdrom_write8(PsxCdrom *cdrom, uint32_t address, uint8_t value)
     case 1u:
         if (cdrom->index == 0u) {
             execute_command(cdrom, value);
-        } else if (cdrom->index == 1u) {
-            cdrom->interrupt_enable = (uint8_t)(value & 0x1fu);
         }
         return true;
     case 2u:
@@ -177,6 +173,8 @@ bool psx_cdrom_write8(PsxCdrom *cdrom, uint32_t address, uint8_t value)
                              PSX_CDROM_FIFO_CAPACITY);
             cdrom->parameters[tail] = value;
             ++cdrom->parameter_count;
+        } else if (cdrom->index == 1u) {
+            cdrom->interrupt_enable = (uint8_t)(value & 0x1fu);
         } else if (cdrom->index == 2u) {
             cdrom->request = value;
         }
