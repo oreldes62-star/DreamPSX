@@ -271,6 +271,25 @@ int main(void)
     assert((word & (1u << 31u)) == 0u);
     assert(psx_bus_write32(&machine.bus, PSX_DMA_DICR_ADDR, 1u << 26u));
 
+    /* An out-of-range RAM source must produce a failed DMA event without
+     * counting a payload word or clearing the outstanding request. */
+    assert(psx_bus_write32(&machine.bus, 0x1f801814u, 0x04000002u));
+    assert(psx_bus_write32(&machine.bus, 0x1f8010a0u, 0x00200000u));
+    assert(psx_bus_write32(&machine.bus, 0x1f8010a4u, 1u));
+    assert(!psx_bus_write32(&machine.bus, 0x1f8010a8u, 0x11000001u));
+    {
+        PsxDmaTransferEvent event;
+        assert(psx_dma_last_transfer_event(&machine.dma, &event));
+        assert(event.sequence >= 2u);
+        assert(event.channel == 2u);
+        assert(event.sync_mode == 0u);
+        assert(event.ram_to_device);
+        assert(!event.completed);
+        assert(event.payload_words == 0u);
+        assert(event.packet_headers == 0u);
+    }
+    assert((psx_dma_queued_mask(&machine.dma) & (1u << 2u)) != 0u);
+
     /* BIOS is readable; unmapped hardware and misaligned words are rejected. */
     assert(psx_bus_read32(&machine.bus, PSX_BIOS_BASE, &word));
     assert(!psx_bus_read32(&machine.bus, 0x1f801078u, &word));
