@@ -18,4 +18,4 @@ The existing SPUCNT master reverb-enable gate remains authoritative inside the w
 
 ## Remaining limitations
 
-This milestone connects the existing host-side reverb DSP to voice mixing; it does not establish cycle-accurate SPU behavior. Sweep-mode voice volumes, exact hardware reverb address arithmetic/timing, SPU IRQ behavior, and final dry/wet gain semantics still require reference-based validation. Tests have been added but must be run by the repository's CI or a local host build. No new Flycast or physical Dreamcast validation is claimed.
+This milestone connects the existing host-side reverb DSP to voice mixing; it does not establish cycle-accurate SPU behavior. Sweep-mode voice volumes, exact hardware reverb address arithmetic/timing, SPU IRQ behavior, and final dry/wet gain semantics still require reference-based validation. Validation: the GitHub Actions host build completed successfully and all 44 CTest cases passed, including the SPU routing regressions. The separate KallistiOS cross-build is still running. No new Flycast or physical Dreamcast validation is claimed.
