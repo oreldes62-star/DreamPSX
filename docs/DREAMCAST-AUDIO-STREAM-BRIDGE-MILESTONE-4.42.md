@@ -27,4 +27,10 @@ The host tests check alignment, stereo order, byte-count units, complete-frame h
 
 ## Limitations
 
-The byte-count contract was cross-checked against the pinned KallistiOS `snd_stream.c` implementation: `snd_stream_fill()` passes `needed_bytes` to the callback and consumes `got_bytes` as bytes. A later integration review corrected the original adapter's mistaken frame-count interpretation and added byte-level regression coverage. The adapter remains single-threaded; concurrency between emulation and audio callbacks still requires a safe producer/consumer design. The AICA application has cross-compiled, but Flycast and physical-hardware playback remain untested.
+The byte-count contract was cross-checked against the pinned KallistiOS `snd_stream.c` implementation: `snd_stream_fill()` passes `needed_bytes` to the callback and consumes `got_bytes` as bytes. A later integration review corrected the original adapter's mistaken frame-count interpretation and added byte-level regression coverage. The adapter remains single-threaded; concurrency between emulation and audio callbacks still requires a safe producer/consumer design.
+
+## Corrected integration validation
+
+- Host CMake/CTest: 44/44 passed after byte-count correction (run 46076939118).
+- KallistiOS SH-4 cross-build: all 23 core/platform translation units compiled, audio smoke ELF linked, ELF32 little-endian SuperH header verified and artifact uploaded (run 46076903036; artifact `dreampsx-dreamcast-build`, ID 15234764907).
+- The artifact has not been run in Flycast or on physical Dreamcast hardware.
