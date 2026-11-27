@@ -7,6 +7,8 @@
 
 void kos_stub_reset(void);
 void kos_stub_set_poll_result(int result);
+void kos_stub_set_init_result(int result);
+void kos_stub_set_alloc_result(int result);
 int kos_stub_initialized(void);
 int kos_stub_started(void);
 int kos_stub_stopped(void);
@@ -57,6 +59,25 @@ int main(void)
     assert(!psx_kos_audio_backend_poll(&backend));
     psx_kos_audio_backend_stop(&backend);
     assert(kos_stub_stopped() == 1);
+
+    /* A failed stream subsystem init must not attempt shutdown. */
+    kos_stub_reset();
+    kos_stub_set_init_result(-1);
+    assert(!psx_kos_audio_backend_start(&backend, &stream));
+    assert(!backend.initialized);
+    assert(!backend.stream_system_initialized);
+    assert(kos_stub_shutdown_count() == 0);
+
+    /* An allocation failure must unwind the initialized stream subsystem. */
+    kos_stub_reset();
+    kos_stub_set_alloc_result(SND_STREAM_INVALID);
+    assert(!psx_kos_audio_backend_start(&backend, &stream));
+    assert(!backend.initialized);
+    assert(!backend.stream_system_initialized);
+    assert(kos_stub_shutdown_count() == 1);
+    assert(kos_stub_stopped() == 0);
+    assert(kos_stub_destroyed() == 0);
+
     puts("KallistiOS audio backend lifecycle tests passed");
     return 0;
 }
