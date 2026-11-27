@@ -3,9 +3,10 @@
 PlayStation emulator research and development for Sega Dreamcast.
 
 ## Development status
-Experimental PlayStation emulator research project targeting Sega Dreamcast. Current work includes GPU primitives and display scanout, CPU/GTE timing foundations, timers, and channel-2 GPU DMA in manual, linked-list and request/block modes, including DICR master interrupt routing to PS1 IRQ source 3. The implementation remains synchronous in several hardware paths. The latest GitHub Actions host build and CTest run passed all 33 tests; this validates the host-side code only. No runnable Dreamcast CDI image is currently validated. Host tests alone would not establish Dreamcast performance or game compatibility.
+Experimental PlayStation emulator research project targeting Sega Dreamcast. Current work includes GPU primitives and display scanout, CPU/GTE timing foundations, timers, and channel-2 GPU DMA in manual, linked-list and request/block modes, including DICR master interrupt routing to PS1 IRQ source 3. DMA now counts successfully transferred payload words and linked-list packet headers as separate workload metrics; these are not hardware cycle counts. The implementation remains synchronous in several hardware paths. The latest GitHub Actions host build and CTest run passed all 33 tests; this validates the host-side code only. No runnable Dreamcast CDI image is currently validated. Host tests alone would not establish Dreamcast performance or game compatibility.
 
 ## Current milestones
+- [DMA transfer instrumentation milestone 4.04](docs/DMA-TRANSFER-INSTRUMENTATION-MILESTONE-4.04.md)
 - [DMA bus ownership serialization milestone 4.03](docs/DMA-BUS-OWNERSHIP-MILESTONE-4.03.md)
 - [DMA transfer lifecycle milestone 4.02](docs/DMA-TRANSFER-LIFECYCLE-MILESTONE-4.02.md)
 - [DMA arbitration queue integration milestone 4.01](docs/DMA-ARBITRATION-QUEUE-INTEGRATION-MILESTONE-4.01.md)
