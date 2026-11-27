@@ -2,7 +2,7 @@
 PlayStation emulator research and development for Sega Dreamcast.
 
 ## Development status
-Experimental project. The host-side CMake build and all 13 CTest targets passed in GitHub Actions on commit `e5d0b8db2f9556c2d5aa5b45b53d22732ec6890e`. This validates the host test suite only; the Dreamcast/KallistiOS target remains a separate future integration step.
+Experimental project. The host-side CMake build and all 14 CTest targets passed in GitHub Actions on commit `ef68fb7f1828b4a73e312277ad7034adf3ff30d1`. The Gouraud-textured triangle milestone is under validation; host tests do not validate Dreamcast hardware performance or compatibility.
 
 ## Current milestones
 - [COP2 CU2 milestone 1.2](docs/COP2-CU2-MILESTONE-1.2.md)
@@ -76,9 +76,10 @@ Experimental project. The host-side CMake build and all 13 CTest targets passed 
 - [GPU modulated texture milestone 3.51](docs/GPU-MODULATED-TEXTURE-MILESTONE-3.51.md)
 - [GPU semi-transparency milestone 3.52](docs/GPU-SEMITRANSPARENCY-MILESTONE-3.52.md)
 - [GPU texture window milestone 3.53](docs/GPU-TEXTURE-WINDOW-MILESTONE-3.53.md)
+- [GPU Gouraud-textured triangle milestone 3.54](docs/GPU-GOURAUD-TEXTURED-TRIANGLE-MILESTONE-3.54.md)
 
 ## Target
 Sega Dreamcast with 16 MiB RAM. Long-term target: CDI test build for Flycast, then GDEMU.
 
 ## Limitations
-No Dreamcast/KallistiOS build, CDI image or playable game exists yet. CPU registers and BIOS instruction fetch are represented, and a growing subset of R3000A instructions plus the first GTE geometry commands (NCLIP, MVMVA, RTPS, RTPT, AVSZ3, AVSZ4, SQR, OP, GPF, GPL, NCS and NCCS initial implementations) execute; instruction decoding/execution remains partial, and the GPU now has a host-side VRAM/fill-rectangle core connected to GP0/GP1 MMIO, with external VRAM backing storage; the GPU now supports initial GP0 flat-shaded triangle rasterization and A0/C0 image transfers through GPUREAD; draw-mode, texture window, Gouraud-textured polygons, dithering, display output, DMA, CD-ROM, timers and other hardware devices remain incomplete; textured triangle rendering supports fixed-color modulation, raw sampling and the four semi-transparency blend modes; textured triangles support fixed-color modulation and raw sampling; textured triangles now sample direct 15-bit, indexed 8-bit and indexed 4-bit textures through CLUT lookup; flat-shaded and Gouraud-shaded triangles are supported by the host GPU path; flat-triangle shared edges now use a deterministic top-left inclusion rule; GP0(E3h-E5h) drawing area and offset state now clips and translates flat triangles. The host CMake/CTest suite passes in GitHub Actions, but it does not produce a Dreamcast binary or CDI image.
+No Dreamcast/KallistiOS build, CDI image or playable game exists yet. CPU registers and BIOS instruction fetch are represented, and a growing subset of R3000A instructions plus the first GTE geometry commands (NCLIP, MVMVA, RTPS, RTPT, AVSZ3, AVSZ4, SQR, OP, GPF, GPL, NCS and NCCS initial implementations) execute; instruction decoding/execution remains partial, and the GPU now has a host-side VRAM/fill-rectangle core connected to GP0/GP1 MMIO, with external VRAM backing storage; the GPU now supports initial GP0 flat-shaded triangle rasterization and A0/C0 image transfers through GPUREAD; draw-mode, texture window, dithering, display output, DMA, CD-ROM, timers and other hardware devices remain incomplete; textured triangle rendering supports fixed-color modulation, raw sampling and the four semi-transparency blend modes; textured triangles support fixed-color modulation and raw sampling; textured triangles now sample direct 15-bit, indexed 8-bit and indexed 4-bit textures through CLUT lookup; flat-shaded and Gouraud-shaded triangles are supported by the host GPU path; flat-triangle shared edges now use a deterministic top-left inclusion rule; GP0(E3h-E5h) drawing area and offset state now clips and translates flat triangles. The host CMake/CTest suite passes in GitHub Actions, but it does not produce a Dreamcast binary or CDI image.
