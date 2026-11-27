@@ -274,7 +274,7 @@ int main(void)
     /* An out-of-range RAM source must produce a failed DMA event without
      * counting a payload word or clearing the outstanding request. */
     assert(psx_bus_write32(&machine.bus, 0x1f801814u, 0x04000002u));
-    assert(psx_bus_write32(&machine.bus, 0x1f8010a0u, 0x00200000u));
+    assert(psx_bus_write32(&machine.bus, 0x1f8010a0u, 0x00800000u));
     assert(psx_bus_write32(&machine.bus, 0x1f8010a4u, 1u));
     assert(!psx_bus_write32(&machine.bus, 0x1f8010a8u, 0x11000001u));
     {
