@@ -44,8 +44,10 @@ bool psx_xa_adpcm_decode_unit(PsxXaAdpcmState *state,
         int32_t predicted;
         int32_t sample;
 
-        if ((bits_per_sample == 4u && (codes[i] < -8 || codes[i] > 7)) ||
-            (bits_per_sample == 8u && (codes[i] < -128 || codes[i] > 127)))
+        /* The input type is int8_t, so the 8-bit range is intrinsic.
+         * Four-bit units still require explicit signed-nibble validation.
+         */
+        if (bits_per_sample == 4u && (codes[i] < -8 || codes[i] > 7))
             return false;
 
         residual = (int32_t)codes[i] * (1 << scale);
