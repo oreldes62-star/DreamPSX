@@ -45,6 +45,28 @@ int main(void)
     assert(psx_dma_select_channel(&dma, psx_dma_pending_mask(&dma)) == 0);
     assert(psx_dma_write32(&dma, PSX_DMA_BASE_ADDR + 0x08u, 0u));
 
+    /* The scheduler queue retains disabled requests and takes enabled
+     * channels by priority, removing only the selected entry. */
+    assert(psx_dma_enqueue_channel(&dma, 2u));
+    assert(psx_dma_enqueue_channel(&dma, 1u));
+    assert(psx_dma_enqueue_channel(&dma, 3u));
+    assert(!psx_dma_enqueue_channel(&dma, PSX_DMA_CHANNEL_COUNT));
+    assert(psx_dma_queued_mask(&dma) ==
+           ((1u << 1u) | (1u << 2u) | (1u << 3u)));
+    assert(psx_dma_write32(&dma, PSX_DMA_DPCR_ADDR, 0u));
+    assert(psx_dma_take_channel(&dma) == -1);
+    assert(psx_dma_queued_mask(&dma) ==
+           ((1u << 1u) | (1u << 2u) | (1u << 3u)));
+    assert(psx_dma_write32(&dma, PSX_DMA_DPCR_ADDR, 0x0000aac0u));
+    assert(psx_dma_take_channel(&dma) == 2);
+    assert(psx_dma_queued_mask(&dma) == ((1u << 1u) | (1u << 3u)));
+    assert(psx_dma_take_channel(&dma) == 1);
+    assert(psx_dma_take_channel(&dma) == 3);
+    assert(psx_dma_take_channel(&dma) == -1);
+    assert(psx_dma_enqueue_channel(&dma, 4u));
+    psx_dma_reset(&dma);
+    assert(psx_dma_queued_mask(&dma) == 0u);
+
     /* Pending discovery honors CHCR start and sync mode; DPCR arbitration
      * is applied separately by the priority selector. */
     assert(psx_dma_write32(&dma, PSX_DMA_DPCR_ADDR, 0x00008888u));
