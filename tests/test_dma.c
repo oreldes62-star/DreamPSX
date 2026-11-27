@@ -54,7 +54,7 @@ int main(void)
                            (1u << 23u) | (1u << 17u)));
     assert(psx_dma_complete_channel(&dma, 1u));
     assert(!psx_dma_complete_channel(&dma, PSX_DMA_CHANNEL_COUNT));
-    assert(psx_dma_pending_mask(&dma) == (1u << 3u));
+    assert(psx_dma_pending_mask(&dma) == ((1u << 2u) | (1u << 3u)));
     assert(psx_dma_read32(&dma, PSX_DMA_BASE_ADDR + 0x18u, &value));
     assert((value & (1u << 24u)) == 0u);
     assert(psx_dma_read32(&dma, PSX_DMA_DICR_ADDR, &value));
