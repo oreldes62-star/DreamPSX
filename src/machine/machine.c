@@ -43,17 +43,15 @@ bool psx_machine_boot_from_disc(PsxMachine *machine, const uint8_t *image,
     return true;
 }
 
-bool psx_machine_boot_from_cue(PsxMachine *machine, const char *cue_text,
-                               size_t cue_size, const uint8_t *bin_data,
-                               size_t bin_size, PsxBootConfig *config)
+bool psx_machine_boot_from_disc_image(PsxMachine *machine,
+                                      const PsxDiscImage *disc,
+                                      PsxBootConfig *config)
 {
-    PsxDiscImage disc;
     PsxIso9660 iso;
     if (!machine || !machine->memory.initialized ||
         !machine->cdrom.initialized ||
-        !psx_disc_mount_cue(&disc, cue_text, cue_size, bin_data, bin_size) ||
-        !psx_iso9660_mount_disc(&iso, &disc) ||
-        !psx_cdrom_mount_disc(&machine->cdrom, &disc))
+        !psx_iso9660_mount_disc(&iso, disc) ||
+        !psx_cdrom_mount_disc(&machine->cdrom, disc))
         return false;
     if (!psx_machine_boot_from_iso(machine, &iso, config)) {
         psx_cdrom_unmount(&machine->cdrom);
@@ -63,6 +61,17 @@ bool psx_machine_boot_from_cue(PsxMachine *machine, const char *cue_text,
         return false;
     }
     return true;
+}
+
+bool psx_machine_boot_from_cue(PsxMachine *machine, const char *cue_text,
+                               size_t cue_size, const uint8_t *bin_data,
+                               size_t bin_size, PsxBootConfig *config)
+{
+    PsxDiscImage disc;
+    if (!machine ||
+        !psx_disc_mount_cue(&disc, cue_text, cue_size, bin_data, bin_size))
+        return false;
+    return psx_machine_boot_from_disc_image(machine, &disc, config);
 }
 
 bool psx_machine_init(PsxMachine *machine,
