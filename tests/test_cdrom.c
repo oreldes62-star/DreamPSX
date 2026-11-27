@@ -254,15 +254,15 @@ int main(void)
         assert(psx_cdrom_read_xa_audio_timed(
             &cdrom, left, right, 8u, &frames, &rate));
         assert(frames == 1u && rate == 18900u);
+        assert(left[0] == 4096 && right[0] == 4096);
         psx_cdrom_advance_xa_audio_cycles(&cdrom, 1792u);
         assert(psx_cdrom_read_xa_audio_timed(
             &cdrom, left, right, 8u, &frames, &rate));
         assert(frames == 1u && rate == 18900u);
+        assert(left[0] == 28672 && right[0] == 28672);
         assert(psx_cdrom_read_xa_audio(&cdrom, left, right, 64u,
                                        &frames, &rate));
         assert(frames == 64u && rate == 18900u);
-        assert(left[0] == 4096 && left[28] == 28672);
-        assert(right[0] == left[0] && right[28] == left[28]);
 
         assert(psx_cdrom_read_xa_audio(&cdrom, left, right,
                                        PSX_XA_ADPCM_MAX_SECTOR_SAMPLES,
