@@ -42,6 +42,8 @@ uint32_t psx_dma_pending_mask(const PsxDmaController *dma);
 bool psx_dma_enqueue_channel(PsxDmaController *dma, unsigned channel);
 uint32_t psx_dma_queued_mask(const PsxDmaController *dma);
 int psx_dma_take_channel(PsxDmaController *dma);
+/* Rebuild the queued mask from current CHCR request conditions. */
+void psx_dma_refresh_queue(PsxDmaController *dma);
 /* Retire a successfully completed channel and latch its DICR completion flag. */
 bool psx_dma_complete_channel(PsxDmaController *dma, unsigned channel);
 /* Execute a triggered channel-2 manual RAM-to-GP0 transfer. */
