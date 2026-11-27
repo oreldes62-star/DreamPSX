@@ -2,6 +2,7 @@
 #define DREAMPSX_CDROM_H
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 #define PSX_CDROM_BASE_ADDR 0x1f801800u
