@@ -1,5 +1,6 @@
 #include "dreampsx/machine.h"
 #include "dreampsx/cop0_irq.h"
+#include "dreampsx/dreamcast_audio_stream.h"
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
@@ -56,6 +57,42 @@ int main(void)
         psx_machine_reset(&machine);
         assert(machine.audio_output.frame_count == 0u);
         assert(machine.audio_output.dropped_frames == 0u);
+    }
+    /* End-to-end host path: machine SPU render -> machine PCM queue ->
+     * KallistiOS-compatible byte-count callback, preserving stereo frames. */
+    {
+        PsxDreamcastAudioStream stream;
+        int received = 0;
+        int16_t *pcm;
+        PsxSpuVoice *voice = &machine.spu.voices[0];
+
+        psx_machine_reset(&machine);
+        assert(psx_spu_write16(&machine.spu, PSX_SPU_BASE_ADDR,
+                               0x3fffu));
+        assert(psx_spu_write16(&machine.spu, PSX_SPU_BASE_ADDR + 0x002u,
+                               0x3fffu));
+        assert(psx_spu_write16(&machine.spu, PSX_SPU_BASE_ADDR +
+                               PSX_SPU_MAIN_VOLUME_LEFT_OFFSET, 0x3fffu));
+        assert(psx_spu_write16(&machine.spu, PSX_SPU_BASE_ADDR +
+                               PSX_SPU_MAIN_VOLUME_RIGHT_OFFSET, 0x3fffu));
+        voice->adsr2 = 0x1fc0u; /* Frozen sustain rate for deterministic PCM. */
+        voice->envelope_level = PSX_SPU_ENVELOPE_MAX;
+        voice->envelope_phase = PSX_SPU_ADSR_SUSTAIN;
+        voice->current_sample = 12000;
+        voice->current_sample_valid = true;
+        machine.spu.active_voices = 1u;
+
+        assert(psx_machine_render_audio(&machine, 4u, &queued));
+        assert(queued == 4u);
+        assert(psx_dreamcast_audio_stream_init(&stream,
+                                               &machine.audio_output));
+        pcm = (int16_t *)psx_dreamcast_audio_stream_callback(
+            &stream, 4 * (int)sizeof(int16_t) * 2, &received);
+        assert(pcm != NULL && received == 16);
+        assert(pcm[0] > 0 && pcm[1] > 0);
+        assert(pcm[2] == pcm[0] && pcm[3] == pcm[1]);
+        assert(machine.audio_output.frame_count == 0u);
+        assert(stream.silence_frames == 0u);
     }
     assert(psx_memory_write32(&machine.memory, 0u, 0xdecafbad));
     uint32_t memory_probe = 0u;
