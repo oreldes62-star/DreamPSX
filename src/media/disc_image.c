@@ -278,3 +278,29 @@ bool psx_disc_read_sector_form2(
 {
     return psx_disc_read_sector_form2_ex(disc, lba, destination, NULL);
 }
+
+
+bool psx_disc_xa_audio_format(const PsxDiscXaSubheader *subheader,
+                              PsxDiscXaAudioFormat *format)
+{
+    unsigned rate_code, depth_code;
+
+    if (!subheader || !format ||
+        (subheader->submode & 0x04u) == 0u ||
+        (subheader->submode & 0x20u) == 0u)
+        return false;
+
+    /* XA coding byte: bit 0 selects stereo; bits 2-3 rate;
+     * bits 4-5 sample depth. Only the two defined encodings are accepted. */
+    if ((subheader->coding & 0xcau) != 0u)
+        return false;
+    rate_code = (unsigned)((subheader->coding >> 2u) & 0x03u);
+    depth_code = (unsigned)((subheader->coding >> 4u) & 0x03u);
+    if (rate_code > 1u || depth_code > 1u)
+        return false;
+
+    format->sample_rate_hz = rate_code == 0u ? 37800u : 18900u;
+    format->channels = (subheader->coding & 0x01u) != 0u ? 2u : 1u;
+    format->bits_per_sample = depth_code == 0u ? 4u : 8u;
+    return true;
+}
