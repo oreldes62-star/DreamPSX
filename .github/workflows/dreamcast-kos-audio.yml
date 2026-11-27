@@ -64,14 +64,18 @@ jobs:
             pcercuei/dreamcast-toolchain:stable \
             sh -lc '. /workspace/environ.sh && sh-elf-readelf -h dreampsx-audio-smoke.elf && sh-elf-readelf -h dreampsx-boot-smoke.elf && test "$(sh-elf-ar t libdreampsx_core.a | wc -l)" -eq 24'
 
+      - name: Build mkdcdisc image packager
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++ git libisofs-dev meson ninja-build pkg-config
+          git clone --depth 1 https://gitlab.com/simulant/mkdcdisc.git "$RUNNER_TEMP/mkdcdisc"
+          meson setup "$RUNNER_TEMP/mkdcdisc/build" "$RUNNER_TEMP/mkdcdisc"
+          meson compile -C "$RUNNER_TEMP/mkdcdisc/build"
+          echo "$RUNNER_TEMP/mkdcdisc/build" >> "$GITHUB_PATH"
+
       - name: Build self-booting CDI diagnostic image
         run: |
-          docker run --rm \
-            -v "$GITHUB_WORKSPACE/kos:/workspace" \
-            -v "$GITHUB_WORKSPACE:/project" \
-            -w /project/platform/dreamcast/audio-smoke \
-            pcercuei/dreamcast-toolchain:stable \
-            sh -lc '. /workspace/environ.sh && sh ./package-cdi.sh'
+          sh platform/dreamcast/audio-smoke/package-cdi.sh
 
       - name: Upload DreamPSX CDI
         uses: actions/upload-artifact@v4
