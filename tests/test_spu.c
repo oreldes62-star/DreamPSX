@@ -12,6 +12,7 @@ int main(void)
     int16_t adpcm_samples[PSX_SPU_ADPCM_BLOCK_SAMPLES];
     PsxSpuAdpcmState adpcm_state;
     uint8_t adpcm_flags = 0u;
+    int16_t voice_sample = 0;
 
     psx_spu_adpcm_reset(&adpcm_state);
     adpcm_block[1] = 0x05u;
@@ -53,6 +54,29 @@ int main(void)
     assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + 0x0e0u, 0x7fffu));
     assert(psx_spu_read16(&spu, PSX_SPU_BASE_ADDR + 0x0e0u, &value));
     assert(value == 0x7fffu);
+
+    /* A keyed-on voice fetches, decodes and consumes a RAM ADPCM block. */
+    assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + 0x006u, 0x0020u));
+    assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                           PSX_SPU_TRANSFER_ADDR_OFFSET, 0x0020u));
+    adpcm_block[0] = 0u;
+    adpcm_block[1] = 0x01u; /* End-of-sound marker on this block. */
+    adpcm_block[2] = 0x71u;
+    adpcm_block[3] = 0x0fu;
+    for (unsigned i = 0u; i < PSX_SPU_ADPCM_BLOCK_BYTES; i += 2u) {
+        const uint16_t word = (uint16_t)(adpcm_block[i] |
+                                ((uint16_t)adpcm_block[i + 1u] << 8u));
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                               PSX_SPU_TRANSFER_DATA_OFFSET, word));
+    }
+    assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                           PSX_SPU_KEY_ON_LOW_OFFSET, 0x0001u));
+    assert(psx_spu_voice_next_sample(&spu, 0u, &voice_sample));
+    assert(voice_sample == 4096);
+    for (unsigned i = 1u; i < PSX_SPU_ADPCM_BLOCK_SAMPLES; ++i)
+        assert(psx_spu_voice_next_sample(&spu, 0u, &voice_sample));
+    assert(psx_spu_active_voice_mask(&spu) == 0u);
+    assert(!psx_spu_voice_next_sample(&spu, 0u, &voice_sample));
 
     /* Typed voice registers expose 24 independent parameter banks. */
     assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + 0x000u, 0x1111u));
