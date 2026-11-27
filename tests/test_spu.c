@@ -425,6 +425,24 @@ int main(void)
                                PSX_SPU_KEY_OFF_LOW_OFFSET, 0x0001u));
     }
 
+    /* Reverb parameter MMIO window: all 32 halfword registers are
+     * independently readable/writable before the DSP path is implemented. */
+    {
+        uint16_t reverb_value;
+        for (unsigned offset = PSX_SPU_REVERB_REGISTER_START_OFFSET;
+             offset <= PSX_SPU_REVERB_REGISTER_END_OFFSET; offset += 2u) {
+            const uint16_t pattern = (uint16_t)(0x5100u | (offset >> 1u));
+            assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + offset,
+                                   pattern));
+            assert(psx_spu_read16(&spu, PSX_SPU_BASE_ADDR + offset,
+                                  &reverb_value));
+            assert(reverb_value == pattern);
+        }
+        assert(!psx_spu_read16(&spu, PSX_SPU_BASE_ADDR +
+                               PSX_SPU_REVERB_REGISTER_END_OFFSET + 2u,
+                               &reverb_value));
+    }
+
     /* Typed voice registers expose 24 independent parameter banks. */
     assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + 0x000u, 0x1111u));
     assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + 0x002u, 0x2222u));
