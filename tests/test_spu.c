@@ -483,7 +483,7 @@ int main(void)
     assert(psx_spu_reverb_multiply_q15(-16384, 16384) == -8192);
     assert(psx_spu_reverb_multiply_q15(32767, 32767) == 32766);
     assert(psx_spu_reverb_multiply_q15(-32768, 32767) == -32767);
-    assert(psx_spu_reverb_multiply_q15(-32768, -32768) == 32767);
+    assert(psx_spu_reverb_multiply_q15(-32768, -32768) == 32768);
     assert(psx_spu_reverb_multiply_q15(0, -32768) == 0);
     assert(psx_spu_reverb_saturate(40000) == 32767);
     assert(psx_spu_reverb_saturate(-40000) == -32768);
