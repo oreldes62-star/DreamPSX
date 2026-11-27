@@ -45,6 +45,23 @@ bool psx_machine_interrupt_eligible(const PsxMachine *machine)
                                        machine->cop0_cause);
 }
 
+
+/* The PS1 interrupt controller maps VBlank to source 0 (IRQ0). Keep the
+ * source level asserted for the complete blanking interval; the controller
+ * latches the rising edge and software acknowledges it through I_STAT.
+ */
+bool psx_machine_video_advance_scanline(PsxMachine *machine,
+                                        PsxGpuVideoState *state)
+{
+    if (!machine || !state ||
+        !psx_gpu_video_advance_scanline(&machine->gpu, state))
+        return false;
+
+    psx_irq_set_line(&machine->irq, 0u, state->vblank);
+    psx_machine_refresh_interrupts(machine);
+    return true;
+}
+
 void psx_machine_raise_exception(PsxMachine *machine, PsxExceptionCode code,
                                  uint32_t badvaddr, bool in_delay_slot,
                                  uint32_t branch_pc)
