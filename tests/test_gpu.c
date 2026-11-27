@@ -12,7 +12,17 @@ int main(void)
 
     assert(psx_gpu_init(&gpu, vram, PSX_GPU_VRAM_WIDTH * PSX_GPU_VRAM_HEIGHT));
     assert(psx_gpu_read_status(&gpu, &status));
-    assert(status == 0x14802000u);
+    assert((status & 0x1c000000u) == 0x14000000u); /* ready cmd + DMA block */
+    assert((status & (1u << 27u)) == 0u);
+
+    /* An incomplete command is waiting for parameters, not a new command. */
+    assert(psx_gpu_gp0_write(&gpu, 0x020000ffu));
+    assert(psx_gpu_read_status(&gpu, &status));
+    assert((status & (1u << 26u)) == 0u);
+    assert((status & (1u << 28u)) == 0u);
+    assert(psx_gpu_gp1_write(&gpu, 0x01000000u));
+    assert(psx_gpu_read_status(&gpu, &status));
+    assert((status & 0x14000000u) == 0x14000000u);
 
     /* GP0(02h): fill a 16-pixel-aligned VRAM rectangle. */
     assert(psx_gpu_gp0_write(&gpu, 0x020000ffu)); /* Red */
@@ -45,14 +55,22 @@ int main(void)
     assert(psx_gpu_vram_read(&gpu, 11u, 20u, &pixel) && pixel == 0x2222u);
     assert(psx_gpu_vram_read(&gpu, 12u, 20u, &pixel) && pixel == 0x3333u);
 
-    /* C0 reads the same pixels back as packed GPUREAD words. */
+    /* GPUSTAT readiness follows the active GP0 transfer state. */
     assert(psx_gpu_gp0_write(&gpu, 0xc0000000u));
     assert(psx_gpu_gp0_write(&gpu, 10u | (20u << 16u)));
     assert(psx_gpu_gp0_write(&gpu, 3u | (1u << 16u)));
+    assert(psx_gpu_read_status(&gpu, &status));
+    assert((status & (1u << 27u)) != 0u); /* VRAM data available */
+    assert((status & (1u << 26u)) == 0u); /* command port occupied */
+    assert((status & (1u << 28u)) == 0u); /* no new DMA block */
     { uint32_t data = 0u;
       assert(psx_gpu_read_data(&gpu, &data) && data == 0x22221111u);
+      assert(psx_gpu_read_status(&gpu, &status));
+      assert((status & (1u << 27u)) != 0u);
       assert(psx_gpu_read_data(&gpu, &data) && data == 0x00003333u);
-      assert(psx_gpu_read_data(&gpu, &data) && data == 0u); }
+      assert(psx_gpu_read_status(&gpu, &status));
+      assert((status & (1u << 27u)) == 0u);
+      assert((status & 0x14000000u) == 0x14000000u); }
 
     /* GP0 20h rasterizes a flat-shaded triangle at pixel centers. */
     assert(psx_gpu_gp0_write(&gpu, 0x2000ff00u)); /* Green */
