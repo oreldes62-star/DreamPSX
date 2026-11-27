@@ -57,6 +57,28 @@ int psx_dma_select_channel(const PsxDmaController *dma, uint32_t pending_mask)
     return selected;
 }
 
+uint32_t psx_dma_pending_mask(const PsxDmaController *dma)
+{
+    uint32_t pending = 0u;
+
+    if (!dma || !dma->initialized) return 0u;
+    for (unsigned channel = 0u; channel < PSX_DMA_CHANNEL_COUNT; ++channel) {
+        const uint32_t control = dma->channel[channel].chcr;
+        const unsigned sync_mode = (unsigned)((control >> 9u) & 3u);
+
+        if (!psx_dma_channel_enabled(dma, channel) ||
+            (control & (1u << 24u)) == 0u ||
+            sync_mode == 3u)
+            continue;
+
+        /* Manual mode needs both START and TRIGGER; other modes need START. */
+        if (sync_mode == 0u && (control & (1u << 28u)) == 0u)
+            continue;
+        pending |= 1u << channel;
+    }
+    return pending;
+}
+
 bool psx_dma_read32(const PsxDmaController *dma, uint32_t address,
                     uint32_t *value)
 {
