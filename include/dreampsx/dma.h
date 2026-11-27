@@ -18,6 +18,16 @@ typedef struct {
 } PsxDmaChannel;
 
 typedef struct {
+    uint64_t sequence;
+    uint64_t payload_words;
+    uint64_t packet_headers;
+    uint8_t channel;
+    uint8_t sync_mode;
+    bool ram_to_device;
+    bool completed;
+} PsxDmaTransferEvent;
+
+typedef struct {
     PsxDmaChannel channel[PSX_DMA_CHANNEL_COUNT];
     uint32_t dpcr;
     uint32_t dicr;
@@ -28,6 +38,7 @@ typedef struct {
     uint64_t request_words_transferred;
     uint64_t linked_list_words_transferred;
     uint64_t linked_list_headers_read;
+    PsxDmaTransferEvent last_transfer;
     bool initialized;
 } PsxDmaController;
 
@@ -61,6 +72,15 @@ uint64_t psx_dma_manual_words_transferred(const PsxDmaController *dma);
 uint64_t psx_dma_request_words_transferred(const PsxDmaController *dma);
 uint64_t psx_dma_linked_list_words_transferred(const PsxDmaController *dma);
 uint64_t psx_dma_linked_list_headers_read(const PsxDmaController *dma);
+/* Snapshot the most recently attempted endpoint transfer; false before first event. */
+bool psx_dma_last_transfer_event(const PsxDmaController *dma,
+                                 PsxDmaTransferEvent *event);
+/* Record one channel-2 endpoint attempt using cumulative counter deltas. */
+void psx_dma_record_transfer_event(PsxDmaController *dma, unsigned channel,
+                                   uint32_t control,
+                                   uint64_t payload_before,
+                                   uint64_t headers_before,
+                                   bool completed);
 /* Retire a successfully completed channel and latch its DICR completion flag. */
 bool psx_dma_complete_channel(PsxDmaController *dma, unsigned channel);
 /* Execute a triggered channel-2 manual RAM-to-GP0 transfer. */
