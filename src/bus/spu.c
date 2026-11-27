@@ -59,6 +59,12 @@ bool psx_spu_read16(PsxSpu *spu, uint32_t address, uint16_t *value)
         *value = spu->control;
         return true;
     }
+    if (offset < PSX_SPU_VOICE_COUNT * PSX_SPU_VOICE_REGISTER_BYTES &&
+        (offset % PSX_SPU_VOICE_REGISTER_BYTES) ==
+            PSX_SPU_VOICE_CURRENT_VOLUME_OFFSET) {
+        *value = spu->voices[offset / PSX_SPU_VOICE_REGISTER_BYTES].current_volume;
+        return true;
+    }
     if (offset == PSX_SPU_TRANSFER_DATA_OFFSET) {
         const uint32_t ram_address = spu->transfer_address &
                                      (PSX_SPU_RAM_BYTES - 1u);
@@ -99,6 +105,24 @@ bool psx_spu_write16(PsxSpu *spu, uint32_t address, uint16_t value)
     }
     if (offset == PSX_SPU_CONTROL_OFFSET) {
         spu->control = value;
+        store_le16(&spu->registers[offset], value);
+        return true;
+    }
+    if (offset < PSX_SPU_VOICE_COUNT * PSX_SPU_VOICE_REGISTER_BYTES) {
+        const unsigned voice_index = offset / PSX_SPU_VOICE_REGISTER_BYTES;
+        const unsigned voice_offset = offset % PSX_SPU_VOICE_REGISTER_BYTES;
+        PsxSpuVoice *voice = &spu->voices[voice_index];
+        switch (voice_offset) {
+        case 0x00u: voice->volume_left = value; break;
+        case 0x02u: voice->volume_right = value; break;
+        case 0x04u: voice->pitch = (uint16_t)(value & 0x3fffu); break;
+        case 0x06u: voice->start_address = value; break;
+        case 0x08u: voice->adsr1 = value; break;
+        case 0x0au: voice->adsr2 = value; break;
+        case 0x0cu: return true; /* Current volume is read-only. */
+        case 0x0eu: voice->repeat_address = value; break;
+        default: return false;
+        }
         store_le16(&spu->registers[offset], value);
         return true;
     }
