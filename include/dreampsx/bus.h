@@ -9,6 +9,7 @@
 #include "dreampsx/timers.h"
 #include "dreampsx/dma.h"
 #include "dreampsx/cdrom.h"
+#include "dreampsx/spu.h"
 
 /* CPU-facing bus. Memory and IRQ controller are owned by the machine. */
 typedef struct {
@@ -18,6 +19,7 @@ typedef struct {
     PsxTimers *timers;
     PsxDmaController *dma;
     PsxCdrom *cdrom;
+    PsxSpu *spu;
     bool initialized;
 } PsxBus;
 
