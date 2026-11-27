@@ -120,7 +120,9 @@ bool psx_bus_write32(PsxBus *bus, uint32_t address, uint32_t value)
         bool transfer_ok = true;
         /* A channel can be armed before DPCR enables it. Re-check channel 2
          * when either CHCR is programmed or its DPCR enable bit changes. */
-        if (address == PSX_DMA_BASE_ADDR + 0x28u ||
+        if ((address >= PSX_DMA_BASE_ADDR &&
+             address < PSX_DMA_BASE_ADDR + 0x70u &&
+             ((address - PSX_DMA_BASE_ADDR) & 0x0fu) == 0x08u) ||
             address == PSX_DMA_DPCR_ADDR)
             transfer_ok = bus_try_gpu_dma(bus);
         /* PS1 DMA is IRQ source 3. Keep the controller input synchronized
