@@ -15,4 +15,4 @@ These counters describe completed workload by DMA mode. They are not elapsed cyc
 
 ## Validation
 
-Pending GitHub Actions host build and CTest.
+- GitHub Actions run `46045410906`: host configure and build succeeded; CTest passed all 33/33 tests.
