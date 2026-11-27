@@ -304,12 +304,16 @@ bool psx_dma_execute_gpu_manual(PsxDmaController *dma,
                 !psx_memory_write32(memory, address, data))
                 return false;
         }
+
+        /* Commit progress per payload word. If a later access fails, the
+         * aborted request resumes at the first word not yet transferred. */
         ++dma->data_words_transferred;
         address = (uint32_t)(address + step) & 0x00fffffcu;
+        channel->madr = address;
+        --words;
+        channel->bcr = (channel->bcr & 0xffff0000u) | (words & 0xffffu);
     }
 
-    channel->madr = address;
-    channel->bcr &= 0xffff0000u;
     return psx_dma_complete_channel(dma, 2u);
 }
 
