@@ -39,6 +39,12 @@ void psx_cpu_reset(PsxCpu *cpu)
     cpu->initialized = true;
 }
 
+uint32_t psx_cpu_last_step_cycles(const PsxCpu *cpu)
+{
+    if (!cpu || !cpu->initialized) return 0u;
+    return cpu->last_step_cycles;
+}
+
 uint32_t psx_cpu_read_gpr(const PsxCpu *cpu, unsigned index)
 {
     if (!cpu || !cpu->initialized || index >= 32u || index == 0u) return 0u;
@@ -82,6 +88,9 @@ PsxCpuStepResult psx_cpu_step_result_with_cop0_gte(PsxCpu *cpu, PsxBus *bus,
 
     if (!cpu || !cpu->initialized || !bus)
         return PSX_CPU_STEP_FETCH_BUS_ERROR;
+    /* Conservative baseline: one system cycle per attempted instruction.
+     * Bus wait states and instruction-specific latency are future work. */
+    cpu->last_step_cycles = 1u;
     if ((cpu->pc & 3u) != 0u) {
         cpu->fault_address = cpu->pc;
         return PSX_CPU_STEP_ADDRESS_ERROR_LOAD;
