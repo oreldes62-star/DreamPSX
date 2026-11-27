@@ -553,3 +553,35 @@ bool psx_cdrom_xa_sector_matches_filter(const PsxCdrom *cdrom)
            cdrom->xa_subheader.file == cdrom->xa_filter_file &&
            cdrom->xa_subheader.channel == cdrom->xa_filter_channel;
 }
+
+
+bool psx_cdrom_read_xa_audio(PsxCdrom *cdrom, int16_t *left, int16_t *right,
+                             size_t max_frames, size_t *frames_read,
+                             uint16_t *sample_rate_hz)
+{
+    size_t count;
+    if (!cdrom || !cdrom->initialized || !left || !right ||
+        !frames_read || !sample_rate_hz)
+        return false;
+
+    count = max_frames < cdrom->xa_pcm_count
+        ? max_frames : cdrom->xa_pcm_count;
+    for (size_t i = 0u; i < count; ++i) {
+        size_t index = ((size_t)cdrom->xa_pcm_head + i) %
+                       PSX_CDROM_XA_PCM_QUEUE_FRAMES;
+        left[i] = cdrom->xa_pcm_left[index];
+        right[i] = cdrom->xa_pcm_right[index];
+    }
+    cdrom->xa_pcm_head = (uint16_t)(
+        ((size_t)cdrom->xa_pcm_head + count) %
+        PSX_CDROM_XA_PCM_QUEUE_FRAMES);
+    cdrom->xa_pcm_count = (uint16_t)(cdrom->xa_pcm_count - count);
+    *frames_read = count;
+    *sample_rate_hz = cdrom->xa_pcm_count == 0u
+        ? 0u : cdrom->xa_pcm_sample_rate;
+    if (cdrom->xa_pcm_count == 0u) {
+        cdrom->xa_pcm_head = 0u;
+        cdrom->xa_pcm_sample_rate = 0u;
+    }
+    return true;
+}
