@@ -240,14 +240,16 @@ static uint16_t blend_semitransparent(uint16_t background,
 }
 
 static void execute_textured_triangle(PsxGpu *gpu, bool modulate,
-                                      bool semi_transparent)
+                                      bool semi_transparent, bool gouraud)
 {
     const uint32_t xy0 = gpu->parameters[0];
     const uint32_t uv0 = gpu->parameters[1];
-    const uint32_t xy1 = gpu->parameters[2];
-    const uint32_t uv1 = gpu->parameters[3];
-    const uint32_t xy2 = gpu->parameters[4];
-    const uint32_t uv2 = gpu->parameters[5];
+    const uint32_t xy1 = gpu->parameters[gouraud ? 3u : 2u];
+    const uint32_t uv1 = gpu->parameters[gouraud ? 4u : 3u];
+    const uint32_t xy2 = gpu->parameters[gouraud ? 6u : 4u];
+    const uint32_t uv2 = gpu->parameters[gouraud ? 7u : 5u];
+    const uint32_t color1 = gouraud ? gpu->parameters[2] : gpu->command;
+    const uint32_t color2 = gouraud ? gpu->parameters[5] : gpu->command;
     const unsigned tpage = uv1 >> 16u;
     const unsigned depth = (tpage >> 7u) & 3u;
     const unsigned page_x = (tpage & 0x0fu) * 64u;
@@ -319,12 +321,31 @@ static void execute_textured_triangle(PsxGpu *gpu, bool modulate,
                 if (texel != 0u) {
                     uint16_t output = texel;
                     if (modulate) {
+                        const unsigned vertex_red = gouraud ?
+                            interpolate_color_channel(
+                                gpu->command & 0xffu, color1 & 0xffu,
+                                color2 & 0xffu, e0, e1, e2, area) :
+                            (gpu->command & 0xffu);
+                        const unsigned vertex_green = gouraud ?
+                            interpolate_color_channel(
+                                (gpu->command >> 8u) & 0xffu,
+                                (color1 >> 8u) & 0xffu,
+                                (color2 >> 8u) & 0xffu,
+                                e0, e1, e2, area) :
+                            ((gpu->command >> 8u) & 0xffu);
+                        const unsigned vertex_blue = gouraud ?
+                            interpolate_color_channel(
+                                (gpu->command >> 16u) & 0xffu,
+                                (color1 >> 16u) & 0xffu,
+                                (color2 >> 16u) & 0xffu,
+                                e0, e1, e2, area) :
+                            ((gpu->command >> 16u) & 0xffu);
                         const unsigned red = ((texel & 0x1fu) *
-                                              (gpu->command & 0xffu)) >> 7u;
+                                              vertex_red) >> 7u;
                         const unsigned green = (((texel >> 5u) & 0x1fu) *
-                                                ((gpu->command >> 8u) & 0xffu)) >> 7u;
+                                                vertex_green) >> 7u;
                         const unsigned blue = (((texel >> 10u) & 0x1fu) *
-                                               ((gpu->command >> 16u) & 0xffu)) >> 7u;
+                                               vertex_blue) >> 7u;
                         const unsigned r = red > 31u ? 31u : red;
                         const unsigned g = green > 31u ? 31u : green;
                         const unsigned b = blue > 31u ? 31u : blue;
@@ -509,9 +530,11 @@ bool psx_gpu_gp0_write(PsxGpu *gpu, uint32_t value)
             else if (opcode == 0x30u)
                 execute_gouraud_triangle(gpu);
             else if (opcode == 0x24u)
-                execute_textured_triangle(gpu, true, false);
+                execute_textured_triangle(gpu, true, false, false);
             else if (opcode == 0x25u)
-                execute_textured_triangle(gpu, false, true);
+                execute_textured_triangle(gpu, false, true, false);
+            else if (opcode == 0x34u)
+                execute_textured_triangle(gpu, true, false, true);
             gpu->parameter_count = 0u;
             gpu->parameter_expected = 0u;
         }
@@ -552,6 +575,10 @@ bool psx_gpu_gp0_write(PsxGpu *gpu, uint32_t value)
     case 0x24u: /* Modulated textured triangle */
     case 0x25u: /* Raw textured triangle */
         gpu->parameter_expected = 6u;
+        gpu->parameter_count = 0u;
+        break;
+    case 0x34u: /* Gouraud-shaded modulated textured triangle */
+        gpu->parameter_expected = 8u;
         gpu->parameter_count = 0u;
         break;
     case 0x02u: /* Fill rectangle */
