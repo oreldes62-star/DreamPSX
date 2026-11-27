@@ -425,6 +425,16 @@ int main(void)
                                PSX_SPU_KEY_OFF_LOW_OFFSET, 0x0001u));
     }
 
+    /* The named reverb register map matches the PS1 register layout:
+     * depth, work-area base, routing and all 32 DSP parameters. */
+    assert(PSX_SPU_REVERB_OUTPUT_VOLUME_LEFT_OFFSET == 0x084u);
+    assert(PSX_SPU_REVERB_OUTPUT_VOLUME_RIGHT_OFFSET == 0x086u);
+    assert(PSX_SPU_REVERB_ENABLE_LOW_OFFSET == 0x198u);
+    assert(PSX_SPU_REVERB_ENABLE_HIGH_OFFSET == 0x19au);
+    assert(PSX_SPU_REVERB_WORK_AREA_START_OFFSET == 0x1a2u);
+    assert(PSX_SPU_REVERB_CONFIG_DAPF1_OFFSET == 0x1c0u);
+    assert(PSX_SPU_REVERB_CONFIG_VRIN_OFFSET == 0x1feu);
+
     /* Reverb parameter MMIO window: all 32 halfword registers are
      * independently readable/writable before the DSP path is implemented. */
     {
