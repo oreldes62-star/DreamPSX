@@ -31,6 +31,9 @@ bool psx_machine_init(PsxMachine *machine,
 void psx_machine_reset(PsxMachine *machine);
 void psx_machine_refresh_interrupts(PsxMachine *machine);
 bool psx_machine_interrupt_eligible(const PsxMachine *machine);
+/* Advance one GPU scanline and route VBlank transitions to IRQ0. */
+bool psx_machine_video_advance_scanline(PsxMachine *machine,
+                                        PsxGpuVideoState *state);
 bool psx_machine_step(PsxMachine *machine);
 void psx_machine_raise_exception(PsxMachine *machine, PsxExceptionCode code,
                                  uint32_t badvaddr, bool in_delay_slot,
