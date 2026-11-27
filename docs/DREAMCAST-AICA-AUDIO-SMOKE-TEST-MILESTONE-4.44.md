@@ -15,7 +15,7 @@ Run from `platform/dreamcast/audio-smoke` after sourcing the KallistiOS environm
 make
 ```
 
-The Makefile builds only the audio queue, callback bridge, KallistiOS wrapper and smoke application. It does not cross-compile the full PS1 emulator yet.
+At the initial 4.44 stage, the Makefile built only the audio queue, callback bridge, KallistiOS wrapper and smoke application. Milestone 4.46 subsequently extended that Makefile to cross-compile all 23 core/platform translation units into a Dreamcast static archive. The diagnostic application itself still emits a test tone and does not boot a PS1 game.
 
 ## Automated Dreamcast toolchain workflow
 
@@ -37,8 +37,8 @@ The resulting executable was inspected by the SH-ELF readelf tool and reported:
 - executable file type
 - Renesas / SuperH SH machine
 
-The ELF was uploaded as the `dreampsx-audio-smoke-elf` workflow artifact:
-https://github.com/oreldes62-star/DreamPSX/actions/runs/46069028372/artifacts/15231972235
+The ELF was uploaded with the core archive as the `dreampsx-dreamcast-build` workflow artifact:
+https://github.com/oreldes62-star/DreamPSX/actions/runs/46069249655/artifacts/15232755420
 
 The host test suite also remains green at 44/44 tests:
 https://github.com/oreldes62-star/DreamPSX/actions/runs/46069001718
