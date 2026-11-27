@@ -633,6 +633,12 @@ void psx_gpu_reset(PsxGpu *gpu)
     gpu->display.video_vblank = false;
 }
 
+bool psx_gpu_irq_output(const PsxGpu *gpu)
+{
+    return gpu && gpu->initialized &&
+           (gpu->status & (1u << 24u)) != 0u;
+}
+
 bool psx_gpu_gp0_write(PsxGpu *gpu, uint32_t value)
 {
     if (!gpu || !gpu->initialized) return false;
@@ -701,6 +707,9 @@ bool psx_gpu_gp0_write(PsxGpu *gpu, uint32_t value)
 
     gpu->command = value;
     switch (value >> 24u) {
+    case 0x1fu: /* GP0(1Fh): request GPU interrupt (IRQ1). */
+        gpu->status |= 1u << 24u;
+        break;
     case 0xe1u: /* Draw mode / texture page state. */
         gpu->draw_mode = value & 0x7ffu;
         break;
@@ -793,6 +802,9 @@ bool psx_gpu_gp1_write(PsxGpu *gpu, uint32_t value)
     switch (value >> 24u) {
     case 0x00u: /* GP1(00h): GPU reset. */
         psx_gpu_reset(gpu);
+        break;
+    case 0x02u: /* GP1(02h): acknowledge and clear GPU IRQ. */
+        gpu->status &= ~(1u << 24u);
         break;
     case 0x04u: /* GP1(04h): DMA direction / data request mode. */
         gpu->dma_direction = value & 3u;
