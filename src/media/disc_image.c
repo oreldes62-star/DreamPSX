@@ -223,9 +223,10 @@ bool psx_disc_read_sector(const PsxDiscImage *disc, size_t lba,
 }
 
 
-bool psx_disc_read_sector_form2(
+bool psx_disc_read_sector_form2_ex(
     const PsxDiscImage *disc, size_t lba,
-    uint8_t destination[PSX_DISC_SECTOR_FORM2_DATA_SIZE])
+    uint8_t destination[PSX_DISC_SECTOR_FORM2_DATA_SIZE],
+    PsxDiscXaSubheader *subheader)
 {
     size_t source_sector, offset;
     const uint8_t *sector;
@@ -262,5 +263,18 @@ bool psx_disc_read_sector_form2(
         return false;
 
     memcpy(destination, sector + 24u, PSX_DISC_SECTOR_FORM2_DATA_SIZE);
+    if (subheader) {
+        subheader->file = sector[16];
+        subheader->channel = sector[17];
+        subheader->submode = sector[18];
+        subheader->coding = sector[19];
+    }
     return true;
+}
+
+bool psx_disc_read_sector_form2(
+    const PsxDiscImage *disc, size_t lba,
+    uint8_t destination[PSX_DISC_SECTOR_FORM2_DATA_SIZE])
+{
+    return psx_disc_read_sector_form2_ex(disc, lba, destination, NULL);
 }
