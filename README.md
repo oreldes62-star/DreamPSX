@@ -122,3 +122,6 @@ The three root-counter register banks now expose counter, mode and target regist
 
 
 Milestone 3.76 adds selectable root-counter clock domains and timer IRQ event routing. Milestone 3.77 emits one abstract HBlank pulse per advanced scanline and routes it to Timer1, including its IRQ path. Milestone 3.78 adds a shared system-cycle entry point and a persistent Timer2 divide-by-eight phase accumulator. Exact horizontal phase, dot-clock pulses, full synchronization modes and automatic CPU instruction-cycle feeding remain future integration work. See [HBlank/Timer1 integration milestone](docs/GPU-HBLANK-TIMER1-MILESTONE-3.77.md).
+
+
+CPU stepping is now connected to the shared system-cycle domain: milestone 3.79 supplies a clearly marked one-cycle baseline per attempted instruction, allowing system-clock root counters and Timer2 /8 to advance during machine execution. Instruction-specific latency, bus wait states, dot-clock timing and cycle accuracy remain future work. See [CPU system-cycle integration milestone 3.79](docs/CPU-SYSTEM-CYCLE-INTEGRATION-MILESTONE-3.79.md).
