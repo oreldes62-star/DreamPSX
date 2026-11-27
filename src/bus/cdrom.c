@@ -71,14 +71,19 @@ static bool queue_xa_sector(PsxCdrom *cdrom)
 {
     PsxDiscXaAudioFormat format;
     PsxXaAdpcmState next_state[2];
-    int16_t left[PSX_XA_ADPCM_MAX_SECTOR_SAMPLES];
-    int16_t right[PSX_XA_ADPCM_MAX_SECTOR_SAMPLES];
     size_t frames = 0u;
+    size_t tail;
 
     if (!psx_cdrom_get_xa_audio_format(cdrom, &format)) return false;
-    frames = format.bits_per_sample == 4u
-        ? (format.channels == 1u ? 4032u : 2016u)
-        : (format.channels == 1u ? 2016u : 1008u);
+    if (cdrom->xa_pcm_count >= PSX_CDROM_XA_PCM_QUEUE_FRAMES) {
+        ++cdrom->xa_dropped_sectors;
+        return true;
+    }
+
+    if (format.bits_per_sample == 4u)
+        frames = format.channels == 1u ? 4032u : 2016u;
+    else if (format.bits_per_sample == 8u)
+        frames = format.channels == 1u ? 2016u : 1008u;
 
     if (frames > PSX_CDROM_XA_PCM_QUEUE_FRAMES - cdrom->xa_pcm_count ||
         (cdrom->xa_pcm_count != 0u &&
@@ -87,25 +92,33 @@ static bool queue_xa_sector(PsxCdrom *cdrom)
         return true;
     }
 
+    tail = ((size_t)cdrom->xa_pcm_head + cdrom->xa_pcm_count) %
+           PSX_CDROM_XA_PCM_QUEUE_FRAMES;
     next_state[0] = cdrom->xa_decoder_state[0];
     next_state[1] = cdrom->xa_decoder_state[1];
     if (!psx_xa_adpcm_decode_sector(
             cdrom->sector_data, cdrom->data_count, &format, next_state,
-            left, right, PSX_XA_ADPCM_MAX_SECTOR_SAMPLES, &frames))
+            cdrom->xa_pcm_left + tail, cdrom->xa_pcm_right + tail,
+            PSX_CDROM_XA_PCM_STORAGE_FRAMES - tail, &frames))
         return false;
+
+    /* The storage arrays include one sector of mirrored tail room, allowing
+       a contiguous decode even when the ring write wraps around. */
+    if (tail + frames > PSX_CDROM_XA_PCM_QUEUE_FRAMES) {
+        size_t wrapped = tail + frames - PSX_CDROM_XA_PCM_QUEUE_FRAMES;
+        memcpy(cdrom->xa_pcm_left,
+               cdrom->xa_pcm_left + PSX_CDROM_XA_PCM_QUEUE_FRAMES,
+               wrapped * sizeof(cdrom->xa_pcm_left[0]));
+        memcpy(cdrom->xa_pcm_right,
+               cdrom->xa_pcm_right + PSX_CDROM_XA_PCM_QUEUE_FRAMES,
+               wrapped * sizeof(cdrom->xa_pcm_right[0]));
+    }
 
     if (cdrom->xa_pcm_count == 0u)
         cdrom->xa_pcm_sample_rate = format.sample_rate_hz;
     cdrom->xa_decoder_state[0] = next_state[0];
     cdrom->xa_decoder_state[1] = next_state[1];
-
-    for (size_t i = 0u; i < frames; ++i) {
-        size_t tail = ((size_t)cdrom->xa_pcm_head + cdrom->xa_pcm_count) %
-                      PSX_CDROM_XA_PCM_QUEUE_FRAMES;
-        cdrom->xa_pcm_left[tail] = left[i];
-        cdrom->xa_pcm_right[tail] = right[i];
-        ++cdrom->xa_pcm_count;
-    }
+    cdrom->xa_pcm_count = (uint16_t)(cdrom->xa_pcm_count + frames);
     return true;
 }
 
@@ -157,8 +170,9 @@ static bool load_current_sector(PsxCdrom *cdrom)
         bool filter_match = psx_cdrom_xa_sector_matches_filter(cdrom);
         if (filter_enabled && !filter_match) {
             cdrom->data_count = 0u;
-        } else if ((cdrom->mode & 0x40u) != 0u &&
-                   queue_xa_sector(cdrom)) {
+        } else if ((cdrom->mode & 0x40u) != 0u) {
+            if (queue_xa_sector(cdrom)) cdrom->data_count = 0u;
+        } else if (filter_enabled) {
             cdrom->data_count = 0u;
         }
     }
