@@ -58,7 +58,8 @@ int main(void)
     assert((value & (1u << 31u)) == 0u);
 
     assert(!psx_dma_read32(&dma, PSX_DMA_BASE_ADDR + 0x0cu, &value));
-    assert(!psx_dma_read32(&dma, PSX_DMA_BASE_ADDR + 0x70u, &value));
+    assert(psx_dma_read32(&dma, PSX_DMA_DPCR_ADDR, &value));
+    assert(value == 0x0fffffffu);
     assert(!psx_dma_read32(&dma, PSX_DMA_BASE_ADDR + 1u, &value));
     assert(!psx_dma_write32(&dma, PSX_DMA_BASE_ADDR + 0x0cu, 0u));
 
