@@ -34,6 +34,29 @@ unsigned psx_dma_channel_priority(const PsxDmaController *dma, unsigned channel)
     return (unsigned)((dma->dpcr >> (channel * 4u)) & 7u);
 }
 
+int psx_dma_select_channel(const PsxDmaController *dma, uint32_t pending_mask)
+{
+    int selected = -1;
+    unsigned best_priority = 8u;
+
+    if (!dma || !dma->initialized) return -1;
+    pending_mask &= (1u << PSX_DMA_CHANNEL_COUNT) - 1u;
+
+    for (unsigned channel = 0u; channel < PSX_DMA_CHANNEL_COUNT; ++channel) {
+        if ((pending_mask & (1u << channel)) == 0u ||
+            !psx_dma_channel_enabled(dma, channel))
+            continue;
+
+        const unsigned priority = psx_dma_channel_priority(dma, channel);
+        /* Lower DPCR priority numbers win; channel order breaks ties. */
+        if (priority < best_priority) {
+            best_priority = priority;
+            selected = (int)channel;
+        }
+    }
+    return selected;
+}
+
 bool psx_dma_read32(const PsxDmaController *dma, uint32_t address,
                     uint32_t *value)
 {
