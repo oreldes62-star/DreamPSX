@@ -76,6 +76,7 @@ bool psx_machine_init(PsxMachine *machine,
     if (!psx_dma_init(&machine->dma)) return false;
     if (!psx_cdrom_init(&machine->cdrom)) return false;
     if (!psx_spu_init(&machine->spu)) return false;
+    if (!psx_audio_buffer_init(&machine->audio_output)) return false;
     psx_machine_reset(machine);
     if (!psx_bus_init(&machine->bus, &machine->memory, &machine->irq,
                      &machine->gpu, &machine->timers))
@@ -97,6 +98,7 @@ void psx_machine_reset(PsxMachine *machine)
     psx_dma_reset(&machine->dma);
     psx_cdrom_reset(&machine->cdrom);
     psx_spu_reset(&machine->spu);
+    psx_audio_buffer_reset(&machine->audio_output);
     machine->timer2_div8_phase = 0u;
     machine->cdrom_sector_cycle_phase = 0u;
     machine->cop0_status = 0u;
@@ -348,4 +350,39 @@ bool psx_machine_step(PsxMachine *machine)
             return false;
         }
     }
+}
+
+/* Render in small stack blocks so the 16 MB Dreamcast target does not need
+ * a large temporary PCM allocation. Audio timing is supplied by the caller.
+ */
+bool psx_machine_render_audio(PsxMachine *machine, size_t frame_count,
+                              size_t *frames_queued)
+{
+    int16_t block[128u * PSX_AUDIO_CHANNEL_COUNT];
+    size_t queued = 0u;
+    if (frames_queued) *frames_queued = 0u;
+    if (!machine || !machine->spu.initialized ||
+        !machine->audio_output.initialized || !frames_queued)
+        return false;
+
+    while (frame_count != 0u) {
+        const size_t chunk = frame_count > 128u ? 128u : frame_count;
+        size_t rendered = 0u;
+        if (!psx_spu_mix_block(&machine->spu, block, chunk, &rendered) ||
+            rendered != chunk)
+            return false;
+        queued += psx_audio_buffer_write(&machine->audio_output, block,
+                                         rendered);
+        frame_count -= rendered;
+    }
+    *frames_queued = queued;
+    return true;
+}
+
+size_t psx_machine_read_audio(PsxMachine *machine, int16_t *interleaved_stereo,
+                              size_t frame_capacity)
+{
+    if (!machine || !machine->audio_output.initialized) return 0u;
+    return psx_audio_buffer_read(&machine->audio_output, interleaved_stereo,
+                                 frame_capacity);
 }
