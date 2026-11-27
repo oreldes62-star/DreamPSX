@@ -67,6 +67,20 @@ int main(void)
     psx_dma_reset(&dma);
     assert(psx_dma_queued_mask(&dma) == 0u);
 
+    /* Queue refresh mirrors CHCR exactly: newly armed requests appear and
+     * cancelled requests disappear, while DPCR enable remains separate. */
+    assert(psx_dma_write32(&dma, PSX_DMA_DPCR_ADDR, 0u));
+    assert(psx_dma_write32(&dma, PSX_DMA_BASE_ADDR + 0x08u, 0x01000200u));
+    assert(psx_dma_write32(&dma, PSX_DMA_BASE_ADDR + 0x28u, 0x11000000u));
+    psx_dma_refresh_queue(&dma);
+    assert(psx_dma_queued_mask(&dma) == ((1u << 0u) | (1u << 2u)));
+    assert(psx_dma_select_channel(&dma, psx_dma_queued_mask(&dma)) == -1);
+    assert(psx_dma_write32(&dma, PSX_DMA_BASE_ADDR + 0x08u, 0u));
+    psx_dma_refresh_queue(&dma);
+    assert(psx_dma_queued_mask(&dma) == (1u << 2u));
+    assert(psx_dma_write32(&dma, PSX_DMA_DPCR_ADDR, 1u << 11u));
+    assert(psx_dma_select_channel(&dma, psx_dma_queued_mask(&dma)) == 2);
+
     /* Pending discovery honors CHCR start and sync mode; DPCR arbitration
      * is applied separately by the priority selector. */
     assert(psx_dma_write32(&dma, PSX_DMA_DPCR_ADDR, 0x00008888u));
