@@ -98,6 +98,8 @@ bool psx_gpu_gp0_write(PsxGpu *gpu, uint32_t value);
 bool psx_gpu_gp1_write(PsxGpu *gpu, uint32_t value);
 bool psx_gpu_read_data(PsxGpu *gpu, uint32_t *value);
 bool psx_gpu_read_status(const PsxGpu *gpu, uint32_t *value);
+/* GPU IRQ1 output, asserted by GP0(1Fh) until GP1(02h) acknowledges it. */
+bool psx_gpu_irq_output(const PsxGpu *gpu);
 bool psx_gpu_get_display(const PsxGpu *gpu, PsxGpuDisplay *display);
 bool psx_gpu_get_display_mode_info(const PsxGpu *gpu,
                                   PsxGpuDisplayModeInfo *info);
