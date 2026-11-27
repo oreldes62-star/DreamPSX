@@ -956,6 +956,7 @@ int main(void)
     machine.cpu.delay_slot_pending = false;
     machine.cpu.load_delay_pending = false;
     assert(psx_machine_step(&machine));
+    psx_gte_advance_cycles(&machine.gte, 8u);
     {
         uint32_t mac0 = 0u;
         uint32_t flags = 0u;
