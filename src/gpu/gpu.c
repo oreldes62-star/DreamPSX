@@ -172,6 +172,14 @@ static unsigned interpolate_uv(unsigned uv0, unsigned uv1, unsigned uv2,
     return (unsigned)value;
 }
 
+static unsigned apply_texture_window(unsigned coordinate, unsigned mask,
+                                     unsigned offset)
+{
+    const unsigned window_mask = (mask & 0x1fu) << 3u;
+    const unsigned window_offset = (offset & mask & 0x1fu) << 3u;
+    return (coordinate & ~window_mask) | window_offset;
+}
+
 static uint16_t sample_texture(PsxGpu *gpu, unsigned page_x,
                                   unsigned page_y, unsigned depth,
                                   unsigned u, unsigned v, unsigned clut)
@@ -300,8 +308,14 @@ static void execute_textured_triangle(PsxGpu *gpu, bool modulate,
                                                    e0, e1, e2, area, 0u);
                 const unsigned v = interpolate_uv(uv0, uv1, uv2,
                                                    e0, e1, e2, area, 8u);
+                const unsigned window_u = apply_texture_window(
+                    u, gpu->texture_window_mask_x,
+                    gpu->texture_window_offset_x);
+                const unsigned window_v = apply_texture_window(
+                    v, gpu->texture_window_mask_y,
+                    gpu->texture_window_offset_y);
                 const uint16_t texel = sample_texture(
-                    gpu, page_x, page_y, depth, u, v, clut);
+                    gpu, page_x, page_y, depth, window_u, window_v, clut);
                 if (texel != 0u) {
                     uint16_t output = texel;
                     if (modulate) {
@@ -454,6 +468,10 @@ void psx_gpu_reset(PsxGpu *gpu)
     gpu->draw_offset_x = 0;
     gpu->draw_offset_y = 0;
     gpu->draw_mode = 0u;
+    gpu->texture_window_mask_x = 0u;
+    gpu->texture_window_mask_y = 0u;
+    gpu->texture_window_offset_x = 0u;
+    gpu->texture_window_offset_y = 0u;
     gpu->parameter_count = 0u;
     gpu->parameter_expected = 0u;
     gpu->transfer_mode = PSX_GPU_TRANSFER_IDLE;
@@ -504,6 +522,12 @@ bool psx_gpu_gp0_write(PsxGpu *gpu, uint32_t value)
     switch (value >> 24u) {
     case 0xe1u: /* Draw mode / texture page state. */
         gpu->draw_mode = (value >> 5u) & 3u;
+        break;
+    case 0xe2u: /* Texture window mask and offset. */
+        gpu->texture_window_mask_x = value & 0x1fu;
+        gpu->texture_window_mask_y = (value >> 5u) & 0x1fu;
+        gpu->texture_window_offset_x = (value >> 10u) & 0x1fu;
+        gpu->texture_window_offset_y = (value >> 15u) & 0x1fu;
         break;
     case 0xe3u: /* Drawing area top-left. */
         gpu->draw_area_left = value & 0x3ffu;
