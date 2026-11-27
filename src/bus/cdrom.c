@@ -163,6 +163,9 @@ static void execute_command(PsxCdrom *cdrom, uint8_t command)
         cdrom->data_index = 0u;
         cdrom->data_count = 0u;
         cdrom->read_active = false;
+        cdrom->mode = 0u;
+        cdrom->pending_command = 0u;
+        cdrom->command_cycles_remaining = 0u;
         (void)push_response(cdrom, cdrom->drive_status);
         command_complete(cdrom, 3u);
         break;
