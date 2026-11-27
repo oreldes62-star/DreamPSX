@@ -15,4 +15,4 @@ This integrates the arbitration foundation into the existing synchronous bus pat
 
 ## Validation
 
-GitHub Actions host build and CTest result will be recorded after the workflow completes.
+GitHub Actions run [#46036974266](https://github.com/oreldes62-star/DreamPSX/actions/runs/46036974266) completed successfully: host configure/build passed and CTest reported **33/33 tests passed**.
