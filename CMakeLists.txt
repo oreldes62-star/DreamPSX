@@ -15,6 +15,7 @@ add_library(dreampsx_core STATIC
     src/bus/memory.c
     src/bus/spu.c
     src/audio/spu_adpcm.c
+    src/audio/audio_buffer.c
     src/cpu/cop0.c
     src/cpu/cop0_irq.c
     src/cpu/cpu.c
@@ -86,6 +87,7 @@ set(DREAMPSX_TESTS
     test_machine_boot
     test_memory
     test_spu
+    test_audio_buffer
 )
 
 foreach(test_name IN LISTS DREAMPSX_TESTS)
