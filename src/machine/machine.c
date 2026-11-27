@@ -12,7 +12,7 @@ bool psx_machine_init(PsxMachine *machine,
     if (!psx_gpu_init(&machine->gpu, gpu_vram, gpu_vram_pixels)) return false;
     psx_machine_reset(machine);
     if (!psx_bus_init(&machine->bus, &machine->memory, &machine->irq,
-                     &machine->gpu))
+                     &machine->gpu, &machine->timers))
         return false;
     return true;
 }
@@ -24,6 +24,7 @@ void psx_machine_reset(PsxMachine *machine)
     psx_cpu_reset(&machine->cpu);
     psx_gte_reset(&machine->gte);
     psx_gpu_reset(&machine->gpu);
+    psx_timers_reset(&machine->timers);
     machine->cop0_status = 0u;
     machine->cop0_cause = 0u;
     machine->cop0_epc = 0u;
