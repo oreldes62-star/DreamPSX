@@ -68,7 +68,9 @@ int main(void)
 
     /* Mount an in-memory ISO, ReadN LBA 0 (00:02:00), then drain its
      * 2048-byte sector through the byte data register when DRQ is enabled. */
-    for (i = 0u; i < sizeof(iso); ++i) iso[i] = (uint8_t)(i & 0xffu);
+    for (i = 0u; i < sizeof(iso); ++i)
+        iso[i] = (uint8_t)(((i / PSX_CDROM_SECTOR_SIZE) * 0x40u) +
+                          (i & 0xffu));
     assert(psx_cdrom_mount_iso(&cdrom, iso, sizeof(iso)));
     assert(!psx_cdrom_mount_iso(&cdrom, iso, sizeof(iso) - 1u));
     assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 3u, 0x10u));
@@ -92,6 +94,25 @@ int main(void)
     assert(cdrom.data_count == 0u);
     assert((cdrom.drive_status & 0x20u) == 0u);
     assert(psx_cdrom_irq_output(&cdrom)); /* INT1 remains latched to ack. */
+
+    /* ReadN remains active: acknowledge prior reasons, then request the next
+     * timed sector. The second sector has a distinct byte pattern. */
+    select_bank(&cdrom, 0u);
+    assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 3u, 0x05u));
+    assert(psx_cdrom_advance_sector(&cdrom));
+    assert(cdrom.data_count == PSX_CDROM_SECTOR_SIZE);
+    assert(psx_cdrom_irq_output(&cdrom));
+    assert(psx_cdrom_read8(&cdrom, PSX_CDROM_BASE_ADDR + 2u, &value));
+    assert(value == 0x40u);
+    for (i = 1u; i < PSX_CDROM_SECTOR_SIZE; ++i)
+        assert(psx_cdrom_read8(&cdrom, PSX_CDROM_BASE_ADDR + 2u, &value));
+    assert(value == (uint8_t)(0x40u + 0xffu));
+    assert(cdrom.data_count == 0u);
+    assert(!psx_cdrom_advance_sector(&cdrom)); /* End of mounted image. */
+    assert(!cdrom.read_active);
+    select_bank(&cdrom, 1u);
+    assert(psx_cdrom_read8(&cdrom, PSX_CDROM_BASE_ADDR + 3u, &value));
+    assert((value & 0x10u) != 0u); /* INT5 reports end-of-image error. */
 
     psx_cdrom_reset(&cdrom);
     assert(cdrom.iso_data == iso); /* reset does not eject mounted media */
