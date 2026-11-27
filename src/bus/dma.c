@@ -79,6 +79,18 @@ uint32_t psx_dma_pending_mask(const PsxDmaController *dma)
     return pending;
 }
 
+bool psx_dma_complete_channel(PsxDmaController *dma, unsigned channel)
+{
+    if (!dma || !dma->initialized || channel >= PSX_DMA_CHANNEL_COUNT)
+        return false;
+
+    /* START/BUSY and the manual trigger are cleared only on successful
+     * completion; a failed device transfer must leave the request intact. */
+    dma->channel[channel].chcr &= ~((1u << 24u) | (1u << 28u));
+    dma->dicr |= 1u << (24u + channel);
+    return true;
+}
+
 bool psx_dma_read32(const PsxDmaController *dma, uint32_t address,
                     uint32_t *value)
 {
