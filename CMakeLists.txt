@@ -124,3 +124,15 @@ if(DREAMPSX_BUILD_KOS_AUDIO_BACKEND)
     target_include_directories(dreampsx_kos_audio_backend PRIVATE ${KOS_INCLUDE_DIR})
     target_link_libraries(dreampsx_kos_audio_backend PUBLIC dreampsx_core)
 endif()
+
+# Host-test the KallistiOS VFS-backed disc reader against a deterministic
+# short-read/seek stub; the production adapter is compiled in the KOS build.
+add_executable(test_kos_disc_file
+    tests/test_kos_disc_file.c
+    src/platform/dreamcast/kos_disc_file.c
+)
+target_link_libraries(test_kos_disc_file PRIVATE dreampsx_core)
+target_include_directories(test_kos_disc_file PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/kos_stub
+)
+add_test(NAME test_kos_disc_file COMMAND test_kos_disc_file)
