@@ -140,6 +140,7 @@ int main(void)
     assert(psx_bus_write32(&machine.bus, 0x1f8010b4u, 512u));
     assert(psx_bus_write32(&machine.bus, 0x1f8010b8u, 0x11000000u));
     assert(machine.cdrom.data_count == 0u);
+    assert(psx_dma_cdrom_words_transferred(&machine.dma) == 512u);
     assert(psx_bus_read32(&machine.bus, 0x00001000u, &word));
     assert(word == 0x03020100u);
     assert(psx_bus_read32(&machine.bus, 0x00001004u, &word));
@@ -334,7 +335,8 @@ int main(void)
     assert(psx_dma_linked_list_words_transferred(&machine.dma) == 3u);
     assert(psx_dma_manual_words_transferred(&machine.dma) +
            psx_dma_request_words_transferred(&machine.dma) +
-           psx_dma_linked_list_words_transferred(&machine.dma) ==
+           psx_dma_linked_list_words_transferred(&machine.dma) +
+           psx_dma_cdrom_words_transferred(&machine.dma) ==
            psx_dma_data_words_transferred(&machine.dma));
 
     /* Clearing the DMA completion flag drops the source line, while the
