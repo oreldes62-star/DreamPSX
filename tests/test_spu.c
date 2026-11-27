@@ -332,6 +332,31 @@ int main(void)
     }
 
 
+    /* Two full-scale voices must saturate the stereo accumulator rather
+     * than wrap when their positive samples are summed. */
+    {
+        psx_spu_reset(&spu);
+        spu.active_voices = 0x00000003u;
+        for (unsigned i = 0u; i < 2u; ++i) {
+            PsxSpuVoice *voice = &spu.voices[i];
+            voice->volume_left = 0x7fffu;
+            voice->volume_right = 0x7fffu;
+            voice->pitch = 0x1000u;
+            voice->envelope_level = PSX_SPU_ENVELOPE_MAX;
+            voice->envelope_phase = PSX_SPU_ADSR_SUSTAIN;
+            voice->block_valid = true;
+            voice->decoded_samples[0] = 28672;
+            voice->sample_index = 0u;
+        }
+        assert(psx_spu_mix_sample(&spu, &mixed_left, &mixed_right));
+        assert(mixed_left == 32767);
+        assert(mixed_right == 32767);
+        assert(spu.voices[0].sample_index == 1u);
+        assert(spu.voices[1].sample_index == 1u);
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                               PSX_SPU_KEY_OFF_LOW_OFFSET, 0x0003u));
+    }
+
     /* Fixed-size interleaved stereo PCM blocks: active voice samples are
      * mixed, and the remainder is explicitly zero-filled after voice end. */
     {
