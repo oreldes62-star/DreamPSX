@@ -85,7 +85,7 @@ int main(void)
 
     /* BIOS is readable; unmapped hardware and misaligned words are rejected. */
     assert(psx_bus_read32(&machine.bus, PSX_BIOS_BASE, &word));
-    assert(!psx_bus_read32(&machine.bus, 0x1f801080u, &word));
+    assert(!psx_bus_read32(&machine.bus, 0x1f801078u, &word));
     assert(!psx_bus_read32(&machine.bus, 0x00000101u, &word));
 
     /* LWC2/SWC2 unmapped accesses become COP0 data-bus exceptions. */
