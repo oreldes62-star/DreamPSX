@@ -17,4 +17,9 @@ This is still a scheduler foundation, not a persistent asynchronous queue or a c
 
 ## Validation
 
-Host build and CTest are delegated to the repository's GitHub Actions workflow. The result will be recorded here after the run completes.
+GitHub Actions run 46033810262 completed successfully:
+- CMake configure: passed.
+- Host build: passed.
+- CTest: 33/33 tests passed.
+
+The first run exposed an outdated expectation: a request from a DPCR-disabled channel is now correctly present in the raw pending mask. The regression assertions were updated to reflect the separation between request presence and arbitration eligibility; the final run passed.
