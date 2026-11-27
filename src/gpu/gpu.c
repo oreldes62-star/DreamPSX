@@ -877,8 +877,28 @@ bool psx_gpu_read_data(PsxGpu *gpu, uint32_t *value)
 
 bool psx_gpu_read_status(const PsxGpu *gpu, uint32_t *value)
 {
+    uint32_t status;
+    bool can_receive_command;
+    bool can_receive_dma_block;
+    bool can_send_vram;
+
     if (!gpu || !gpu->initialized || !value) return false;
-    *value = gpu->status;
+
+    status = gpu->status & ~((1u << 26u) | (1u << 27u) |
+                             (1u << 28u));
+    can_receive_command =
+        gpu->parameter_expected == 0u &&
+        gpu->transfer_mode == PSX_GPU_TRANSFER_IDLE;
+    can_receive_dma_block = can_receive_command;
+    can_send_vram =
+        gpu->transfer_mode == PSX_GPU_TRANSFER_VRAM_TO_CPU &&
+        gpu->transfer_pixel_index < gpu->transfer_pixel_count;
+
+    if (can_receive_command) status |= 1u << 26u;
+    if (can_send_vram) status |= 1u << 27u;
+    if (can_receive_dma_block) status |= 1u << 28u;
+
+    *value = status;
     return true;
 }
 
