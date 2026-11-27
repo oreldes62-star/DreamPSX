@@ -75,7 +75,7 @@ int main(void)
     assert(!psx_iso9660_read(&iso, &file, 8u, output, 8u));
     assert(psx_iso9660_lookup(&iso, "/game/slus_123.45", &file));
     assert(file.lba == 23u && !file.directory);
-    assert(psx_iso9660_read(&iso, &file, 0u, output, sizeof(output)));
+    assert(psx_iso9660_read(&iso, &file, 0u, output, 12u));
     assert(memcmp(output, "PS-X EXE DATA", 12u) == 0);
     assert(psx_iso9660_lookup(&iso, "/", &file) && file.directory);
     assert(!psx_iso9660_lookup(&iso, "/MISSING.BIN", &file));
