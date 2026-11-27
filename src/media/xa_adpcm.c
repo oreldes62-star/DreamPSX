@@ -115,9 +115,8 @@ bool psx_xa_adpcm_decode_sound_group(
         for (unsigned sample = 0u; sample < PSX_XA_ADPCM_SAMPLES_PER_UNIT;
              ++sample) {
             size_t index = counts[channel]++;
-            left[index] = decoded[sample];
-            if (!stereo) right[index] = decoded[sample];
-            else if (channel == 1u) right[index] = decoded[sample];
+            if (!stereo || channel == 0u) left[index] = decoded[sample];
+            if (!stereo || channel == 1u) right[index] = decoded[sample];
         }
     }
 
