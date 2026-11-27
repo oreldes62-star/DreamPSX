@@ -29,7 +29,7 @@ static void test_blend_modes(void)
     PsxGpu gpu;
     static uint16_t vram[PSX_GPU_VRAM_WIDTH * PSX_GPU_VRAM_HEIGHT];
     static const uint16_t expected[4] = {
-        0x03efu, /* average */
+        0x01efu, /* average */
         0x03ffu, /* add, saturated */
         0x03e0u, /* subtract */
         0x03e7u  /* add quarter */
