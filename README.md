@@ -100,3 +100,6 @@ GPU framebuffer output now includes a tested RGB555-to-RGB565 region conversion 
 
 
 GP1 display-control register decoding (display origin, horizontal/vertical ranges, mode and enable state) is now exposed through the GPU display-state API. See [GPU display milestone 3.67](docs/GPU-DISPLAY-MILESTONE-3.67.md).
+
+
+The display backend can now extract an RGB565 frame from the GP1-configured VRAM origin with wraparound and display-disable handling. See [GPU scanout milestone 3.68](docs/GPU-SCANOUT-MILESTONE-3.68.md).
