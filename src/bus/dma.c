@@ -12,6 +12,8 @@ void psx_dma_reset(PsxDmaController *dma)
     dma->dicr = 0u;
     dma->queued_mask = 0u;
     dma->active_mask = 0u;
+    dma->data_words_transferred = 0u;
+    dma->linked_list_headers_read = 0u;
 }
 
 bool psx_dma_init(PsxDmaController *dma)
@@ -139,6 +141,18 @@ uint32_t psx_dma_active_mask(const PsxDmaController *dma)
 {
     if (!dma || !dma->initialized) return 0u;
     return dma->active_mask & ((1u << PSX_DMA_CHANNEL_COUNT) - 1u);
+}
+
+uint64_t psx_dma_data_words_transferred(const PsxDmaController *dma)
+{
+    if (!dma || !dma->initialized) return 0u;
+    return dma->data_words_transferred;
+}
+
+uint64_t psx_dma_linked_list_headers_read(const PsxDmaController *dma)
+{
+    if (!dma || !dma->initialized) return 0u;
+    return dma->linked_list_headers_read;
 }
 
 bool psx_dma_complete_channel(PsxDmaController *dma, unsigned channel)
@@ -290,6 +304,7 @@ bool psx_dma_execute_gpu_manual(PsxDmaController *dma,
                 !psx_memory_write32(memory, address, data))
                 return false;
         }
+        ++dma->data_words_transferred;
         address = (uint32_t)(address + step) & 0x00fffffcu;
     }
 
@@ -337,6 +352,7 @@ bool psx_dma_execute_gpu_linked_list(PsxDmaController *dma,
         if (++packet_count > 65536u) return false;
         channel->madr = address;
         if (!psx_memory_read32(memory, address, &header)) return false;
+        ++dma->linked_list_headers_read;
 
         count = header >> 24u;
         next = header & 0x00ffffffu;
@@ -350,6 +366,7 @@ bool psx_dma_execute_gpu_linked_list(PsxDmaController *dma,
                 return false;
             payload_address = (payload_address + 4u) & 0x00fffffcu;
             ++total_words;
+            ++dma->data_words_transferred;
         }
 
         if (next == 0x00ffffffu) {
@@ -419,6 +436,7 @@ bool psx_dma_execute_gpu_request(PsxDmaController *dma,
                 !psx_memory_write32(memory, address, data))
                 return false;
         }
+        ++dma->data_words_transferred;
         address = (uint32_t)(address + step) & 0x00fffffcu;
     }
 
