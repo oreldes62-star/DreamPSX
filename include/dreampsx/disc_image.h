@@ -6,6 +6,7 @@
 #include <stdint.h>
 
 #define PSX_DISC_SECTOR_DATA_SIZE 2048u
+#define PSX_DISC_SECTOR_FORM2_DATA_SIZE 2324u
 #define PSX_DISC_CUE_LINE_MAX 256u
 
 typedef enum {
@@ -35,5 +36,9 @@ void psx_disc_unmount(PsxDiscImage *disc);
 /* Reads one 2048-byte user-data sector relative to INDEX 01. */
 bool psx_disc_read_sector(const PsxDiscImage *disc, size_t lba,
                           uint8_t destination[PSX_DISC_SECTOR_DATA_SIZE]);
+/* Reads the 2324-byte payload of a validated MODE2/XA Form 2 sector. */
+bool psx_disc_read_sector_form2(
+    const PsxDiscImage *disc, size_t lba,
+    uint8_t destination[PSX_DISC_SECTOR_FORM2_DATA_SIZE]);
 
 #endif
