@@ -13,6 +13,7 @@
 #include "dreampsx/timers.h"
 #include "dreampsx/dma.h"
 #include "dreampsx/cdrom.h"
+#include "dreampsx/boot_config.h"
 
 typedef struct {
     PsxIrqController irq;
@@ -32,6 +33,9 @@ typedef struct {
     uint32_t cop0_badvaddr;
 } PsxMachine;
 
+/* Load SYSTEM.CNF's PS-X EXE and initialize CPU entry, GP and SP. */
+bool psx_machine_boot_from_iso(PsxMachine *machine, const PsxIso9660 *iso,
+                               PsxBootConfig *config);
 bool psx_machine_init(PsxMachine *machine,
                       uint8_t *ram, size_t ram_size,
                       const uint8_t *bios, size_t bios_size,
