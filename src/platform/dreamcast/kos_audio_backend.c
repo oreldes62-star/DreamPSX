@@ -16,11 +16,13 @@ bool psx_kos_audio_backend_start(PsxKosAudioBackend *backend,
                                  PsxDreamcastAudioStream *stream)
 {
     snd_stream_hnd_t handle;
-    if (!backend || !stream || !stream->initialized) return false;
+    if (!backend) return false;
 
+    /* Leave a safely stoppable state even when validation fails. */
     backend->stream_handle = SND_STREAM_INVALID;
     backend->stream_system_initialized = false;
     backend->initialized = false;
+    if (!stream || !stream->initialized) return false;
 
     /* KOS documents that stream_init initializes the sound subsystem too. */
     if (snd_stream_init() != 0) return false;
