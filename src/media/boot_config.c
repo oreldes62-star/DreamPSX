@@ -40,3 +40,31 @@ bool psx_boot_config_resolve(const PsxIso9660 *iso, PsxBootConfig *config, PsxIs
     !psx_boot_config_parse(data,cnf.size,config)) return false;
  return psx_iso9660_lookup(iso,config->boot_path,exe) && !exe->directory;
 }
+
+#include <stdlib.h>
+#include "dreampsx/memory.h"
+bool psx_boot_load_from_iso(PsxMemory *memory, const PsxIso9660 *iso,
+                            PsxBootConfig *config, PsxExeInfo *exe_info)
+{
+    PsxBootConfig parsed_config;
+    PsxIso9660File executable;
+    PsxExeInfo parsed_info;
+    uint8_t *image;
+    bool loaded;
+    if (!memory || !iso || !config || !exe_info ||
+        !psx_boot_config_resolve(iso, &parsed_config, &executable) ||
+        executable.size < PSX_EXE_HEADER_SIZE ||
+        executable.size > PSX_RAM_SIZE + PSX_EXE_HEADER_SIZE)
+        return false;
+    image = (uint8_t *)malloc(executable.size);
+    if (!image)
+        return false;
+    loaded = psx_iso9660_read(iso, &executable, 0u, image, executable.size) &&
+             psx_exe_load(memory, image, executable.size, &parsed_info);
+    free(image);
+    if (!loaded)
+        return false;
+    *config = parsed_config;
+    *exe_info = parsed_info;
+    return true;
+}
