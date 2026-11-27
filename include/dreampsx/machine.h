@@ -13,6 +13,7 @@
 #include "dreampsx/timers.h"
 #include "dreampsx/dma.h"
 #include "dreampsx/cdrom.h"
+#include "dreampsx/spu.h"
 #include "dreampsx/boot_config.h"
 
 typedef struct {
@@ -25,6 +26,7 @@ typedef struct {
     PsxTimers timers;
     PsxDmaController dma;
     PsxCdrom cdrom;
+    PsxSpu spu;
     uint8_t timer2_div8_phase;
     uint32_t cdrom_sector_cycle_phase;
     uint32_t cop0_status;
