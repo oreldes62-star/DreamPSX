@@ -98,3 +98,51 @@ bool psx_dma_write32(PsxDmaController *dma, uint32_t address,
     }
     return false;
 }
+
+/* Channel 2 manual mode: RAM-to-GP0 only. This is intentionally a
+ * synchronous first implementation; bus arbitration and cycle timing are
+ * handled by later DMA scheduler work. */
+bool psx_dma_execute_gpu_manual(PsxDmaController *dma,
+                                 PsxMemory *memory, PsxGpu *gpu)
+{
+    PsxDmaChannel *channel;
+    uint32_t control;
+    uint32_t words;
+    uint32_t address;
+    int32_t step;
+
+    if (!dma || !dma->initialized || !memory || !memory->initialized ||
+        !gpu || !gpu->initialized)
+        return false;
+
+    channel = &dma->channel[2];
+    control = channel->chcr;
+
+    /* Manual sync mode requires direction RAM -> device, enable and trigger. */
+    if ((control & (1u << 24u)) == 0u ||
+        (control & (1u << 28u)) == 0u ||
+        (control & 1u) == 0u ||
+        ((control >> 9u) & 3u) != 0u ||
+        (dma->dpcr & (1u << 11u)) == 0u)
+        return true;
+
+    words = channel->bcr & 0xffffu;
+    if (words == 0u) words = 0x10000u;
+    address = channel->madr;
+    step = (control & 2u) != 0u ? -4 : 4;
+
+    for (uint32_t i = 0u; i < words; ++i) {
+        uint32_t data;
+        if (!psx_memory_read32(memory, address, &data))
+            return false;
+        if (!psx_gpu_gp0_write(gpu, data))
+            return false;
+        address = (uint32_t)(address + step) & 0x00fffffcu;
+    }
+
+    channel->madr = address;
+    channel->bcr &= 0xffff0000u;
+    channel->chcr &= ~((1u << 24u) | (1u << 28u));
+    dma->dicr |= 1u << 26u; /* Channel 2 completion flag. */
+    return true;
+}
