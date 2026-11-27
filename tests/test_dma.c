@@ -20,6 +20,20 @@ int main(void)
     assert(psx_dma_channel_enabled(&dma, 2u));
     assert(psx_dma_channel_priority(&dma, 2u) == 3u);
     assert(psx_dma_write32(&dma, PSX_DMA_DPCR_ADDR, 0x07654321u));
+    /* Among enabled pending channels, lower priority number wins. Ties
+     * resolve deterministically to the lower channel index. */
+    assert(psx_dma_write32(&dma, PSX_DMA_DPCR_ADDR, 0x0000aac0u));
+    assert(psx_dma_select_channel(&dma, (1u << 1u) | (1u << 2u) |
+                                  (1u << 3u)) == 2);
+    assert(psx_dma_select_channel(&dma, 1u << 6u) == -1);
+    assert(psx_dma_select_channel(&dma, 0u) == -1);
+    assert(psx_dma_write32(&dma, PSX_DMA_DPCR_ADDR, 0x0000a8c0u));
+    assert(psx_dma_select_channel(&dma, (1u << 1u) | (1u << 2u) |
+                                  (1u << 3u)) == 3);
+    assert(psx_dma_write32(&dma, PSX_DMA_DPCR_ADDR, 0x000098c0u));
+    assert(psx_dma_select_channel(&dma, (1u << 1u) | (1u << 2u) |
+                                  (1u << 3u)) == 3);
+    assert(psx_dma_write32(&dma, PSX_DMA_DPCR_ADDR, 0x07654321u));
     assert(psx_dma_read32(&dma, PSX_DMA_DICR_ADDR, &value));
     assert(value == 0u);
 
