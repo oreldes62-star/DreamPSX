@@ -33,6 +33,7 @@ bool psx_spu_voice_volume_tick(PsxSpu *spu, unsigned voice_index)
     uint16_t *registers[2];
     int16_t *levels[2];
     uint32_t *counters[2];
+    bool *active[2];
 
     if (!spu || !spu->initialized || voice_index >= PSX_SPU_VOICE_COUNT)
         return false;
@@ -43,62 +44,74 @@ bool psx_spu_voice_volume_tick(PsxSpu *spu, unsigned voice_index)
     levels[1] = &voice->volume_right_level;
     counters[0] = &voice->volume_left_counter;
     counters[1] = &voice->volume_right_counter;
+    active[0] = &voice->volume_left_sweep_active;
+    active[1] = &voice->volume_right_sweep_active;
 
     for (unsigned channel = 0u; channel < 2u; ++channel) {
         const uint16_t control = *registers[channel];
-        unsigned shift;
-        unsigned step_code;
-        uint32_t period;
-        int32_t magnitude;
-        int32_t step;
-        int32_t signed_level;
+        const unsigned shift = (control >> 2u) & 0x1fu;
+        const unsigned step_code = control & 3u;
         const bool exponential = (control & 0x4000u) != 0u;
         const bool decreasing = (control & 0x2000u) != 0u;
         const bool negative_phase = (control & 0x1000u) != 0u;
+        const bool subtract = (exponential && decreasing) ?
+                              true : (decreasing ^ negative_phase);
+        uint32_t increment;
+        int32_t step;
+        int32_t level;
 
-        if ((control & 0x8000u) == 0u)
+        if ((control & 0x8000u) == 0u || !*active[channel])
             continue;
 
-        shift = (control >> 2u) & 0x1fu;
-        step_code = control & 3u;
-        period = shift > 11u ? (1u << (shift - 11u)) : 1u;
-        signed_level = *levels[channel];
-        magnitude = signed_level < 0 ? -signed_level : signed_level;
-
-        /* Exponential attack slows near full scale; exponential decay
-         * reduces the step in proportion to the current magnitude. */
-        if (exponential && !decreasing && magnitude > 0x6000)
-            period *= 4u;
-        if (++(*counters[channel]) < period)
-            continue;
-        *counters[channel] = 0u;
-
-        step = decreasing ? -(8 - (int32_t)step_code) :
-                             (7 - (int32_t)step_code);
+        /* SPU rate accumulator: one 0x8000 threshold crossing triggers a
+         * step. Shift 31 / step 3 is the documented frozen-rate encoding. */
+        increment = shift > 11u ?
+            (0x8000u >> (shift - 11u)) : 0x8000u;
+        step = 7 - (int32_t)step_code;
+        if (subtract)
+            step = ~step;
         if (shift < 11u)
             step *= (int32_t)(1u << (11u - shift));
-        if (exponential && decreasing)
-            step = (step * magnitude) / 0x8000;
-        if (negative_phase)
-            step = -step;
 
-        signed_level += step;
-        if (negative_phase) {
-            if (decreasing && signed_level > 0)
-                signed_level = 0;
-            if (!decreasing && signed_level < -32768)
-                signed_level = -32768;
-            if (signed_level < -32768)
-                signed_level = -32768;
-        } else {
-            if (decreasing && signed_level < 0)
-                signed_level = 0;
-            if (!decreasing && signed_level > 32767)
-                signed_level = 32767;
-            if (signed_level > 32767)
-                signed_level = 32767;
+        level = *levels[channel];
+        if (exponential) {
+            if (decreasing) {
+                step = (step * level) / 0x8000;
+            } else if (level > 0x6000) {
+                if (shift < 10u)
+                    step >>= 2;
+                else if (shift >= 11u)
+                    increment >>= 2;
+                else {
+                    step >>= 1;
+                    increment >>= 1;
+                }
+            }
         }
-        *levels[channel] = (int16_t)signed_level;
+
+        if (!(shift == 31u && step_code == 3u) && increment == 0u)
+            increment = 1u;
+        *counters[channel] += increment;
+        if ((*counters[channel] & 0x8000u) == 0u)
+            continue;
+        *counters[channel] &= 0x7fffu;
+
+        level += step;
+        if (!decreasing) {
+            if (level < -32768) level = -32768;
+            if (level > 32767) level = 32767;
+        } else if (negative_phase) {
+            if (level < -32768) level = -32768;
+            if (level > 0) level = 0;
+        } else if (level < 0) {
+            level = 0;
+        }
+        *levels[channel] = (int16_t)level;
+
+        if (decreasing)
+            *active[channel] = level != 0;
+        else
+            *active[channel] = level != (negative_phase ? -32768 : 32767);
     }
     return true;
 }
@@ -239,12 +252,14 @@ bool psx_spu_write16(PsxSpu *spu, uint32_t address, uint16_t value)
         case 0x00u:
             voice->volume_left = value;
             voice->volume_left_counter = 0u;
+            voice->volume_left_sweep_active = (value & 0x8000u) != 0u;
             if ((value & 0x8000u) == 0u)
                 voice->volume_left_level = psx_spu_decode_direct_volume(value);
             break;
         case 0x02u:
             voice->volume_right = value;
             voice->volume_right_counter = 0u;
+            voice->volume_right_sweep_active = (value & 0x8000u) != 0u;
             if ((value & 0x8000u) == 0u)
                 voice->volume_right_level = psx_spu_decode_direct_volume(value);
             break;
