@@ -1064,6 +1064,7 @@ bool psx_gpu_video_advance_scanline(PsxGpu *gpu,
     state->interlaced = interlaced;
     state->field_odd = interlaced && gpu->display.field_odd;
     state->vblank = vblank;
+    state->hblank_pulse = true;
     state->field_started = field_started;
     state->frame_started = frame_started;
     state->vblank_started = vblank_started;
