@@ -7,7 +7,7 @@
 - The bus captures cumulative counters immediately before dispatch and records the deltas after the endpoint returns.
 - Failed endpoint attempts are recorded too; their event reports only work completed before the failure and sets `completed=false`.
 - The snapshot API returns false before the first event and for invalid arguments.
-- Integration coverage verifies the initial empty state and the metadata of a completed channel-2 manual transfer.
+- Integration coverage verifies the initial empty state, completed channel-2 manual transfer metadata, and a failed out-of-range RAM-source attempt. The failed event reports zero payload words and leaves the CHCR request queued for retry.
 
 ## Timing boundary
 
