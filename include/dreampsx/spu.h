@@ -36,6 +36,12 @@ typedef struct {
     uint16_t adsr2;
     uint16_t current_volume;
     uint16_t repeat_address;
+    PsxSpuAdpcmState adpcm_state;
+    int16_t decoded_samples[PSX_SPU_ADPCM_BLOCK_SAMPLES];
+    uint32_t playback_address;
+    uint8_t sample_index;
+    uint8_t block_flags;
+    bool block_valid;
 } PsxSpuVoice;
 
 typedef struct {
@@ -59,6 +65,8 @@ void psx_spu_reset(PsxSpu *spu);
 bool psx_spu_read16(PsxSpu *spu, uint32_t address, uint16_t *value);
 bool psx_spu_write16(PsxSpu *spu, uint32_t address, uint16_t value);
 uint32_t psx_spu_active_voice_mask(const PsxSpu *spu);
+bool psx_spu_voice_next_sample(PsxSpu *spu, unsigned voice_index,
+                               int16_t *sample);
 bool psx_spu_read8(PsxSpu *spu, uint32_t address, uint8_t *value);
 bool psx_spu_write8(PsxSpu *spu, uint32_t address, uint8_t value);
 
