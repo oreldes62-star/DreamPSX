@@ -17,4 +17,4 @@
 
 ## Validation and limitations
 
-This is a software model based on the published PSX-SPX register layout and sweep-rate description. The phase/direction arithmetic is implemented deterministically, but has not been validated against the new physical-console VOLXL traces in pcsx-redux. Fine-grained hardware timing, sweep restart behavior, and negative-phase edge cases remain candidates for hardware comparison. Host and KallistiOS CI results will be recorded after this commit; no Flycast or physical Dreamcast execution is claimed.
+This is a software model based on the published PSX-SPX register layout and sweep-rate description. The phase/direction arithmetic is implemented deterministically, but has not been validated against the new physical-console VOLXL traces in pcsx-redux. Fine-grained hardware timing, sweep restart behavior, and negative-phase edge cases remain candidates for hardware comparison. Host CMake build and all 44 CTest cases passed on the milestone 4.55 head. The separate KallistiOS SH-4 cross-build is still running; no Dreamcast ELF result is claimed for this milestone yet. No Flycast or physical Dreamcast execution is claimed.
