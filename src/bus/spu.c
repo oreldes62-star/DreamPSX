@@ -91,7 +91,9 @@ bool psx_spu_read8(PsxSpu *spu, uint32_t address, uint8_t *value)
 {
     uint16_t word;
     uint32_t aligned = address & ~1u;
-    if (!value || !psx_spu_read16(spu, aligned, &word)) return false;
+    if (!value || aligned == PSX_SPU_BASE_ADDR +
+        PSX_SPU_TRANSFER_DATA_OFFSET ||
+        !psx_spu_read16(spu, aligned, &word)) return false;
     *value = (uint8_t)(word >> ((address & 1u) * 8u));
     return true;
 }
@@ -101,7 +103,8 @@ bool psx_spu_write8(PsxSpu *spu, uint32_t address, uint8_t value)
     uint16_t word;
     const uint32_t aligned = address & ~1u;
     const unsigned shift = (address & 1u) * 8u;
-    if (!psx_spu_read16(spu, aligned, &word)) return false;
+    if (aligned == PSX_SPU_BASE_ADDR + PSX_SPU_TRANSFER_DATA_OFFSET ||
+        !psx_spu_read16(spu, aligned, &word)) return false;
     word = (uint16_t)((word & (uint16_t)~(0xffu << shift)) |
                       ((uint16_t)value << shift));
     return psx_spu_write16(spu, aligned, word);
