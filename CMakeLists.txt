@@ -8,6 +8,7 @@ set(CMAKE_C_EXTENSIONS OFF)
 
 add_library(dreampsx_core STATIC
     src/bus/bus.c
+    src/bus/cdrom.c
     src/bus/dma.c
     src/bus/irq.c
     src/bus/irq_mmio.c
@@ -38,6 +39,7 @@ enable_testing()
 
 set(DREAMPSX_TESTS
     test_dma
+    test_cdrom
     test_bus
     test_cop0_exception
     test_cop0_irq
