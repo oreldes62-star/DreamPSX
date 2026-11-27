@@ -382,6 +382,53 @@ bool psx_spu_voice_render_sample(PsxSpu *spu, unsigned voice_index,
     return true;
 }
 
+
+static int16_t clamp_audio_sample(int64_t sample)
+{
+    if (sample > 32767) return 32767;
+    if (sample < -32768) return -32768;
+    return (int16_t)sample;
+}
+
+bool psx_spu_mix_sample(PsxSpu *spu, int16_t *left, int16_t *right)
+{
+    int64_t mix_left = 0;
+    int64_t mix_right = 0;
+    bool produced = false;
+
+    if (!spu || !spu->initialized || !left || !right)
+        return false;
+
+    for (unsigned i = 0u; i < PSX_SPU_VOICE_COUNT; ++i) {
+        PsxSpuVoice *voice = &spu->voices[i];
+        int16_t sample;
+        uint16_t envelope;
+        int32_t volume_left;
+        int32_t volume_right;
+        int64_t enveloped;
+
+        if ((spu->active_voices & (1u << i)) == 0u)
+            continue;
+        if (!psx_spu_voice_envelope_tick(spu, i, &envelope))
+            continue;
+        if (!psx_spu_voice_render_sample(spu, i, &sample))
+            continue;
+
+        /* Fixed-volume mode: signed 15-bit register value, scaled by ENVX.
+         * Sweep-mode registers are intentionally not implemented yet. */
+        volume_left = (int16_t)voice->volume_left;
+        volume_right = (int16_t)voice->volume_right;
+        enveloped = ((int64_t)sample * envelope) / PSX_SPU_ENVELOPE_MAX;
+        mix_left += (enveloped * volume_left) / 32767;
+        mix_right += (enveloped * volume_right) / 32767;
+        produced = true;
+    }
+
+    *left = clamp_audio_sample(mix_left);
+    *right = clamp_audio_sample(mix_right);
+    return produced;
+}
+
 uint32_t psx_spu_active_voice_mask(const PsxSpu *spu)
 {
     return (spu && spu->initialized) ? spu->active_voices : 0u;
