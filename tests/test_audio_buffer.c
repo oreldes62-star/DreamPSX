@@ -13,6 +13,11 @@ int main(void)
     assert(psx_audio_buffer_init(&buffer));
     assert(buffer.frame_count == 0u);
     assert(psx_audio_buffer_write(&buffer, NULL, 0u) == 0u);
+    assert(psx_audio_buffer_write(&buffer, NULL, 1u) == 0u);
+    assert(psx_audio_buffer_read(&buffer, NULL, 1u) == 0u);
+    assert(psx_audio_buffer_read(NULL, output, 1u) == 0u);
+    assert(psx_audio_buffer_write(NULL, input, 1u) == 0u);
+    assert(psx_audio_buffer_read(&buffer, output, 0u) == 0u);
 
     input[0] = 100;
     input[1] = -100;
@@ -34,6 +39,11 @@ int main(void)
            PSX_AUDIO_BUFFER_CAPACITY_FRAMES);
     assert(psx_audio_buffer_write(&buffer, input, 4u) == 0u);
     assert(buffer.dropped_frames == 4u);
+    /* A rejected write must not overwrite already queued samples. */
+    assert(buffer.samples[0] == input[0]);
+    assert(buffer.samples[1] == input[1]);
+    assert(buffer.samples[(PSX_AUDIO_BUFFER_CAPACITY_FRAMES - 1u) * 2u] ==
+           input[(PSX_AUDIO_BUFFER_CAPACITY_FRAMES - 1u) * 2u]);
 
     /* Consume most frames, then write across the physical end of the ring. */
     assert(psx_audio_buffer_read(&buffer, output, 4090u) == 4090u);
