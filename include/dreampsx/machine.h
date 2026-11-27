@@ -10,6 +10,7 @@
 #include "dreampsx/gte.h"
 #include "dreampsx/gpu.h"
 #include "dreampsx/memory.h"
+#include "dreampsx/timers.h"
 
 typedef struct {
     PsxIrqController irq;
@@ -18,6 +19,7 @@ typedef struct {
     PsxCpu cpu;
     PsxGte gte;
     PsxGpu gpu;
+    PsxTimers timers;
     uint32_t cop0_status;
     uint32_t cop0_cause;
     uint32_t cop0_epc;
