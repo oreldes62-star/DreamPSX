@@ -116,3 +116,6 @@ A first scanline scheduler now distinguishes NTSC and PAL field lengths, advance
 
 
 The machine layer now routes GPU VBlank level transitions to the PS1 interrupt controller's IRQ0 source and refreshes COP0 Cause.IP2. The scanline clock is still explicitly advanced by the frontend; CPU-cycle scheduling and IRQ delivery during normal instruction stepping remain future work. See [VBlank IRQ milestone 3.74](docs/GPU-VBLANK-IRQ-MILESTONE-3.74.md).
+
+
+The three root-counter register banks now expose counter, mode and target registers, read-to-clear target/overflow flags, and an explicit deterministic tick API. Clock-source selection, HBlank/dot-clock wiring and timer IRQ generation remain future work. See [timer register milestone 3.75](docs/TIMERS-REGISTER-MILESTONE-3.75.md).
