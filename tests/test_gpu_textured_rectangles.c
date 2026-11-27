@@ -62,6 +62,24 @@ int main(void)
     assert(psx_gpu_gp0_write(&gpu, 1u | (1u << 16u)));
     assert(pixel(&gpu, 210u, 210u) == 0x3c0fu);
 
+
+    /* Exercise the remaining E1 semi-transparency blend modes. */
+    {
+        static const uint16_t expected[3] = {0x7c1fu, 0x7c00u, 0x7c07u};
+        for (unsigned mode = 1u; mode < 4u; ++mode) {
+            const unsigned dst = 220u + mode;
+            assert(psx_gpu_gp0_write(&gpu, 0xe1000000u |
+                                     (mode << 5u) | (2u << 7u)));
+            vram[40u * PSX_GPU_VRAM_WIDTH + 50u] = 0x801fu;
+            vram[dst * PSX_GPU_VRAM_WIDTH + dst] = 0x7c00u;
+            assert(psx_gpu_gp0_write(&gpu, 0x670000ffu));
+            assert(psx_gpu_gp0_write(&gpu, dst | (dst << 16u)));
+            assert(psx_gpu_gp0_write(&gpu, 50u | (40u << 8u)));
+            assert(psx_gpu_gp0_write(&gpu, 1u | (1u << 16u)));
+            assert(pixel(&gpu, dst, dst) == expected[mode - 1u]);
+        }
+    }
+
     /* A texel with STP clear is copied, not blended, by a semi-trans command. */
     assert(psx_gpu_gp0_write(&gpu, 0xe1000000u | (2u << 7u)));
     vram[41u * PSX_GPU_VRAM_WIDTH + 50u] = 0x03e0u;
