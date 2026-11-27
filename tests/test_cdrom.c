@@ -119,6 +119,47 @@ int main(void)
     assert(!psx_cdrom_irq_output(&cdrom));
     assert(psx_cdrom_read8(&cdrom, PSX_CDROM_BASE_ADDR, &value));
     assert((value & 0x18u) == 0x18u);
+
+    /* Setmode selects the drive transfer speed; reset defaults to normal. */
+    assert(psx_cdrom_sector_period_cycles(&cdrom) ==
+           PSX_CDROM_NORMAL_SPEED_SECTOR_CYCLES);
+    select_bank(&cdrom, 0u);
+    assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 2u, 0x80u));
+    assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 1u, 0x0eu));
+    assert(cdrom.mode == 0x80u);
+    assert(psx_cdrom_sector_period_cycles(&cdrom) ==
+           PSX_CDROM_DOUBLE_SPEED_SECTOR_CYCLES);
+
+    /* Pause acknowledges immediately but completes asynchronously. */
+    assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 3u, 0x1fu));
+    assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 1u, 0x09u));
+    assert(cdrom.pending_command == 0x09u);
+    assert(cdrom.command_cycles_remaining ==
+           PSX_CDROM_PAUSE_DOUBLE_CYCLES);
+    psx_cdrom_advance_cycles(&cdrom, PSX_CDROM_PAUSE_DOUBLE_CYCLES - 1u);
+    assert(cdrom.pending_command == 0x09u);
+    assert((cdrom.interrupt_flags & (1u << 1u)) == 0u);
+    psx_cdrom_advance_cycles(&cdrom, 1u);
+    assert(cdrom.pending_command == 0u);
+    assert((cdrom.interrupt_flags & (1u << 1u)) != 0u);
+
+    /* Stop has its own measured completion interval and clears buffered data. */
+    assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 3u, 0x1fu));
+    assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 1u, 0x08u));
+    assert(cdrom.pending_command == 0x08u);
+    assert(cdrom.command_cycles_remaining ==
+           PSX_CDROM_STOP_DOUBLE_CYCLES);
+    psx_cdrom_advance_cycles(&cdrom, PSX_CDROM_STOP_DOUBLE_CYCLES);
+    assert(cdrom.pending_command == 0u);
+    assert((cdrom.interrupt_flags & (1u << 1u)) != 0u);
+    assert((cdrom.drive_status & 0x02u) == 0u);
+
+    /* Returning to normal speed doubles the sector interval. */
+    assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 3u, 0x1fu));
+    assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 2u, 0x00u));
+    assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 1u, 0x0eu));
+    assert(psx_cdrom_sector_period_cycles(&cdrom) ==
+           PSX_CDROM_NORMAL_SPEED_SECTOR_CYCLES);
     assert(!psx_cdrom_read8(&cdrom, PSX_CDROM_BASE_ADDR + 4u, &value));
     assert(!psx_cdrom_read8(NULL, PSX_CDROM_BASE_ADDR, &value));
 
