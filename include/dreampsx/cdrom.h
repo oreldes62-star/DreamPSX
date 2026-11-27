@@ -5,11 +5,13 @@
 #include <stddef.h>
 #include <stdint.h>
 #include "dreampsx/disc_image.h"
+#include "dreampsx/xa_adpcm.h"
 
 #define PSX_CDROM_BASE_ADDR 0x1f801800u
 #define PSX_CDROM_FIFO_CAPACITY 16u
 #define PSX_CDROM_SECTOR_SIZE 2048u
 #define PSX_CDROM_MAX_SECTOR_SIZE PSX_DISC_SECTOR_FORM2_DATA_SIZE
+#define PSX_CDROM_XA_PCM_QUEUE_FRAMES 8192u
 /* PS1 system cycles per sector at double speed (33,868,800 / 150). */
 #define PSX_CDROM_DOUBLE_SPEED_SECTOR_CYCLES 225792u
 #define PSX_CDROM_NORMAL_SPEED_SECTOR_CYCLES 451584u
@@ -43,6 +45,13 @@ typedef struct {
     bool xa_subheader_valid;
     uint8_t xa_filter_file;
     uint8_t xa_filter_channel;
+    PsxXaAdpcmState xa_decoder_state[2];
+    int16_t xa_pcm_left[PSX_CDROM_XA_PCM_QUEUE_FRAMES];
+    int16_t xa_pcm_right[PSX_CDROM_XA_PCM_QUEUE_FRAMES];
+    uint16_t xa_pcm_sample_rate;
+    uint16_t xa_pcm_head;
+    uint16_t xa_pcm_count;
+    uint32_t xa_dropped_sectors;
     const uint8_t *iso_data;
     size_t iso_size;
     uint8_t location[3];
@@ -74,5 +83,10 @@ bool psx_cdrom_get_xa_audio_format(const PsxCdrom *cdrom,
                                    PsxDiscXaAudioFormat *format);
 /* True when the current XA audio sector matches the programmed Setfilter. */
 bool psx_cdrom_xa_sector_matches_filter(const PsxCdrom *cdrom);
+/* Drain decoded XA PCM frames. Both outputs are required; sample_rate_hz
+ * reports the rate shared by the currently queued frames. */
+bool psx_cdrom_read_xa_audio(PsxCdrom *cdrom, int16_t *left, int16_t *right,
+                             size_t max_frames, size_t *frames_read,
+                             uint16_t *sample_rate_hz);
 
 #endif
