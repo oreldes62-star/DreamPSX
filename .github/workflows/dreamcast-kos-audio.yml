@@ -55,6 +55,7 @@ jobs:
       - name: Verify Dreamcast executable
         run: |
           docker run --rm \
+            -v "$GITHUB_WORKSPACE/kos:/workspace" \
             -v "$GITHUB_WORKSPACE:/project" \
             -w /project/platform/dreamcast/audio-smoke \
             pcercuei/dreamcast-toolchain:stable \
