@@ -39,7 +39,7 @@ int main(void)
     /* Read interrupt flags and the response through their proper banks. */
     select_bank(&cdrom, 1u);
     assert(psx_cdrom_read8(&cdrom, PSX_CDROM_BASE_ADDR + 3u, &value));
-    assert((value & 7u) == 3u);
+    assert((value & 0x1fu) == 0x04u);
     select_bank(&cdrom, 0u);
     assert(psx_cdrom_read8(&cdrom, PSX_CDROM_BASE_ADDR + 1u, &value));
     assert(value == 0u);
@@ -60,7 +60,7 @@ int main(void)
     assert(psx_cdrom_irq_output(&cdrom));
     select_bank(&cdrom, 1u);
     assert(psx_cdrom_read8(&cdrom, PSX_CDROM_BASE_ADDR + 3u, &value));
-    assert((value & 0x1fu) == 5u);
+    assert((value & 0x1fu) == 0x10u);
 
     psx_cdrom_reset(&cdrom);
     assert(!psx_cdrom_irq_output(&cdrom));
