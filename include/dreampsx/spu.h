@@ -130,6 +130,8 @@ bool psx_spu_voice_render_sample(PsxSpu *spu, unsigned voice_index,
 bool psx_spu_voice_envelope_tick(PsxSpu *spu, unsigned voice_index,
                                  uint16_t *level);
 bool psx_spu_mix_sample(PsxSpu *spu, int16_t *left, int16_t *right);
+int16_t psx_spu_reverb_saturate(int32_t value);
+int16_t psx_spu_reverb_multiply_q15(int16_t lhs, int16_t rhs);
 uint32_t psx_spu_reverb_resolve_address(const PsxSpu *spu,
                                         uint16_t relative_address);
 void psx_spu_reverb_advance(PsxSpu *spu);
