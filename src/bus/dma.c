@@ -99,9 +99,8 @@ bool psx_dma_write32(PsxDmaController *dma, uint32_t address,
     return false;
 }
 
-/* Channel 2 manual mode: RAM-to-GP0 only. This is intentionally a
- * synchronous first implementation; bus arbitration and cycle timing are
- * handled by later DMA scheduler work. */
+/* Channel 2 manual mode: RAM-to-GP0 and GPUREAD-to-RAM. This is
+ * intentionally synchronous; arbitration and cycle timing come later. */
 bool psx_dma_execute_gpu_manual(PsxDmaController *dma,
                                  PsxMemory *memory, PsxGpu *gpu)
 {
@@ -110,6 +109,8 @@ bool psx_dma_execute_gpu_manual(PsxDmaController *dma,
     uint32_t words;
     uint32_t address;
     int32_t step;
+    const bool ram_to_gpu = (control = dma && dma->initialized ?
+                             dma->channel[2].chcr : 0u, (control & 1u) != 0u);
 
     if (!dma || !dma->initialized || !memory || !memory->initialized ||
         !gpu || !gpu->initialized)
@@ -118,14 +119,20 @@ bool psx_dma_execute_gpu_manual(PsxDmaController *dma,
     channel = &dma->channel[2];
     control = channel->chcr;
 
-    /* Manual sync mode requires direction RAM -> device, enable and trigger. */
+    /* Manual sync mode requires start, trigger and channel-2 DPCR enable. */
     if ((control & (1u << 24u)) == 0u ||
         (control & (1u << 28u)) == 0u ||
-        (control & 1u) == 0u ||
         ((control >> 9u) & 3u) != 0u ||
-        gpu->dma_direction != 2u ||
         (dma->dpcr & (1u << 11u)) == 0u)
         return true;
+
+    if (ram_to_gpu) {
+        if (gpu->dma_direction != 2u) return true;
+    } else {
+        if (gpu->dma_direction != 3u ||
+            gpu->transfer_mode != PSX_GPU_TRANSFER_VRAM_TO_CPU)
+            return false;
+    }
 
     words = channel->bcr & 0xffffu;
     if (words == 0u) words = 0x10000u;
@@ -134,10 +141,20 @@ bool psx_dma_execute_gpu_manual(PsxDmaController *dma,
 
     for (uint32_t i = 0u; i < words; ++i) {
         uint32_t data;
-        if (!psx_memory_read32(memory, address, &data))
-            return false;
-        if (!psx_gpu_gp0_write(gpu, data))
-            return false;
+        if (ram_to_gpu) {
+            if (!psx_memory_read32(memory, address, &data))
+                return false;
+            if (!psx_gpu_gp0_write(gpu, data))
+                return false;
+        } else {
+            /* GPUREAD returns zero when idle, so stop rather than fabricating
+             * words after the image-transfer payload has been exhausted. */
+            if (gpu->transfer_mode != PSX_GPU_TRANSFER_VRAM_TO_CPU)
+                return false;
+            if (!psx_gpu_read_data(gpu, &data) ||
+                !psx_memory_write32(memory, address, data))
+                return false;
+        }
         address = (uint32_t)(address + step) & 0x00fffffcu;
     }
 
