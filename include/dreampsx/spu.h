@@ -18,7 +18,14 @@
 #define PSX_SPU_VOICE_COUNT 24u
 #define PSX_SPU_VOICE_REGISTER_BYTES 0x10u
 #define PSX_SPU_VOICE_CURRENT_VOLUME_OFFSET 0x0cu
+#define PSX_SPU_ADPCM_BLOCK_BYTES 16u
+#define PSX_SPU_ADPCM_BLOCK_SAMPLES 28u
 #define PSX_SPU_STATUS_OFFSET 0x1aeu
+
+typedef struct {
+    int32_t history_1;
+    int32_t history_2;
+} PsxSpuAdpcmState;
 
 typedef struct {
     uint16_t volume_left;
@@ -40,6 +47,12 @@ typedef struct {
     uint16_t control;
     bool initialized;
 } PsxSpu;
+
+void psx_spu_adpcm_reset(PsxSpuAdpcmState *state);
+bool psx_spu_adpcm_decode_block(PsxSpuAdpcmState *state,
+                                const uint8_t block[PSX_SPU_ADPCM_BLOCK_BYTES],
+                                int16_t output[PSX_SPU_ADPCM_BLOCK_SAMPLES],
+                                uint8_t *flags);
 
 bool psx_spu_init(PsxSpu *spu);
 void psx_spu_reset(PsxSpu *spu);
