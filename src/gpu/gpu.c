@@ -357,7 +357,8 @@ static void execute_textured_triangle(PsxGpu *gpu, bool modulate,
                             (size_t)(unsigned)y * PSX_GPU_VRAM_WIDTH +
                             (unsigned)x;
                         output = blend_semitransparent(
-                            gpu->vram[destination], output, gpu->draw_mode);
+                            gpu->vram[destination], output,
+                            (tpage >> 5u) & 3u);
                     }
                     gpu->vram[(unsigned)y * PSX_GPU_VRAM_WIDTH +
                               (unsigned)x] = output;
