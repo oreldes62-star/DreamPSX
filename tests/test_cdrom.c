@@ -174,6 +174,11 @@ int main(void)
         assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 1u, 0x02u));
         assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 1u, 0x06u));
         assert(cdrom.data_count == PSX_DISC_SECTOR_FORM2_DATA_SIZE);
+        assert(cdrom.xa_subheader_valid);
+        assert(cdrom.xa_subheader.file == 1u);
+        assert(cdrom.xa_subheader.channel == 2u);
+        assert(cdrom.xa_subheader.submode == 0x20u);
+        assert(cdrom.xa_subheader.coding == 4u);
         select_bank(&cdrom, 2u);
         assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 2u, 0x80u));
         assert(psx_cdrom_read_data32(&cdrom, &word));
