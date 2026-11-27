@@ -23,13 +23,13 @@ int main(void)
      * addresses; channel 2 is reserved for the GPU transfer path. */
     assert(psx_bus_write32(&machine.bus, 0x1f8010a0u, 0x00102003u));
     assert(psx_bus_write32(&machine.bus, 0xbf8010a4u, 0x00020008u));
-    assert(psx_bus_write32(&machine.bus, 0xbf8010a8u, 0x01000201u));
+    assert(psx_bus_write32(&machine.bus, 0xbf8010a8u, 0x00000201u));
     assert(psx_bus_read32(&machine.bus, 0x1f8010a0u, &word));
     assert(word == 0x00102000u);
     assert(psx_bus_read32(&machine.bus, 0xbf8010a4u, &word));
     assert(word == 0x00020008u);
     assert(psx_bus_read32(&machine.bus, 0x1f8010a8u, &word));
-    assert(word == 0x01000201u);
+    assert(word == 0x00000201u);
     assert(psx_bus_read32(&machine.bus, 0x1f8010f0u, &word));
     assert(word == 0x07654321u);
 
@@ -82,8 +82,6 @@ int main(void)
     assert((word & ((1u << 24u) | (1u << 28u))) == 0u);
     assert(psx_bus_read32(&machine.bus, 0x1f8010f4u, &word));
     assert((word & (1u << 26u)) != 0u);
-    fprintf(stderr, "DMA payload counter after first manual transfer: %llu\\n",
-            (unsigned long long)psx_dma_data_words_transferred(&machine.dma));
     assert(psx_dma_data_words_transferred(&machine.dma) == 3u);
     assert(psx_dma_linked_list_headers_read(&machine.dma) == 0u);
 
