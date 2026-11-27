@@ -743,26 +743,26 @@ int main(void)
         assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
             PSX_SPU_REVERB_CONFIG_MLAPF1_OFFSET, 20u));
         assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
-            PSX_SPU_REVERB_CONFIG_MRAPF1_OFFSET, 24u));
+            PSX_SPU_REVERB_CONFIG_MRAPF1_OFFSET, 44u));
         assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
             PSX_SPU_REVERB_CONFIG_MLAPF2_OFFSET, 30u));
         assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
-            PSX_SPU_REVERB_CONFIG_MRAPF2_OFFSET, 34u));
+            PSX_SPU_REVERB_CONFIG_MRAPF2_OFFSET, 54u));
         assert(psx_spu_reverb_write16(&spu, 16u, 2000));
-        assert(psx_spu_reverb_write16(&spu, 20u, -2000));
+        assert(psx_spu_reverb_write16(&spu, 40u, -2000));
         assert(psx_spu_reverb_write16(&spu, 28u, 1000));
-        assert(psx_spu_reverb_write16(&spu, 32u, -1000));
+        assert(psx_spu_reverb_write16(&spu, 52u, -1000));
         assert(psx_spu_reverb_process_allpass(&spu, 10000, -10000,
                                                &apf_left, &apf_right));
         assert(apf_left == 4500);
         assert(apf_right == -4500);
         assert(psx_spu_reverb_read16(&spu, 20u, &sample));
         assert(sample == 9000);
-        assert(psx_spu_reverb_read16(&spu, 24u, &sample));
+        assert(psx_spu_reverb_read16(&spu, 44u, &sample));
         assert(sample == -9000);
         assert(psx_spu_reverb_read16(&spu, 30u, &sample));
         assert(sample == 6500);
-        assert(psx_spu_reverb_read16(&spu, 34u, &sample));
+        assert(psx_spu_reverb_read16(&spu, 54u, &sample));
         assert(sample == -6500);
         assert(spu.reverb_buffer_address == 0x100u);
         assert(!psx_spu_reverb_process_allpass(NULL, 0, 0,
