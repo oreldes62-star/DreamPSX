@@ -23,7 +23,8 @@ bool psx_boot_config_parse(const char *text, size_t size, PsxBootConfig *config)
        upper_ascii(text[start+4])!='M' || text[start+5]!=':' || text[start+6]!='\\') return false;
     n=value_end-(start+6);
     if(n==1 || n>=sizeof(config->boot_path)) return false;
-    config->boot_path[0]='/'; memcpy(config->boot_path+1,text+start+7,n-1);
+    config->boot_path[0]='/';
+    { size_t i; for(i=1;i<n;++i) { char ch=text[start+6+i]; config->boot_path[i]=(ch=='\\\\')?'/':ch; } }
     config->boot_path[n]='\0'; config->boot2=boot2; return true;
    }
   }
