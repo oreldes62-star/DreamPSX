@@ -21,6 +21,7 @@ typedef struct {
     PsxDmaChannel channel[PSX_DMA_CHANNEL_COUNT];
     uint32_t dpcr;
     uint32_t dicr;
+    uint32_t queued_mask;
     bool initialized;
 } PsxDmaController;
 
@@ -37,6 +38,10 @@ unsigned psx_dma_channel_priority(const PsxDmaController *dma, unsigned channel)
 int psx_dma_select_channel(const PsxDmaController *dma, uint32_t pending_mask);
 /* Build a request mask from CHCR start conditions, even if DPCR disables a channel. */
 uint32_t psx_dma_pending_mask(const PsxDmaController *dma);
+/* Queue a channel request, inspect the queue, and take the best enabled channel. */
+bool psx_dma_enqueue_channel(PsxDmaController *dma, unsigned channel);
+uint32_t psx_dma_queued_mask(const PsxDmaController *dma);
+int psx_dma_take_channel(PsxDmaController *dma);
 /* Retire a successfully completed channel and latch its DICR completion flag. */
 bool psx_dma_complete_channel(PsxDmaController *dma, unsigned channel);
 /* Execute a triggered channel-2 manual RAM-to-GP0 transfer. */
