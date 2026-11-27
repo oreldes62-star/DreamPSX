@@ -14,6 +14,7 @@
 #include "dreampsx/dma.h"
 #include "dreampsx/cdrom.h"
 #include "dreampsx/spu.h"
+#include "dreampsx/audio_buffer.h"
 #include "dreampsx/boot_config.h"
 
 typedef struct {
@@ -27,6 +28,7 @@ typedef struct {
     PsxDmaController dma;
     PsxCdrom cdrom;
     PsxSpu spu;
+    PsxAudioBuffer audio_output;
     uint8_t timer2_div8_phase;
     uint32_t cdrom_sector_cycle_phase;
     uint32_t cop0_status;
@@ -66,6 +68,11 @@ bool psx_machine_cdrom_advance_sector(PsxMachine *machine);
 bool psx_machine_video_advance_scanline(PsxMachine *machine,
                                         PsxGpuVideoState *state);
 bool psx_machine_step(PsxMachine *machine);
+/* Render SPU PCM into the bounded machine output queue; read it via read_audio. */
+bool psx_machine_render_audio(PsxMachine *machine, size_t frame_count,
+                              size_t *frames_queued);
+size_t psx_machine_read_audio(PsxMachine *machine, int16_t *interleaved_stereo,
+                              size_t frame_capacity);
 void psx_machine_raise_exception(PsxMachine *machine, PsxExceptionCode code,
                                  uint32_t badvaddr, bool in_delay_slot,
                                  uint32_t branch_pc);
