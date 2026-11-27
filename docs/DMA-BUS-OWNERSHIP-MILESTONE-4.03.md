@@ -15,4 +15,4 @@ The ownership lock is logical bookkeeping, not a cycle-accurate bus arbiter. The
 
 ## Validation
 
-GitHub Actions host build and CTest result will be recorded after the workflow completes.
+GitHub Actions host build and CTest passed: run `46038005279` (33/33 tests). See https://github.com/oreldes62-star/DreamPSX/actions/runs/46038005279.
