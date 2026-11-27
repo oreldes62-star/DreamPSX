@@ -37,6 +37,8 @@ void psx_cdrom_unmount(PsxCdrom *cdrom);
 /* Deliver the next sector of an active ReadN stream once the previous
  * sector has been fully consumed. The caller supplies CD-sector timing. */
 bool psx_cdrom_advance_sector(PsxCdrom *cdrom);
+/* Read one little-endian word from the data FIFO for CD-ROM DMA. */
+bool psx_cdrom_read_data32(PsxCdrom *cdrom, uint32_t *value);
 void psx_cdrom_reset(PsxCdrom *cdrom);
 bool psx_cdrom_read8(PsxCdrom *cdrom, uint32_t address, uint8_t *value);
 bool psx_cdrom_write8(PsxCdrom *cdrom, uint32_t address, uint8_t value);
