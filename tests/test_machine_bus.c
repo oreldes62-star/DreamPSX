@@ -159,6 +159,41 @@ int main(void)
         assert(event.payload_words == 512u);
     }
 
+    /* CD-ROM sector cadence is now driven by the PS1 system clock:
+     * 150 sectors/s at double speed, independent of cycle-call chunking. */
+    assert(psx_machine_advance_system_cycles(
+        &machine, PSX_CDROM_DOUBLE_SPEED_SECTOR_CYCLES / 2u));
+    assert(machine.cdrom.data_count == 0u);
+    assert(psx_machine_advance_system_cycles(
+        &machine, PSX_CDROM_DOUBLE_SPEED_SECTOR_CYCLES / 2u - 1u));
+    assert(machine.cdrom.data_count == 0u);
+    assert(machine.cdrom_sector_cycle_phase ==
+           PSX_CDROM_DOUBLE_SPEED_SECTOR_CYCLES - 1u);
+    assert(psx_machine_advance_system_cycles(&machine, 1u));
+    assert(machine.cdrom.data_count == PSX_CDROM_SECTOR_SIZE);
+    assert(machine.cdrom.location[2] == 0x01u);
+    {
+        uint32_t cd_word = 0u;
+        assert(psx_cdrom_read_data32(&machine.cdrom, &cd_word));
+        assert(cd_word == 0x43424140u);
+    }
+
+    /* If the one-sector buffer is not drained by the next deadline, retain
+     * one pending sector event. Once drained, a zero-cycle tick services it. */
+    assert(psx_machine_advance_system_cycles(
+        &machine, PSX_CDROM_DOUBLE_SPEED_SECTOR_CYCLES));
+    assert(machine.cdrom.data_count == PSX_CDROM_SECTOR_SIZE - 4u);
+    assert(machine.cdrom_sector_cycle_phase ==
+           PSX_CDROM_DOUBLE_SPEED_SECTOR_CYCLES);
+    for (cdrom_i = 4u; cdrom_i < PSX_CDROM_SECTOR_SIZE; ++cdrom_i)
+        assert(psx_bus_read8(&machine.bus, PSX_CDROM_BASE_ADDR + 2u,
+                             (uint8_t *)&half));
+    assert(machine.cdrom.data_count == 0u);
+    assert(psx_machine_advance_system_cycles(&machine, 0u));
+    assert(!machine.cdrom.read_active);
+    assert((machine.cdrom.interrupt_flags & (1u << 4u)) != 0u);
+    assert(machine.cdrom_sector_cycle_phase == 0u);
+
     /* GPU registers share the machine bus and update its VRAM state. */
     assert(psx_bus_write32(&machine.bus, 0x1f801810u, 0x0200ff00u));
     assert(psx_bus_write32(&machine.bus, 0x1f801810u, 0u));
