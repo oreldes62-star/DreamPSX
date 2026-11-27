@@ -626,6 +626,7 @@ void psx_gpu_reset(PsxGpu *gpu)
     gpu->display.vertical_end = 0x100u;
     gpu->display.mode = 0u;
     gpu->display.disabled = true;
+    gpu->display.field_odd = false;
     gpu->display.video_scanline = 0u;
     gpu->display.video_frame_counter = 0u;
     gpu->display.video_vblank = false;
