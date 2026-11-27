@@ -29,6 +29,8 @@
 #define PSX_SPU_REVERB_ENABLE_HIGH_OFFSET 0x19au
 #define PSX_SPU_REVERB_WORK_AREA_START_OFFSET 0x1a2u
 #define PSX_SPU_REVERB_MASTER_ENABLE 0x0080u
+#define PSX_SPU_REVERB_BUFFER_END_ADDRESS 0x7fffeu
+#define PSX_SPU_REVERB_ADDRESS_UNIT_BYTES 8u
 #define PSX_SPU_REVERB_CONFIG_DAPF1_OFFSET 0x1c0u
 #define PSX_SPU_REVERB_CONFIG_DAPF2_OFFSET 0x1c2u
 #define PSX_SPU_REVERB_CONFIG_VIIR_OFFSET 0x1c4u
@@ -104,6 +106,7 @@ typedef struct {
     uint8_t registers[PSX_SPU_REGISTER_BYTES];
     uint8_t ram[PSX_SPU_RAM_BYTES];
     uint32_t transfer_address;
+    uint32_t reverb_buffer_address;
     uint32_t active_voices;
     uint16_t control;
     bool initialized;
@@ -127,6 +130,9 @@ bool psx_spu_voice_render_sample(PsxSpu *spu, unsigned voice_index,
 bool psx_spu_voice_envelope_tick(PsxSpu *spu, unsigned voice_index,
                                  uint16_t *level);
 bool psx_spu_mix_sample(PsxSpu *spu, int16_t *left, int16_t *right);
+uint32_t psx_spu_reverb_resolve_address(const PsxSpu *spu,
+                                        uint16_t relative_address);
+void psx_spu_reverb_advance(PsxSpu *spu);
 bool psx_spu_mix_block(PsxSpu *spu, int16_t *interleaved_stereo,
                        size_t frame_capacity, size_t *frames_written);
 bool psx_spu_read8(PsxSpu *spu, uint32_t address, uint8_t *value);
