@@ -1,0 +1,98 @@
+#include "dreampsx/timers.h"
+
+static bool decode_address(uint32_t address, unsigned *timer,
+                           unsigned *reg)
+{
+    if (address < PSX_TIMER_BASE_ADDR) return false;
+    const uint32_t offset = address - PSX_TIMER_BASE_ADDR;
+    const unsigned index = (unsigned)(offset / PSX_TIMER_STRIDE);
+    const unsigned slot = (unsigned)(offset % PSX_TIMER_STRIDE);
+    if (index >= PSX_TIMER_COUNT || slot > 8u || (slot & 3u) != 0u)
+        return false;
+    *timer = index;
+    *reg = slot / 4u;
+    return true;
+}
+
+void psx_timers_reset(PsxTimers *timers)
+{
+    if (!timers) return;
+    for (unsigned i = 0u; i < PSX_TIMER_COUNT; ++i) {
+        timers->timer[i].counter = 0u;
+        timers->timer[i].mode = 0u;
+        timers->timer[i].target = 0u;
+    }
+}
+
+bool psx_timers_read16(PsxTimers *timers, uint32_t address,
+                       uint16_t *value)
+{
+    unsigned index, reg;
+    if (!timers || !value || !decode_address(address, &index, &reg))
+        return false;
+    PsxTimer *timer = &timers->timer[index];
+    if (reg == 0u) {
+        *value = timer->counter;
+    } else if (reg == 1u) {
+        *value = timer->mode;
+        timer->mode &= (uint16_t)~(PSX_TIMER_MODE_REACHED_TARGET |
+                                  PSX_TIMER_MODE_REACHED_OVERFLOW);
+    } else {
+        *value = timer->target;
+    }
+    return true;
+}
+
+bool psx_timers_read32(PsxTimers *timers, uint32_t address,
+                       uint32_t *value)
+{
+    uint16_t half;
+    if (!value || (address & 3u) != 0u ||
+        !psx_timers_read16(timers, address, &half))
+        return false;
+    *value = half;
+    return true;
+}
+
+bool psx_timers_write16(PsxTimers *timers, uint32_t address,
+                        uint16_t value)
+{
+    unsigned index, reg;
+    if (!timers || !decode_address(address, &index, &reg)) return false;
+    PsxTimer *timer = &timers->timer[index];
+    if (reg == 0u) {
+        timer->counter = value;
+    } else if (reg == 1u) {
+        /* Mode writes reset the counter and clear read-only event flags. */
+        timer->counter = 0u;
+        timer->mode = (uint16_t)(value & 0x03ffu);
+    } else {
+        timer->target = value;
+    }
+    return true;
+}
+
+bool psx_timers_write32(PsxTimers *timers, uint32_t address,
+                        uint32_t value)
+{
+    if ((address & 3u) != 0u) return false;
+    return psx_timers_write16(timers, address, (uint16_t)value);
+}
+
+bool psx_timers_advance(PsxTimers *timers, unsigned index,
+                        uint32_t ticks)
+{
+    if (!timers || index >= PSX_TIMER_COUNT) return false;
+    PsxTimer *timer = &timers->timer[index];
+    while (ticks-- != 0u) {
+        timer->counter = (uint16_t)(timer->counter + 1u);
+        if (timer->counter == timer->target) {
+            timer->mode |= PSX_TIMER_MODE_REACHED_TARGET;
+            if ((timer->mode & PSX_TIMER_MODE_RESET_AT_TARGET) != 0u)
+                timer->counter = 0u;
+        }
+        if (timer->counter == 0u)
+            timer->mode |= PSX_TIMER_MODE_REACHED_OVERFLOW;
+    }
+    return true;
+}
