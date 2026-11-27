@@ -38,6 +38,7 @@ void psx_spu_reset(PsxSpu *spu)
     memset(spu->voices, 0, sizeof(spu->voices));
     memset(spu->ram, 0, sizeof(spu->ram));
     spu->transfer_address = 0u;
+    spu->reverb_buffer_address = 0u;
     spu->active_voices = 0u;
     spu->control = 0u;
 }
@@ -130,6 +131,13 @@ bool psx_spu_write16(PsxSpu *spu, uint32_t address, uint16_t value)
                 voice->envelope_phase = PSX_SPU_ADSR_RELEASE;
             }
         }
+        return true;
+    }
+    if (offset == PSX_SPU_REVERB_WORK_AREA_START_OFFSET) {
+        store_le16(&spu->registers[offset], value);
+        spu->reverb_buffer_address =
+            ((uint32_t)value * PSX_SPU_REVERB_ADDRESS_UNIT_BYTES) &
+            PSX_SPU_REVERB_BUFFER_END_ADDRESS;
         return true;
     }
     if (offset == PSX_SPU_CONTROL_OFFSET) {
@@ -447,6 +455,40 @@ bool psx_spu_mix_sample(PsxSpu *spu, int16_t *left, int16_t *right)
     return produced;
 }
 
+
+
+uint32_t psx_spu_reverb_resolve_address(const PsxSpu *spu,
+                                        uint16_t relative_address)
+{
+    uint32_t base;
+    uint32_t address;
+    if (!spu || !spu->initialized)
+        return 0u;
+    base = ((uint32_t)load_le16(&spu->registers[
+        PSX_SPU_REVERB_WORK_AREA_START_OFFSET]) *
+        PSX_SPU_REVERB_ADDRESS_UNIT_BYTES) &
+        PSX_SPU_REVERB_BUFFER_END_ADDRESS;
+    address = (spu->reverb_buffer_address +
+        (uint32_t)relative_address * PSX_SPU_REVERB_ADDRESS_UNIT_BYTES) &
+        PSX_SPU_REVERB_BUFFER_END_ADDRESS;
+    return address < base ? base : address;
+}
+
+void psx_spu_reverb_advance(PsxSpu *spu)
+{
+    uint32_t base;
+    if (!spu || !spu->initialized)
+        return;
+    base = ((uint32_t)load_le16(&spu->registers[
+        PSX_SPU_REVERB_WORK_AREA_START_OFFSET]) *
+        PSX_SPU_REVERB_ADDRESS_UNIT_BYTES) &
+        PSX_SPU_REVERB_BUFFER_END_ADDRESS;
+    spu->reverb_buffer_address =
+        (spu->reverb_buffer_address + 2u) &
+        PSX_SPU_REVERB_BUFFER_END_ADDRESS;
+    if (spu->reverb_buffer_address < base)
+        spu->reverb_buffer_address = base;
+}
 
 bool psx_spu_mix_block(PsxSpu *spu, int16_t *interleaved_stereo,
                        size_t frame_capacity, size_t *frames_written)
