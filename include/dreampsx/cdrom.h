@@ -12,6 +12,7 @@
 #define PSX_CDROM_SECTOR_SIZE 2048u
 #define PSX_CDROM_MAX_SECTOR_SIZE PSX_DISC_SECTOR_FORM2_DATA_SIZE
 #define PSX_CDROM_XA_PCM_QUEUE_FRAMES 8192u
+#define PSX_CDROM_SYSTEM_CLOCK_HZ 33868800u
 #define PSX_CDROM_XA_PCM_STORAGE_FRAMES \
     (PSX_CDROM_XA_PCM_QUEUE_FRAMES + PSX_XA_ADPCM_MAX_SECTOR_SAMPLES)
 /* PS1 system cycles per sector at double speed (33,868,800 / 150). */
@@ -54,6 +55,9 @@ typedef struct {
     uint16_t xa_pcm_head;
     uint16_t xa_pcm_count;
     uint32_t xa_dropped_sectors;
+    uint64_t xa_audio_clock_phase;
+    uint32_t xa_audio_due_frames;
+    uint32_t xa_audio_underrun_frames;
     const uint8_t *iso_data;
     size_t iso_size;
     uint8_t location[3];
@@ -87,6 +91,13 @@ bool psx_cdrom_get_xa_audio_format(const PsxCdrom *cdrom,
 bool psx_cdrom_xa_sector_matches_filter(const PsxCdrom *cdrom);
 /* Drain decoded XA PCM frames. Both outputs are required; sample_rate_hz
  * reports the rate shared by the currently queued frames. */
+/* Advance the deterministic XA playback clock using PS1 system cycles. */
+void psx_cdrom_advance_xa_audio_cycles(PsxCdrom *cdrom, uint32_t cycles);
+/* Drain only frames whose playback time has elapsed. */
+bool psx_cdrom_read_xa_audio_timed(PsxCdrom *cdrom, int16_t *left,
+                                   int16_t *right, size_t max_frames,
+                                   size_t *frames_read,
+                                   uint16_t *sample_rate_hz);
 bool psx_cdrom_read_xa_audio(PsxCdrom *cdrom, int16_t *left, int16_t *right,
                              size_t max_frames, size_t *frames_read,
                              uint16_t *sample_rate_hz);
