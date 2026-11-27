@@ -80,8 +80,8 @@ int main(void)
             "FILE \"wrap.bin\" BINARY\n"
             "TRACK 01 MODE2/2352\n"
             "INDEX 01 00:00:00\n";
-        int16_t samples_l[4064u];
-        int16_t samples_r[4064u];
+        int16_t samples_l[PSX_CDROM_XA_PCM_QUEUE_FRAMES];
+        int16_t samples_r[PSX_CDROM_XA_PCM_QUEUE_FRAMES];
         size_t frames = 0u;
         uint16_t rate = 0u;
 
