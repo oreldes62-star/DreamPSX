@@ -969,3 +969,22 @@ bool psx_gpu_scanout_rgb565(const PsxGpu *gpu, unsigned width,
     }
     return true;
 }
+
+bool psx_gpu_get_display_mode_info(const PsxGpu *gpu,
+                                  PsxGpuDisplayModeInfo *info)
+{
+    if (!gpu || !gpu->initialized || !info)
+        return false;
+
+    const unsigned mode = gpu->display.mode;
+    static const unsigned horizontal_widths[4] = {256u, 320u, 512u, 640u};
+
+    info->width = (mode & (1u << 6u)) != 0u ? 368u :
+                  horizontal_widths[mode & 3u];
+    info->height = (mode & (1u << 2u)) != 0u ? 480u : 240u;
+    info->pal = (mode & (1u << 3u)) != 0u;
+    info->color_24bit = (mode & (1u << 4u)) != 0u;
+    info->interlaced = (mode & (1u << 5u)) != 0u;
+    info->reverse = (mode & (1u << 7u)) != 0u;
+    return true;
+}
