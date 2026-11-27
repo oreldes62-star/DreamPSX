@@ -219,6 +219,24 @@ bool psx_cdrom_advance_sector(PsxCdrom *cdrom)
     return true;
 }
 
+bool psx_cdrom_read_data32(PsxCdrom *cdrom, uint32_t *value)
+{
+    uint32_t word = 0u;
+    if (!cdrom || !cdrom->initialized || !value ||
+        (cdrom->request & 0x80u) == 0u || cdrom->data_count < 4u)
+        return false;
+
+    for (unsigned byte = 0u; byte < 4u; ++byte) {
+        word |= (uint32_t)cdrom->sector_data[cdrom->data_index++] <<
+                (byte * 8u);
+        --cdrom->data_count;
+    }
+    if (cdrom->data_count == 0u)
+        cdrom->drive_status &= (uint8_t)~0x20u;
+    *value = word;
+    return true;
+}
+
 bool psx_cdrom_irq_output(const PsxCdrom *cdrom)
 {
     return cdrom && cdrom->initialized &&
