@@ -10,6 +10,12 @@
 #define PSX_CDROM_SECTOR_SIZE 2048u
 /* PS1 system cycles per sector at double speed (33,868,800 / 150). */
 #define PSX_CDROM_DOUBLE_SPEED_SECTOR_CYCLES 225792u
+#define PSX_CDROM_NORMAL_SPEED_SECTOR_CYCLES 451584u
+/* Measured command-completion averages from PSX-SPX, in PS1 system cycles. */
+#define PSX_CDROM_PAUSE_NORMAL_CYCLES 0x021181cu
+#define PSX_CDROM_PAUSE_DOUBLE_CYCLES 0x010bd93u
+#define PSX_CDROM_STOP_NORMAL_CYCLES 0x0d38acau
+#define PSX_CDROM_STOP_DOUBLE_CYCLES 0x18a6076u
 
 typedef struct {
     uint8_t index;
@@ -27,6 +33,9 @@ typedef struct {
     uint16_t data_index;
     uint16_t data_count;
     bool read_active;
+    uint8_t mode;
+    uint8_t pending_command;
+    uint32_t command_cycles_remaining;
     const uint8_t *iso_data;
     size_t iso_size;
     uint8_t location[3];
@@ -41,6 +50,9 @@ void psx_cdrom_unmount(PsxCdrom *cdrom);
 bool psx_cdrom_advance_sector(PsxCdrom *cdrom);
 /* Read one little-endian word from the data FIFO for CD-ROM DMA. */
 bool psx_cdrom_read_data32(PsxCdrom *cdrom, uint32_t *value);
+/* Advance asynchronous command completion using PS1 system cycles. */
+void psx_cdrom_advance_cycles(PsxCdrom *cdrom, uint32_t cycles);
+uint32_t psx_cdrom_sector_period_cycles(const PsxCdrom *cdrom);
 void psx_cdrom_reset(PsxCdrom *cdrom);
 bool psx_cdrom_read8(PsxCdrom *cdrom, uint32_t address, uint8_t *value);
 bool psx_cdrom_write8(PsxCdrom *cdrom, uint32_t address, uint8_t value);
