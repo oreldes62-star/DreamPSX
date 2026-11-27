@@ -183,6 +183,17 @@ int main(void)
         assert(xa_format.sample_rate_hz == 18900u);
         assert(xa_format.channels == 1u && xa_format.bits_per_sample == 4u);
         assert(cdrom.xa_subheader.coding == 4u);
+        assert(!psx_cdrom_xa_sector_matches_filter(&cdrom));
+        /* Setfilter selects the XA file/channel pair from two parameters. */
+        select_bank(&cdrom, 0u);
+        assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 2u, 1u));
+        assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 2u, 3u));
+        assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 1u, 0x0du));
+        assert(!psx_cdrom_xa_sector_matches_filter(&cdrom));
+        assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 2u, 1u));
+        assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 2u, 2u));
+        assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 1u, 0x0du));
+        assert(psx_cdrom_xa_sector_matches_filter(&cdrom));
         select_bank(&cdrom, 2u);
         assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 2u, 0x80u));
         assert(psx_cdrom_read_data32(&cdrom, &word));
