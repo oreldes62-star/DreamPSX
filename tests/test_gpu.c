@@ -295,6 +295,7 @@ int main(void)
     assert(psx_gpu_gp0_write(&gpu, 900u | (304u << 16u)));
     assert(psx_gpu_gp0_write(&gpu, 1u | (1u << 8u)));
     assert(psx_gpu_vram_read(&gpu, 901u, 300u, &pixel));
+    fprintf(stderr, "Gouraud textured pixel diagnostic: 0x%04x\\n", pixel);
     assert(pixel == 0x1edeu);
 
     /* GP0(36h) combines Gouraud modulation with STP-controlled blending. */
