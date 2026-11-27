@@ -1,4 +1,5 @@
 #include "dreampsx/machine.h"
+#include "dreampsx/cop0_irq.h"
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
