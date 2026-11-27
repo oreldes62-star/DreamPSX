@@ -53,6 +53,23 @@ int main(void)
     assert(psx_bus_read32(&bus, 0x1f801814u, &word));
     assert(word == 0x14802000u);
 
+    /* GP0(1Fh) asserts GPU IRQ1 through the bus; GP1(02h) drops
+     * the source line, while I_STAT remains latched until acknowledged. */
+    assert(psx_bus_write16(&bus, 0x1f801074u, (uint16_t)(1u << 1u)));
+    assert(psx_bus_write32(&bus, 0x1f801810u, 0x1f000000u));
+    assert(psx_gpu_irq_output(&gpu));
+    assert((irq.source_level & (1u << 1u)) != 0u);
+    assert((psx_irq_read_stat(&irq) & (1u << 1u)) != 0u);
+    assert(psx_bus_read32(&bus, 0x1f801814u, &word));
+    assert((word & (1u << 24u)) != 0u);
+    assert(psx_bus_write32(&bus, 0x1f801814u, 0x02000000u));
+    assert(!psx_gpu_irq_output(&gpu));
+    assert((irq.source_level & (1u << 1u)) == 0u);
+    assert((psx_irq_read_stat(&irq) & (1u << 1u)) != 0u);
+    assert(psx_bus_write16(&bus, 0x1f801070u,
+                           (uint16_t)~(1u << 1u)));
+    assert((psx_irq_read_stat(&irq) & (1u << 1u)) == 0u);
+
     /* GP0 A0 upload and C0 readback are exposed through GP0/GPUREAD MMIO. */
     assert(psx_bus_write32(&bus, 0xbf801810u, 0xa0000000u));
     assert(psx_bus_write32(&bus, 0xbf801810u, 8u | (9u << 16u)));
