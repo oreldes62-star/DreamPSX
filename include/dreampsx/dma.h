@@ -38,6 +38,7 @@ typedef struct {
     uint64_t manual_words_transferred;
     uint64_t request_words_transferred;
     uint64_t linked_list_words_transferred;
+    uint64_t cdrom_words_transferred;
     uint64_t linked_list_headers_read;
     PsxDmaTransferEvent last_transfer;
     bool initialized;
@@ -72,6 +73,7 @@ uint64_t psx_dma_data_words_transferred(const PsxDmaController *dma);
 uint64_t psx_dma_manual_words_transferred(const PsxDmaController *dma);
 uint64_t psx_dma_request_words_transferred(const PsxDmaController *dma);
 uint64_t psx_dma_linked_list_words_transferred(const PsxDmaController *dma);
+uint64_t psx_dma_cdrom_words_transferred(const PsxDmaController *dma);
 uint64_t psx_dma_linked_list_headers_read(const PsxDmaController *dma);
 /* Snapshot the most recently attempted endpoint transfer; false before first event. */
 bool psx_dma_last_transfer_event(const PsxDmaController *dma,
