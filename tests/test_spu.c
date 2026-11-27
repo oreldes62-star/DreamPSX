@@ -47,6 +47,12 @@ int main(void)
     assert(psx_spu_read16(&spu, PSX_SPU_BASE_ADDR + 0x20u, &value));
     assert(value == 0xaa22u);
 
+    /* The FIFO-like transfer port is intentionally word-only. */
+    assert(!psx_spu_read8(&spu, PSX_SPU_BASE_ADDR +
+                          PSX_SPU_TRANSFER_DATA_OFFSET, &byte));
+    assert(!psx_spu_write8(&spu, PSX_SPU_BASE_ADDR +
+                           PSX_SPU_TRANSFER_DATA_OFFSET, 0x12u));
+
     /* RAM wraps at 512 KiB. */
     assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
                            PSX_SPU_TRANSFER_ADDR_OFFSET, 0xffffu));
