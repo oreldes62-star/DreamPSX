@@ -106,7 +106,9 @@ int main(void)
     psx_dma_refresh_queue(&dma);
     assert(psx_dma_queued_mask(&dma) == (1u << 2u));
     assert(psx_dma_active_mask(&dma) == 0u);
-    assert(psx_dma_enqueue_channel(&dma, 3u));
+    assert(psx_dma_write32(&dma, PSX_DMA_BASE_ADDR + 0x38u,
+                           0x01000200u));
+    psx_dma_refresh_queue(&dma);
     assert(psx_dma_begin_channel(&dma) == 2);
     assert(psx_dma_queued_mask(&dma) == (1u << 3u));
     assert(psx_dma_active_mask(&dma) == (1u << 2u));
@@ -125,7 +127,7 @@ int main(void)
     assert(psx_dma_queued_mask(&dma) == (1u << 3u));
     assert(psx_dma_begin_channel(&dma) == 3);
     assert(psx_dma_active_mask(&dma) == (1u << 3u));
-    psx_dma_abort_channel(&dma, 3u);
+    assert(psx_dma_complete_channel(&dma, 3u));
     assert(psx_dma_active_mask(&dma) == 0u);
     assert(psx_dma_queued_mask(&dma) == 0u);
     assert(psx_dma_pending_mask(&dma) == 0u);
