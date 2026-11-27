@@ -47,7 +47,6 @@ bool psx_machine_timer_advance_clock(PsxMachine *machine, unsigned timer,
  * fractional phase across calls; CPU instruction timing must supply cycles. */
 bool psx_machine_advance_system_cycles(PsxMachine *machine, uint32_t cycles);
 /* Advance the next CD-ROM sector event after the current sector is drained. */
-#define PSX_CDROM_DOUBLE_SPEED_SECTOR_CYCLES 225792u
 bool psx_machine_cdrom_advance_sector(PsxMachine *machine);
 bool psx_machine_video_advance_scanline(PsxMachine *machine,
                                         PsxGpuVideoState *state);
