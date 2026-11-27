@@ -31,6 +31,7 @@ typedef struct {
     PsxAudioBuffer audio_output;
     uint8_t timer2_div8_phase;
     uint32_t cdrom_sector_cycle_phase;
+    uint32_t spu_audio_cycle_phase;
     uint32_t cop0_status;
     uint32_t cop0_cause;
     uint32_t cop0_epc;
@@ -68,7 +69,9 @@ bool psx_machine_cdrom_advance_sector(PsxMachine *machine);
 bool psx_machine_video_advance_scanline(PsxMachine *machine,
                                         PsxGpuVideoState *state);
 bool psx_machine_step(PsxMachine *machine);
-/* Render SPU PCM into the bounded machine output queue; read it via read_audio. */
+/* Render SPU PCM into the bounded machine output queue; read it via read_audio.
+ * The shared system clock also schedules 44.1 kHz output automatically.
+ */
 bool psx_machine_render_audio(PsxMachine *machine, size_t frame_count,
                               size_t *frames_queued);
 size_t psx_machine_read_audio(PsxMachine *machine, int16_t *interleaved_stereo,
