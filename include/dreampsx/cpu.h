@@ -33,6 +33,10 @@ typedef struct {
     uint32_t fault_address;
     uint32_t load_delay_value;
     uint32_t last_step_cycles;
+    uint32_t hilo_pending_hi;
+    uint32_t hilo_pending_lo;
+    uint8_t hilo_busy_cycles;
+    bool hilo_pending;
     uint8_t load_delay_register;
     bool load_delay_pending;
     bool load_delay_mergeable;
@@ -45,9 +49,8 @@ uint32_t psx_cpu_read_gpr(const PsxCpu *cpu, unsigned index);
 void psx_cpu_write_gpr(PsxCpu *cpu, unsigned index, uint32_t value);
 bool psx_cpu_fetch_instruction(const PsxCpu *cpu, const PsxBus *bus,
                                uint32_t *instruction);
-/* Baseline timing estimate for the most recent attempted instruction.
- * Currently one system cycle; memory wait states and variable latencies
- * are intentionally not modeled yet.
+/* Estimated cycles for the most recent instruction, including any HI/LO
+ * interlock wait. Memory wait states and bus contention are not modeled.
  */
 uint32_t psx_cpu_last_step_cycles(const PsxCpu *cpu);
 /* Detailed result lets the machine translate CPU faults into COP0 exceptions. */
