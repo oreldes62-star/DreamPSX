@@ -9,6 +9,15 @@
 #define PSX_GPU_VRAM_HEIGHT 512u
 
 typedef struct {
+    unsigned width;
+    unsigned height;
+    bool pal;
+    bool color_24bit;
+    bool interlaced;
+    bool reverse;
+} PsxGpuDisplayModeInfo;
+
+typedef struct {
     unsigned start_x;
     unsigned start_y;
     unsigned horizontal_start;
@@ -65,6 +74,8 @@ bool psx_gpu_gp1_write(PsxGpu *gpu, uint32_t value);
 bool psx_gpu_read_data(PsxGpu *gpu, uint32_t *value);
 bool psx_gpu_read_status(const PsxGpu *gpu, uint32_t *value);
 bool psx_gpu_get_display(const PsxGpu *gpu, PsxGpuDisplay *display);
+bool psx_gpu_get_display_mode_info(const PsxGpu *gpu,
+                                  PsxGpuDisplayModeInfo *info);
 bool psx_gpu_vram_read(const PsxGpu *gpu, unsigned x, unsigned y,
                        uint16_t *value);
 /* Convert a rectangular RGB555 VRAM region to packed RGB565 output.
