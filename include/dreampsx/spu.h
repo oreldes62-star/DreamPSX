@@ -21,11 +21,20 @@
 #define PSX_SPU_ADPCM_BLOCK_BYTES 16u
 #define PSX_SPU_ADPCM_BLOCK_SAMPLES 28u
 #define PSX_SPU_STATUS_OFFSET 0x1aeu
+#define PSX_SPU_ENVELOPE_MAX 0x7fffu
 
 typedef struct {
     int32_t history_1;
     int32_t history_2;
 } PsxSpuAdpcmState;
+
+typedef enum {
+    PSX_SPU_ADSR_OFF = 0,
+    PSX_SPU_ADSR_ATTACK,
+    PSX_SPU_ADSR_DECAY,
+    PSX_SPU_ADSR_SUSTAIN,
+    PSX_SPU_ADSR_RELEASE
+} PsxSpuAdsrPhase;
 
 typedef struct {
     uint16_t volume_left;
@@ -45,6 +54,9 @@ typedef struct {
     int16_t current_sample;
     bool block_valid;
     bool current_sample_valid;
+    uint16_t envelope_level;
+    uint16_t envelope_counter;
+    PsxSpuAdsrPhase envelope_phase;
 } PsxSpuVoice;
 
 typedef struct {
@@ -72,6 +84,8 @@ bool psx_spu_voice_next_sample(PsxSpu *spu, unsigned voice_index,
                                int16_t *sample);
 bool psx_spu_voice_render_sample(PsxSpu *spu, unsigned voice_index,
                                  int16_t *sample);
+bool psx_spu_voice_envelope_tick(PsxSpu *spu, unsigned voice_index,
+                                 uint16_t *level);
 bool psx_spu_read8(PsxSpu *spu, uint32_t address, uint8_t *value);
 bool psx_spu_write8(PsxSpu *spu, uint32_t address, uint8_t value);
 
