@@ -83,6 +83,9 @@ static bool identifier_matches(const uint8_t *identifier, size_t identifier_size
     for (i = 0u; i < base_size; ++i) {
         if (identifier[i] == ';') { base_size = i; break; }
     }
+    for (i = 0u; i < requested_size; ++i) {
+        if (name[i] == ';') { requested_size = i; break; }
+    }
     while (base_size > 0u && identifier[base_size - 1u] == '.') --base_size;
     while (requested_size > 0u && name[requested_size - 1u] == '.') --requested_size;
     if (base_size != requested_size) return false;
