@@ -6,8 +6,9 @@
 - Manual and request/block transfers increment the payload counter only after the memory/GPU side of a word has both succeeded.
 - Linked-list transfers count each successfully read packet header separately from payload words; headers are metadata and are not included in the payload count.
 - Failed or partial transfers retain counts for work that actually completed before the failure.
+- Manual DMA commits MADR and the remaining word count after each successful payload word, so a failed transfer can be retried without replaying already submitted words.
 - DMA reset clears both counters.
-- Added read-only accessors and machine/bus integration assertions covering manual upload, manual readback, linked-list, request/block upload and request/block readback.
+- Added read-only accessors and machine/bus integration assertions covering manual upload, manual readback, linked-list, request/block upload and request/block readback, plus a manual transfer that fails at the RAM boundary after one successful word and verifies resumable progress.
 
 ## Timing boundary
 
