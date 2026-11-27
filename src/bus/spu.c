@@ -188,8 +188,9 @@ bool psx_spu_voice_next_sample(PsxSpu *spu, unsigned voice_index,
     voice = &spu->voices[voice_index];
     if (!voice->block_valid ||
         voice->sample_index >= PSX_SPU_ADPCM_BLOCK_SAMPLES) {
+        const uint32_t block_address = voice->playback_address;
         for (unsigned i = 0u; i < PSX_SPU_ADPCM_BLOCK_BYTES; ++i)
-            block[i] = spu->ram[(voice->playback_address + i) &
+            block[i] = spu->ram[(block_address + i) &
                                 (PSX_SPU_RAM_BYTES - 1u)];
         if (!psx_spu_adpcm_decode_block(&voice->adpcm_state, block,
                                         voice->decoded_samples,
@@ -198,7 +199,15 @@ bool psx_spu_voice_next_sample(PsxSpu *spu, unsigned voice_index,
             voice->block_valid = false;
             return false;
         }
-        voice->playback_address = (voice->playback_address +
+        /* ADPCM flag bit 1 marks a loop-start block. The SPU captures
+         * its address in the voice repeat-address register (8-byte units). */
+        if ((voice->block_flags & 0x02u) != 0u) {
+            voice->repeat_address = (uint16_t)(block_address / 8u);
+            store_le16(&spu->registers[
+                voice_index * PSX_SPU_VOICE_REGISTER_BYTES + 0x0eu],
+                voice->repeat_address);
+        }
+        voice->playback_address = (block_address +
             PSX_SPU_ADPCM_BLOCK_BYTES) & (PSX_SPU_RAM_BYTES - 1u);
         voice->sample_index = 0u;
         voice->block_valid = true;
@@ -207,8 +216,17 @@ bool psx_spu_voice_next_sample(PsxSpu *spu, unsigned voice_index,
     *sample = voice->decoded_samples[voice->sample_index++];
     if (voice->sample_index == PSX_SPU_ADPCM_BLOCK_SAMPLES &&
         (voice->block_flags & 0x01u) != 0u) {
-        spu->active_voices &= ~(1u << voice_index);
         voice->block_valid = false;
+        if ((voice->block_flags & 0x04u) != 0u) {
+            /* End + repeat: restart from the programmed/captured loop
+             * address on the next source-sample request. */
+            voice->playback_address =
+                ((uint32_t)voice->repeat_address * 8u) &
+                (PSX_SPU_RAM_BYTES - 1u);
+            voice->sample_index = 0u;
+        } else {
+            spu->active_voices &= ~(1u << voice_index);
+        }
     }
     return true;
 }
