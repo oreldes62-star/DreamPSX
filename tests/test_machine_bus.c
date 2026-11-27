@@ -125,6 +125,9 @@ int main(void)
     /* Re-read sector zero through DMA3. CD-ROM DMA is a forced SyncMode-0
      * device-to-RAM burst, with the data FIFO enabled in bank 2. */
     psx_cdrom_reset(&machine.cdrom);
+    assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR, 0u));
+    assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR + 2u, 0x80u));
+    assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR + 1u, 0x0eu));
     assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR, 1u));
     assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR + 2u, 0x15u));
     assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR, 0u));
