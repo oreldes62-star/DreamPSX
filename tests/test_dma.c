@@ -110,6 +110,10 @@ int main(void)
     assert(psx_dma_begin_channel(&dma) == 2);
     assert(psx_dma_queued_mask(&dma) == (1u << 3u));
     assert(psx_dma_active_mask(&dma) == (1u << 2u));
+    /* Refreshing CHCR requests must not put an in-flight channel back into
+     * the pending queue before its completion/abort transition. */
+    psx_dma_refresh_queue(&dma);
+    assert(psx_dma_queued_mask(&dma) == (1u << 3u));
     /* A second channel cannot claim the DMA bus while channel 2 is active. */
     assert(psx_dma_begin_channel(&dma) == -1);
     psx_dma_abort_channel(&dma, 2u);
