@@ -6,6 +6,7 @@ PlayStation emulator research and development for Sega Dreamcast.
 Experimental PlayStation emulator research project targeting Sega Dreamcast. Current work includes GPU primitives and display scanout, CPU/GTE timing foundations, timers, and channel-2 GPU DMA in manual, linked-list and request/block modes, including DICR master interrupt routing to PS1 IRQ source 3. The implementation remains synchronous in several hardware paths. Recent host tests have been added but the full suite has not been compiled or executed in this environment; no runnable Dreamcast CDI image is currently validated. Host tests alone would not establish Dreamcast performance or game compatibility.
 
 ## Current milestones
+- [Host continuous integration foundation milestone 3.92](docs/HOST-CI-MILESTONE-3.92.md)
 - [DMA interrupt semantics hardening milestone 3.91](docs/DMA-IRQ-SEMANTICS-MILESTONE-3.91.md)
 - [DMA master interrupt delivery milestone 3.90](docs/DMA-IRQ-DELIVERY-MILESTONE-3.90.md)
 - [GPU DMA request/block mode milestone 3.89](docs/GPU-DMA-REQUEST-BLOCK-MILESTONE-3.89.md)
