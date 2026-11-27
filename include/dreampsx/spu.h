@@ -129,6 +129,8 @@ bool psx_spu_voice_render_sample(PsxSpu *spu, unsigned voice_index,
                                  int16_t *sample);
 bool psx_spu_voice_envelope_tick(PsxSpu *spu, unsigned voice_index,
                                  uint16_t *level);
+/* Mixes all active voices to dry stereo and routes voices selected by the
+ * 24-bit reverb-enable bitmap through the SPU wet DSP before final output. */
 bool psx_spu_mix_sample(PsxSpu *spu, int16_t *left, int16_t *right);
 int16_t psx_spu_reverb_saturate(int32_t value);
 int32_t psx_spu_reverb_multiply_q15(int16_t lhs, int16_t rhs);
