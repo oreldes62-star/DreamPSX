@@ -8,6 +8,40 @@ int main(void)
     PsxSpu spu;
     uint16_t value;
     uint8_t byte;
+    uint8_t adpcm_block[PSX_SPU_ADPCM_BLOCK_BYTES] = {0};
+    int16_t adpcm_samples[PSX_SPU_ADPCM_BLOCK_SAMPLES];
+    PsxSpuAdpcmState adpcm_state;
+    uint8_t adpcm_flags = 0u;
+
+    psx_spu_adpcm_reset(&adpcm_state);
+    adpcm_block[1] = 0x05u;
+    adpcm_block[2] = 0x71u; /* low nibble +1, high nibble +7 */
+    adpcm_block[3] = 0x0fu; /* low nibble -1, high nibble zero */
+    assert(psx_spu_adpcm_decode_block(&adpcm_state, adpcm_block,
+                                      adpcm_samples, &adpcm_flags));
+    assert(adpcm_flags == 0x05u);
+    assert(adpcm_samples[0] == 4096);
+    assert(adpcm_samples[1] == 28672);
+    assert(adpcm_samples[2] == -4096);
+    assert(adpcm_samples[3] == 0);
+    assert(adpcm_state.history_1 == 0);
+    assert(adpcm_state.history_2 == -4096);
+
+    /* Invalid filter/shift headers fail without changing decoder history. */
+    {
+        PsxSpuAdpcmState before = adpcm_state;
+        adpcm_block[0] = 0x50u;
+        assert(!psx_spu_adpcm_decode_block(&adpcm_state, adpcm_block,
+                                           adpcm_samples, &adpcm_flags));
+        assert(adpcm_state.history_1 == before.history_1);
+        assert(adpcm_state.history_2 == before.history_2);
+        adpcm_block[0] = 0x0du;
+        assert(!psx_spu_adpcm_decode_block(&adpcm_state, adpcm_block,
+                                           adpcm_samples, &adpcm_flags));
+        assert(adpcm_state.history_1 == before.history_1);
+        assert(adpcm_state.history_2 == before.history_2);
+        adpcm_block[0] = 0u;
+    }
 
     assert(psx_spu_init(&spu));
     assert(spu.initialized);
