@@ -37,6 +37,8 @@ unsigned psx_dma_channel_priority(const PsxDmaController *dma, unsigned channel)
 int psx_dma_select_channel(const PsxDmaController *dma, uint32_t pending_mask);
 /* Build a pending mask from enabled channels whose CHCR start conditions are met. */
 uint32_t psx_dma_pending_mask(const PsxDmaController *dma);
+/* Retire a successfully completed channel and latch its DICR completion flag. */
+bool psx_dma_complete_channel(PsxDmaController *dma, unsigned channel);
 /* Execute a triggered channel-2 manual RAM-to-GP0 transfer. */
 bool psx_dma_execute_gpu_manual(PsxDmaController *dma,
                                  PsxMemory *memory, PsxGpu *gpu);
