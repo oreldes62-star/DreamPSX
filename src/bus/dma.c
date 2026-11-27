@@ -100,7 +100,7 @@ void psx_dma_refresh_queue(PsxDmaController *dma)
 {
     if (!dma || !dma->initialized) return;
     /* CHCR is authoritative: refresh both additions and cancellations. */
-    dma->queued_mask = psx_dma_pending_mask(dma);
+    dma->queued_mask = psx_dma_pending_mask(dma) & ~dma->active_mask;
 }
 
 int psx_dma_take_channel(PsxDmaController *dma)
