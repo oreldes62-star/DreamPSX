@@ -78,7 +78,8 @@ int main(void)
     assert(psx_dma_write32(&dma, PSX_DMA_BASE_ADDR + 0x08u, 0u));
     psx_dma_refresh_queue(&dma);
     assert(psx_dma_queued_mask(&dma) == (1u << 2u));
-    assert(psx_dma_write32(&dma, PSX_DMA_DPCR_ADDR, 1u << 11u));
+    assert(psx_dma_write32(&dma, PSX_DMA_DPCR_ADDR,
+                           (1u << 11u) | (1u << 15u)));
     assert(psx_dma_select_channel(&dma, psx_dma_queued_mask(&dma)) == 2);
 
     /* Pending discovery honors CHCR start and sync mode; DPCR arbitration
