@@ -306,14 +306,15 @@ int main(void)
         for (unsigned mode = 0u; mode < 4u; ++mode) {
             vram[461u * PSX_GPU_VRAM_WIDTH + 961u] = 0x001fu;
             assert(psx_gpu_gp0_write(&gpu,
-                                     0xe1000000u | (mode << 5u)));
+                                     0xe1000000u | ((3u - mode) << 5u)));
             assert(psx_gpu_gp0_write(&gpu, 0x36808080u));
             assert(psx_gpu_gp0_write(&gpu, 960u | (460u << 16u)));
             assert(psx_gpu_gp0_write(&gpu, 1u | (1u << 8u)));
             assert(psx_gpu_gp0_write(&gpu, 0x00808080u));
             assert(psx_gpu_gp0_write(&gpu, 964u | (460u << 16u)));
             assert(psx_gpu_gp0_write(&gpu,
-                                     0x01000000u | 1u | (1u << 8u)));
+                                     0x01000000u | (mode << 21u) |
+                                     1u | (1u << 8u)));
             assert(psx_gpu_gp0_write(&gpu, 0x00808080u));
             assert(psx_gpu_gp0_write(&gpu, 960u | (464u << 16u)));
             assert(psx_gpu_gp0_write(&gpu, 1u | (1u << 8u)));
@@ -324,13 +325,14 @@ int main(void)
         /* An STP-clear texel is copied without blending, even in mode 1. */
         vram[1u * PSX_GPU_VRAM_WIDTH + 1u] = 0x7fffu;
         vram[461u * PSX_GPU_VRAM_WIDTH + 961u] = 0x001fu;
-        assert(psx_gpu_gp0_write(&gpu, 0xe1000020u));
+        assert(psx_gpu_gp0_write(&gpu, 0xe1000000u));
         assert(psx_gpu_gp0_write(&gpu, 0x36808080u));
         assert(psx_gpu_gp0_write(&gpu, 960u | (460u << 16u)));
         assert(psx_gpu_gp0_write(&gpu, 1u | (1u << 8u)));
         assert(psx_gpu_gp0_write(&gpu, 0x00808080u));
         assert(psx_gpu_gp0_write(&gpu, 964u | (460u << 16u)));
-        assert(psx_gpu_gp0_write(&gpu, 0x01000000u | 1u | (1u << 8u)));
+        assert(psx_gpu_gp0_write(&gpu, 0x01000000u | (1u << 21u) |
+                                 1u | (1u << 8u)));
         assert(psx_gpu_gp0_write(&gpu, 0x00808080u));
         assert(psx_gpu_gp0_write(&gpu, 960u | (464u << 16u)));
         assert(psx_gpu_gp0_write(&gpu, 1u | (1u << 8u)));
