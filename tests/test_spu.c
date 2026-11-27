@@ -139,6 +139,33 @@ int main(void)
                                PSX_SPU_KEY_OFF_LOW_OFFSET, 0x0001u));
     }
 
+    /* A software-programmed repeat address is honored even when the
+     * stream contains no loop-start marker. */
+    {
+        uint8_t programmed_loop[PSX_SPU_ADPCM_BLOCK_BYTES] = {0};
+        programmed_loop[1] = 0x05u; /* End + repeat, no loop-start. */
+        programmed_loop[2] = 0x33u;
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + 0x006u, 0x0070u));
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + 0x00eu, 0x0080u));
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                               PSX_SPU_TRANSFER_ADDR_OFFSET, 0x0070u));
+        for (unsigned i = 0u; i < PSX_SPU_ADPCM_BLOCK_BYTES; i += 2u) {
+            const uint16_t word = (uint16_t)(programmed_loop[i] |
+                                    ((uint16_t)programmed_loop[i + 1u] << 8u));
+            assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                                   PSX_SPU_TRANSFER_DATA_OFFSET, word));
+        }
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                               PSX_SPU_KEY_ON_LOW_OFFSET, 0x0001u));
+        for (unsigned i = 0u; i < PSX_SPU_ADPCM_BLOCK_SAMPLES; ++i)
+            assert(psx_spu_voice_next_sample(&spu, 0u, &voice_sample));
+        assert(psx_spu_active_voice_mask(&spu) == 0x00000001u);
+        assert(spu.voices[0].repeat_address == 0x0080u);
+        assert(spu.voices[0].playback_address == 0x0400u);
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                               PSX_SPU_KEY_OFF_LOW_OFFSET, 0x0001u));
+    }
+
     /* Pitch phase holds/repeats source samples below 1x and advances
      * multiple decoded samples above 1x. */
     {
