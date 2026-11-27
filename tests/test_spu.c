@@ -277,6 +277,30 @@ int main(void)
     }
 
 
+    /* ADSR state is per voice: a fast attack must not advance a slower
+     * neighboring voice's envelope or phase. */
+    {
+        uint16_t envelope0 = 0u;
+        uint16_t envelope1 = 0u;
+        psx_spu_reset(&spu);
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + 0x008u, 0x000fu));
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + 0x018u, 0x7f00u));
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                               PSX_SPU_KEY_ON_LOW_OFFSET, 0x0003u));
+        for (unsigned i = 0u; i < 5u; ++i)
+            assert(psx_spu_voice_envelope_tick(&spu, 0u, &envelope0));
+        assert(psx_spu_voice_envelope_tick(&spu, 1u, &envelope1));
+        assert(envelope0 == PSX_SPU_ENVELOPE_MAX);
+        assert(envelope1 == 0u);
+        assert(spu.voices[0].envelope_phase == PSX_SPU_ADSR_DECAY ||
+               spu.voices[0].envelope_phase == PSX_SPU_ADSR_SUSTAIN);
+        assert(spu.voices[1].envelope_phase == PSX_SPU_ADSR_ATTACK);
+        assert(spu.voices[1].envelope_counter !=
+               spu.voices[0].envelope_counter);
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                               PSX_SPU_KEY_OFF_LOW_OFFSET, 0x0003u));
+    }
+
     /* First stereo mixer path: ADPCM sample * ADSR envelope * fixed L/R
      * voice volumes. The right channel is muted independently. */
     {
