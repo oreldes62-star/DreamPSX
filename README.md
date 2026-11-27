@@ -1,12 +1,12 @@
 # DreamPSX
 
-- [GPUSTAT readiness state milestone 3.83](docs/GPU-STATUS-READINESS-MILESTONE-3.83.md)
 PlayStation emulator research and development for Sega Dreamcast.
 
 ## Development status
 Experimental project. The latest GPU work adds monochrome and textured rectangle primitives (variable, 1x1, 8x8 and 16x16), including indexed/direct texture sampling, STP semi-transparency, modulation, draw-area clipping and signed offsets, alongside textured-triangle coverage. The new host tests and complete CTest suite have not yet been executed; runtime validation is pending. Host tests do not validate Dreamcast hardware performance or compatibility.
 
 ## Current milestones
+- [GPUSTAT readiness state milestone 3.83](docs/GPU-STATUS-READINESS-MILESTONE-3.83.md)
 - [COP2 CU2 milestone 1.2](docs/COP2-CU2-MILESTONE-1.2.md)
 - [COP2 BC2F/BC2T milestone 1.3](docs/COP2-BC2-MILESTONE-1.3.md)
 - [COP2 LWC2/SWC2 milestone 1.4](docs/COP2-LWC2-SWC2-MILESTONE-1.4.md)
