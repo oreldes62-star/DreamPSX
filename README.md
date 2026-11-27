@@ -109,3 +109,5 @@ Packed 24-bit display scanout is now available through the RGB565 framebuffer AP
 GP1 display mode decoding now exposes resolution, PAL/NTSC, color depth and interlace flags while synchronizing GPUSTAT. See [display mode milestone 3.70](docs/GPU-DISPLAY-MODE-MILESTONE-3.70.md).
 
 The display API now also derives effective output width and height from GP1(06h/07h), including the hardware's four-pixel horizontal rounding and resolution-specific dot-clock divisors. See [display range milestone 3.71](docs/GPU-DISPLAY-RANGE-MILESTONE-3.71.md).
+
+The GPU now exposes an explicit odd/even field state for 480-line interlace and mirrors it to GPUSTAT bit 31. Field timing remains the responsibility of the future video scheduler. See [interlace field milestone 3.72](docs/GPU-INTERLACE-FIELD-MILESTONE-3.72.md).
