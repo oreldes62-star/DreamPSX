@@ -27,93 +27,98 @@ int16_t psx_spu_decode_direct_volume(uint16_t value)
     return (int16_t)(signed_value * 2);
 }
 
+static bool spu_volume_sweep_tick(uint16_t control, int16_t *level_ptr,
+                                    uint32_t *counter_ptr, bool *active_ptr)
+{
+    const unsigned shift = (control >> 2u) & 0x1fu;
+    const unsigned step_code = control & 3u;
+    const bool exponential = (control & 0x4000u) != 0u;
+    const bool decreasing = (control & 0x2000u) != 0u;
+    const bool negative_phase = (control & 0x1000u) != 0u;
+    const bool subtract = (exponential && decreasing) ?
+                          true : (decreasing ^ negative_phase);
+    uint32_t increment;
+    int32_t step;
+    int32_t level;
+
+    if ((control & 0x8000u) == 0u || !*active_ptr)
+        return true;
+    increment = shift > 11u ?
+        (0x8000u >> (shift - 11u)) : 0x8000u;
+    step = 7 - (int32_t)step_code;
+    if (subtract)
+        step = -step - 1;
+    if (shift < 11u)
+        step *= (int32_t)(1u << (11u - shift));
+
+    level = *level_ptr;
+    if (exponential) {
+        if (decreasing) {
+            step = (step * level) / 0x8000;
+        } else if (level > 0x6000) {
+            if (shift < 10u)
+                step >>= 2;
+            else if (shift >= 11u)
+                increment >>= 2;
+            else {
+                step >>= 1;
+                increment >>= 1;
+            }
+        }
+    }
+
+    /* Shift 31 / step 3 is the documented frozen-rate encoding. */
+    if (!(shift == 31u && step_code == 3u) && increment == 0u)
+        increment = 1u;
+    *counter_ptr += increment;
+    if ((*counter_ptr & 0x8000u) == 0u)
+        return true;
+    *counter_ptr &= 0x7fffu;
+
+    level += step;
+    if (!decreasing) {
+        if (level < -32768) level = -32768;
+        if (level > 32767) level = 32767;
+    } else if (negative_phase) {
+        if (level < -32768) level = -32768;
+        if (level > 0) level = 0;
+    } else if (level < 0) {
+        level = 0;
+    }
+    *level_ptr = (int16_t)level;
+    if (decreasing)
+        *active_ptr = level != 0;
+    else
+        *active_ptr = level != (negative_phase ? -32768 : 32767);
+    return true;
+}
+
 bool psx_spu_voice_volume_tick(PsxSpu *spu, unsigned voice_index)
 {
     PsxSpuVoice *voice;
-    uint16_t *registers[2];
-    int16_t *levels[2];
-    uint32_t *counters[2];
-    bool *active[2];
-
     if (!spu || !spu->initialized || voice_index >= PSX_SPU_VOICE_COUNT)
         return false;
     voice = &spu->voices[voice_index];
-    registers[0] = &voice->volume_left;
-    registers[1] = &voice->volume_right;
-    levels[0] = &voice->volume_left_level;
-    levels[1] = &voice->volume_right_level;
-    counters[0] = &voice->volume_left_counter;
-    counters[1] = &voice->volume_right_counter;
-    active[0] = &voice->volume_left_sweep_active;
-    active[1] = &voice->volume_right_sweep_active;
+    return spu_volume_sweep_tick(voice->volume_left, &voice->volume_left_level,
+                                 &voice->volume_left_counter,
+                                 &voice->volume_left_sweep_active) &&
+           spu_volume_sweep_tick(voice->volume_right, &voice->volume_right_level,
+                                 &voice->volume_right_counter,
+                                 &voice->volume_right_sweep_active);
+}
 
-    for (unsigned channel = 0u; channel < 2u; ++channel) {
-        const uint16_t control = *registers[channel];
-        const unsigned shift = (control >> 2u) & 0x1fu;
-        const unsigned step_code = control & 3u;
-        const bool exponential = (control & 0x4000u) != 0u;
-        const bool decreasing = (control & 0x2000u) != 0u;
-        const bool negative_phase = (control & 0x1000u) != 0u;
-        const bool subtract = (exponential && decreasing) ?
-                              true : (decreasing ^ negative_phase);
-        uint32_t increment;
-        int32_t step;
-        int32_t level;
-
-        if ((control & 0x8000u) == 0u || !*active[channel])
-            continue;
-
-        /* SPU rate accumulator: one 0x8000 threshold crossing triggers a
-         * step. Shift 31 / step 3 is the documented frozen-rate encoding. */
-        increment = shift > 11u ?
-            (0x8000u >> (shift - 11u)) : 0x8000u;
-        step = 7 - (int32_t)step_code;
-        if (subtract)
-            step = -step - 1;
-        if (shift < 11u)
-            step *= (int32_t)(1u << (11u - shift));
-
-        level = *levels[channel];
-        if (exponential) {
-            if (decreasing) {
-                step = (step * level) / 0x8000;
-            } else if (level > 0x6000) {
-                if (shift < 10u)
-                    step >>= 2;
-                else if (shift >= 11u)
-                    increment >>= 2;
-                else {
-                    step >>= 1;
-                    increment >>= 1;
-                }
-            }
-        }
-
-        if (!(shift == 31u && step_code == 3u) && increment == 0u)
-            increment = 1u;
-        *counters[channel] += increment;
-        if ((*counters[channel] & 0x8000u) == 0u)
-            continue;
-        *counters[channel] &= 0x7fffu;
-
-        level += step;
-        if (!decreasing) {
-            if (level < -32768) level = -32768;
-            if (level > 32767) level = 32767;
-        } else if (negative_phase) {
-            if (level < -32768) level = -32768;
-            if (level > 0) level = 0;
-        } else if (level < 0) {
-            level = 0;
-        }
-        *levels[channel] = (int16_t)level;
-
-        if (decreasing)
-            *active[channel] = level != 0;
-        else
-            *active[channel] = level != (negative_phase ? -32768 : 32767);
-    }
-    return true;
+static bool psx_spu_main_volume_tick(PsxSpu *spu)
+{
+    if (!spu || !spu->initialized)
+        return false;
+    return spu_volume_sweep_tick(
+               load_le16(&spu->registers[PSX_SPU_MAIN_VOLUME_LEFT_OFFSET]),
+               &spu->main_volume_left_level, &spu->main_volume_left_counter,
+               &spu->main_volume_left_sweep_active) &&
+           spu_volume_sweep_tick(
+               load_le16(&spu->registers[PSX_SPU_MAIN_VOLUME_RIGHT_OFFSET]),
+               &spu->main_volume_right_level, &spu->main_volume_right_counter,
+               &spu->main_volume_right_sweep_active);
 }
 
 static void store_le16(uint8_t *bytes, uint16_t value)
@@ -232,6 +237,24 @@ bool psx_spu_write16(PsxSpu *spu, uint32_t address, uint16_t value)
         }
         return true;
     }
+    if (offset == PSX_SPU_MAIN_VOLUME_LEFT_OFFSET ||
+        offset == PSX_SPU_MAIN_VOLUME_RIGHT_OFFSET) {
+        const bool is_left = offset == PSX_SPU_MAIN_VOLUME_LEFT_OFFSET;
+        store_le16(&spu->registers[offset], value);
+        if (is_left) {
+            spu->main_volume_left_level = psx_spu_decode_direct_volume(value);
+            spu->main_volume_left_counter = 0u;
+            spu->main_volume_left_sweep_active =
+                (value & 0x8000u) != 0u && (value & 0x007fu) != 0x007fu;
+        } else {
+            spu->main_volume_right_level = psx_spu_decode_direct_volume(value);
+            spu->main_volume_right_counter = 0u;
+            spu->main_volume_right_sweep_active =
+                (value & 0x8000u) != 0u && (value & 0x007fu) != 0x007fu;
+        }
+        return true;
+    }
+
     if (offset == PSX_SPU_REVERB_WORK_AREA_START_OFFSET) {
         store_le16(&spu->registers[offset], value);
         spu->reverb_buffer_address =
@@ -598,8 +621,12 @@ bool psx_spu_mix_sample(PsxSpu *spu, int16_t *left, int16_t *right)
             &wet_left, &wet_right))
         return false;
 
-    *left = clamp_audio_sample(mix_left + wet_left);
-    *right = clamp_audio_sample(mix_right + wet_right);
+    if (!psx_spu_main_volume_tick(spu))
+        return false;
+    *left = clamp_audio_sample(((int64_t)(mix_left + wet_left) *
+                                spu->main_volume_left_level) / 32768);
+    *right = clamp_audio_sample(((int64_t)(mix_right + wet_right) *
+                                 spu->main_volume_right_level) / 32768);
     /* A reverb tail can remain audible after the last source voice ends. */
     produced = produced || wet_left != 0 || wet_right != 0;
     return produced;
