@@ -199,3 +199,6 @@ Milestone 3.80 adds the R3000A multiply/divide unit's operand-dependent MULT/MUL
 SPU milestone 4.50 adds regression coverage for both ADPCM loop-start address capture and a software-programmed repeat address used without a loop-start marker. These host tests pass; cycle-accurate SPU timing and Flycast/physical Dreamcast validation remain outstanding. See [SPU ADPCM loop-address milestone 4.50](docs/SPU-ADPCM-LOOP-ADDRESS-MILESTONE-4.50.md).
 
 SPU milestone 4.51 adds a four-tap stereo comb-filter stage with independent left/right delay addresses, signed Q15 coefficients, wide accumulation and final 16-bit saturation. Regression tests cover polarity, tap selection, saturation, cursor stability and invalid arguments. Full reverb scheduling, all-pass stages, output routing, hardware timing and Flycast/physical Dreamcast validation remain outstanding. See [SPU reverb comb-filter milestone 4.51](docs/SPU-REVERB-COMB-FILTER-MILESTONE-4.51.md).
+
+
+Latest SPU milestone: 4.52 adds cascaded stereo APF1/APF2 all-pass processing (validation pending).
