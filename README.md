@@ -3,10 +3,10 @@
 PlayStation emulator research and development for Sega Dreamcast.
 
 ## Development status
-Experimental PlayStation emulator research project targeting Sega Dreamcast. Current work includes GPU primitives and display scanout, GPU IRQ1 request/acknowledge routing to the CPU, CPU/GTE timing foundations, timers, and channel-2 GPU DMA in manual, linked-list and request/block modes, including DICR master interrupt routing to PS1 IRQ source 3. DMA now counts successfully transferred payload words by manual, request/block, and linked-list mode, while linked-list packet headers remain a separate metadata metric. These counters are not hardware cycle counts. The implementation remains synchronous in several hardware paths. The latest GitHub Actions host build and CTest run passed all 34 tests; this validates the host-side code only. No runnable Dreamcast CDI image is currently validated. Host tests alone would not establish Dreamcast performance or game compatibility.
+Experimental PlayStation emulator research project targeting Sega Dreamcast. Current work includes GPU primitives and display scanout, GPU IRQ1 request/acknowledge routing to the CPU, CPU/GTE timing foundations, timers, channel-2 GPU DMA in manual, linked-list and request/block modes, channel-3 CD-ROM sector-to-RAM burst DMA, and DICR master interrupt routing to PS1 IRQ source 3. DMA now counts successfully transferred payload words by manual, request/block, and linked-list mode, while linked-list packet headers remain a separate metadata metric. These counters are not hardware cycle counts. The implementation remains synchronous in several hardware paths. The latest GitHub Actions host build and CTest run passed all 34 tests; this validates the host-side code only. No runnable Dreamcast CDI image is currently validated. Host tests alone would not establish Dreamcast performance or game compatibility.
 
 ## Current milestones
-- [CD-ROM continuous ReadN streaming milestone 4.10](docs/CDROM-READN-STREAM-MILESTONE-4.10.md)
+- [CD-ROM DMA channel 3 milestone 4.11](docs/CDROM-DMA-CHANNEL3-MILESTONE-4.11.md)\n- [CD-ROM continuous ReadN streaming milestone 4.10](docs/CDROM-READN-STREAM-MILESTONE-4.10.md)
 - [CD-ROM ISO ReadN sector delivery milestone 4.09](docs/CDROM-ISO-READN-SECTOR-MILESTONE-4.09.md)
 - [GPU IRQ1 request and CPU routing milestone 4.07](docs/GPU-IRQ1-CPU-ROUTING-MILESTONE-4.07.md)
 - [DMA transfer event telemetry milestone 4.06](docs/DMA-TRANSFER-EVENT-TELEMETRY-MILESTONE-4.06.md)
