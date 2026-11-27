@@ -123,6 +123,7 @@ bool psx_dma_execute_gpu_manual(PsxDmaController *dma,
         (control & (1u << 28u)) == 0u ||
         (control & 1u) == 0u ||
         ((control >> 9u) & 3u) != 0u ||
+        gpu->dma_direction != 2u ||
         (dma->dpcr & (1u << 11u)) == 0u)
         return true;
 
