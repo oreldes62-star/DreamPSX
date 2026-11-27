@@ -282,6 +282,8 @@ int main(void)
     assert(pixel == 0x6318u);
 
     /* GP0(34h) interpolates vertex colors while sampling a textured triangle. */
+    /* Clear the texture window left enabled by the preceding E2h tests. */
+    assert(psx_gpu_gp0_write(&gpu, 0xe2000000u));
     vram[1u * PSX_GPU_VRAM_WIDTH + 1u] = 0x7fffu;
     assert(psx_gpu_gp0_write(&gpu, 0x340000ffu)); /* Red vertex 0. */
     assert(psx_gpu_gp0_write(&gpu, 900u | (300u << 16u)));
@@ -293,8 +295,7 @@ int main(void)
     assert(psx_gpu_gp0_write(&gpu, 900u | (304u << 16u)));
     assert(psx_gpu_gp0_write(&gpu, 1u | (1u << 8u)));
     assert(psx_gpu_vram_read(&gpu, 901u, 300u, &pixel));
-    fprintf(stderr, "GP0 34h sample: 0x%04x\\n", pixel);
-    assert(pixel == 0x1efeu);
+    assert(pixel == 0x1df7u);
 
     /* GPU reset clears texture-window state. */
     assert(psx_gpu_gp1_write(&gpu, 0x00000000u));
