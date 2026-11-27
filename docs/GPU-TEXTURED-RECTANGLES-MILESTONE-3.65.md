@@ -8,6 +8,7 @@
 - Texture coordinates advance across rectangle pixels and wrap to the 8-bit UV range.
 - Existing texture-window, 4-bit/8-bit CLUT and direct 15-bit sampling paths are reused.
 - Added regression coverage for variable raw 15-bit rectangles, indexed 4-bit CLUT lookup and fixed-size 8x8 rectangles.
+- Added cases for STP-enabled semi-transparent blending, STP-clear direct copying, and saturated white modulation.
 
 ## Validation status
 
