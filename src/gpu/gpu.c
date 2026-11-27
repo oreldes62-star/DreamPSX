@@ -209,7 +209,30 @@ static uint16_t sample_texture(PsxGpu *gpu, unsigned page_x,
                       ((clut_x + index) % PSX_GPU_VRAM_WIDTH))];
 }
 
-static void execute_textured_triangle(PsxGpu *gpu, bool modulate)
+static uint16_t blend_semitransparent(uint16_t background,
+                                         uint16_t foreground,
+                                         unsigned mode)
+{
+    uint16_t result = 0u;
+    for (unsigned shift = 0u; shift <= 10u; shift += 5u) {
+        const int back = (background >> shift) & 0x1fu;
+        const int front = (foreground >> shift) & 0x1fu;
+        int channel;
+        switch (mode & 3u) {
+        case 0u: channel = (back + front) / 2; break;
+        case 1u: channel = back + front; break;
+        case 2u: channel = back - front; break;
+        default: channel = back + front / 4; break;
+        }
+        if (channel < 0) channel = 0;
+        if (channel > 31) channel = 31;
+        result |= (uint16_t)((unsigned)channel << shift);
+    }
+    return result;
+}
+
+static void execute_textured_triangle(PsxGpu *gpu, bool modulate,
+                                      bool semi_transparent)
 {
     const uint32_t xy0 = gpu->parameters[0];
     const uint32_t uv0 = gpu->parameters[1];
@@ -293,6 +316,13 @@ static void execute_textured_triangle(PsxGpu *gpu, bool modulate)
                         const unsigned b = blue > 31u ? 31u : blue;
                         output = (uint16_t)(r | (g << 5u) | (b << 10u) |
                                             (texel & 0x8000u));
+                    }
+                    if (semi_transparent && (texel & 0x8000u) != 0u) {
+                        const size_t destination =
+                            (size_t)(unsigned)y * PSX_GPU_VRAM_WIDTH +
+                            (unsigned)x;
+                        output = blend_semitransparent(
+                            gpu->vram[destination], output, gpu->draw_mode);
                     }
                     gpu->vram[(unsigned)y * PSX_GPU_VRAM_WIDTH +
                               (unsigned)x] = output;
@@ -423,6 +453,7 @@ void psx_gpu_reset(PsxGpu *gpu)
     gpu->draw_area_bottom = PSX_GPU_VRAM_HEIGHT - 1u;
     gpu->draw_offset_x = 0;
     gpu->draw_offset_y = 0;
+    gpu->draw_mode = 0u;
     gpu->parameter_count = 0u;
     gpu->parameter_expected = 0u;
     gpu->transfer_mode = PSX_GPU_TRANSFER_IDLE;
@@ -460,9 +491,9 @@ bool psx_gpu_gp0_write(PsxGpu *gpu, uint32_t value)
             else if (opcode == 0x30u)
                 execute_gouraud_triangle(gpu);
             else if (opcode == 0x24u)
-                execute_textured_triangle(gpu, true);
+                execute_textured_triangle(gpu, true, false);
             else if (opcode == 0x25u)
-                execute_textured_triangle(gpu, false);
+                execute_textured_triangle(gpu, false, true);
             gpu->parameter_count = 0u;
             gpu->parameter_expected = 0u;
         }
@@ -471,6 +502,9 @@ bool psx_gpu_gp0_write(PsxGpu *gpu, uint32_t value)
 
     gpu->command = value;
     switch (value >> 24u) {
+    case 0xe1u: /* Draw mode / texture page state. */
+        gpu->draw_mode = (value >> 5u) & 3u;
+        break;
     case 0xe3u: /* Drawing area top-left. */
         gpu->draw_area_left = value & 0x3ffu;
         gpu->draw_area_top = (value >> 10u) & 0x1ffu;
