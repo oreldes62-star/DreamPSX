@@ -33,5 +33,8 @@ bool psx_dma_write32(PsxDmaController *dma, uint32_t address,
 /* Execute a triggered channel-2 manual RAM-to-GP0 transfer. */
 bool psx_dma_execute_gpu_manual(PsxDmaController *dma,
                                  PsxMemory *memory, PsxGpu *gpu);
+/* Execute channel-2 RAM-to-GP0 linked-list mode (CHCR sync=2). */
+bool psx_dma_execute_gpu_linked_list(PsxDmaController *dma,
+                                     PsxMemory *memory, PsxGpu *gpu);
 
 #endif
