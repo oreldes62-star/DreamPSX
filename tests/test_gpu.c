@@ -157,64 +157,59 @@ int main(void)
     assert(psx_gpu_vram_read(&gpu, 751u, 451u, &pixel));
     assert(pixel == 0x001fu);
 
-    fprintf(stderr, "semi0 start\\n");
     /* Semi-transparency mode 0: average background and foreground. */
     vram[1u * PSX_GPU_VRAM_WIDTH + 1u] = 0xffffu;
-    vram[801u * PSX_GPU_VRAM_WIDTH + 801u] = 0u;
+    vram[461u * PSX_GPU_VRAM_WIDTH + 461u] = 0u;
     assert(psx_gpu_gp0_write(&gpu, 0xe1000000u));
     assert(psx_gpu_gp0_write(&gpu, 0x25000000u));
-    assert(psx_gpu_gp0_write(&gpu, 800u | (800u << 16u)));
+    assert(psx_gpu_gp0_write(&gpu, 460u | (460u << 16u)));
     assert(psx_gpu_gp0_write(&gpu, 1u | (1u << 8u)));
-    assert(psx_gpu_gp0_write(&gpu, 804u | (800u << 16u)));
+    assert(psx_gpu_gp0_write(&gpu, 804u | (460u << 16u)));
     assert(psx_gpu_gp0_write(&gpu, 0x01000000u | 1u | (1u << 8u)));
-    assert(psx_gpu_gp0_write(&gpu, 800u | (804u << 16u)));
+    assert(psx_gpu_gp0_write(&gpu, 460u | (804u << 16u)));
     assert(psx_gpu_gp0_write(&gpu, 1u | (1u << 8u)));
-    assert(psx_gpu_vram_read(&gpu, 801u, 801u, &pixel));
+    assert(psx_gpu_vram_read(&gpu, 461u, 461u, &pixel));
     assert(pixel == 0x3defu);
 
-    fprintf(stderr, "semi1 start\\n");
     /* Semi-transparency mode 1: saturated addition. */
-    vram[811u * PSX_GPU_VRAM_WIDTH + 801u] = 0u;
+    vram[471u * PSX_GPU_VRAM_WIDTH + 461u] = 0u;
     assert(psx_gpu_gp0_write(&gpu, 0xe1000020u));
     assert(psx_gpu_gp0_write(&gpu, 0x25000000u));
-    assert(psx_gpu_gp0_write(&gpu, 800u | (810u << 16u)));
+    assert(psx_gpu_gp0_write(&gpu, 460u | (470u << 16u)));
     assert(psx_gpu_gp0_write(&gpu, 1u | (1u << 8u)));
-    assert(psx_gpu_gp0_write(&gpu, 804u | (810u << 16u)));
+    assert(psx_gpu_gp0_write(&gpu, 804u | (470u << 16u)));
     assert(psx_gpu_gp0_write(&gpu, 0x01000000u | 1u | (1u << 8u)));
-    assert(psx_gpu_gp0_write(&gpu, 800u | (814u << 16u)));
+    assert(psx_gpu_gp0_write(&gpu, 460u | (814u << 16u)));
     assert(psx_gpu_gp0_write(&gpu, 1u | (1u << 8u)));
-    assert(psx_gpu_vram_read(&gpu, 801u, 811u, &pixel));
+    assert(psx_gpu_vram_read(&gpu, 461u, 471u, &pixel));
     assert(pixel == 0x7fffu);
 
-    fprintf(stderr, "semi2 start\\n");
     /* Semi-transparency mode 2: background minus foreground. */
-    vram[821u * PSX_GPU_VRAM_WIDTH + 801u] = 0x7fffu;
+    vram[481u * PSX_GPU_VRAM_WIDTH + 461u] = 0x7fffu;
     assert(psx_gpu_gp0_write(&gpu, 0xe1000040u));
     assert(psx_gpu_gp0_write(&gpu, 0x25000000u));
-    assert(psx_gpu_gp0_write(&gpu, 800u | (820u << 16u)));
+    assert(psx_gpu_gp0_write(&gpu, 460u | (480u << 16u)));
     assert(psx_gpu_gp0_write(&gpu, 1u | (1u << 8u)));
-    assert(psx_gpu_gp0_write(&gpu, 804u | (820u << 16u)));
+    assert(psx_gpu_gp0_write(&gpu, 804u | (480u << 16u)));
     assert(psx_gpu_gp0_write(&gpu, 0x01000000u | 1u | (1u << 8u)));
-    assert(psx_gpu_gp0_write(&gpu, 800u | (824u << 16u)));
+    assert(psx_gpu_gp0_write(&gpu, 460u | (824u << 16u)));
     assert(psx_gpu_gp0_write(&gpu, 1u | (1u << 8u)));
-    assert(psx_gpu_vram_read(&gpu, 801u, 821u, &pixel));
+    assert(psx_gpu_vram_read(&gpu, 461u, 481u, &pixel));
     assert(pixel == 0u);
 
-    fprintf(stderr, "semi3 start\\n");
     /* Semi-transparency mode 3: quarter foreground plus background. */
-    vram[831u * PSX_GPU_VRAM_WIDTH + 801u] = 0u;
+    vram[491u * PSX_GPU_VRAM_WIDTH + 461u] = 0u;
     assert(psx_gpu_gp0_write(&gpu, 0xe1000060u));
     assert(psx_gpu_gp0_write(&gpu, 0x25000000u));
-    assert(psx_gpu_gp0_write(&gpu, 800u | (830u << 16u)));
+    assert(psx_gpu_gp0_write(&gpu, 460u | (490u << 16u)));
     assert(psx_gpu_gp0_write(&gpu, 1u | (1u << 8u)));
-    assert(psx_gpu_gp0_write(&gpu, 804u | (830u << 16u)));
+    assert(psx_gpu_gp0_write(&gpu, 804u | (490u << 16u)));
     assert(psx_gpu_gp0_write(&gpu, 0x01000000u | 1u | (1u << 8u)));
-    assert(psx_gpu_gp0_write(&gpu, 800u | (834u << 16u)));
+    assert(psx_gpu_gp0_write(&gpu, 460u | (834u << 16u)));
     assert(psx_gpu_gp0_write(&gpu, 1u | (1u << 8u)));
-    assert(psx_gpu_vram_read(&gpu, 801u, 831u, &pixel));
+    assert(psx_gpu_vram_read(&gpu, 461u, 491u, &pixel));
     assert(pixel == 0x1ce7u);
 
-    fprintf(stderr, "indexed4 start\\n");
     /* 4-bit indexed texture: packed nibble is resolved through CLUT. */
     vram[257u * PSX_GPU_VRAM_WIDTH] = 0x0030u;
     vram[30u * PSX_GPU_VRAM_WIDTH + 3u] = 0x4210u;
