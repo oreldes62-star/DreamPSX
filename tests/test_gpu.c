@@ -157,6 +157,7 @@ int main(void)
     assert(psx_gpu_vram_read(&gpu, 751u, 451u, &pixel));
     assert(pixel == 0x001fu);
 
+    fprintf(stderr, "semi0 start\\n");
     /* Semi-transparency mode 0: average background and foreground. */
     vram[1u * PSX_GPU_VRAM_WIDTH + 1u] = 0xffffu;
     vram[801u * PSX_GPU_VRAM_WIDTH + 801u] = 0u;
@@ -171,6 +172,7 @@ int main(void)
     assert(psx_gpu_vram_read(&gpu, 801u, 801u, &pixel));
     assert(pixel == 0x3defu);
 
+    fprintf(stderr, "semi1 start\\n");
     /* Semi-transparency mode 1: saturated addition. */
     vram[811u * PSX_GPU_VRAM_WIDTH + 801u] = 0u;
     assert(psx_gpu_gp0_write(&gpu, 0xe1000020u));
@@ -184,6 +186,7 @@ int main(void)
     assert(psx_gpu_vram_read(&gpu, 801u, 811u, &pixel));
     assert(pixel == 0x7fffu);
 
+    fprintf(stderr, "semi2 start\\n");
     /* Semi-transparency mode 2: background minus foreground. */
     vram[821u * PSX_GPU_VRAM_WIDTH + 801u] = 0x7fffu;
     assert(psx_gpu_gp0_write(&gpu, 0xe1000040u));
@@ -197,6 +200,7 @@ int main(void)
     assert(psx_gpu_vram_read(&gpu, 801u, 821u, &pixel));
     assert(pixel == 0u);
 
+    fprintf(stderr, "semi3 start\\n");
     /* Semi-transparency mode 3: quarter foreground plus background. */
     vram[831u * PSX_GPU_VRAM_WIDTH + 801u] = 0u;
     assert(psx_gpu_gp0_write(&gpu, 0xe1000060u));
@@ -210,6 +214,7 @@ int main(void)
     assert(psx_gpu_vram_read(&gpu, 801u, 831u, &pixel));
     assert(pixel == 0x1ce7u);
 
+    fprintf(stderr, "indexed4 start\\n");
     /* 4-bit indexed texture: packed nibble is resolved through CLUT. */
     vram[257u * PSX_GPU_VRAM_WIDTH] = 0x0030u;
     vram[30u * PSX_GPU_VRAM_WIDTH + 3u] = 0x4210u;
