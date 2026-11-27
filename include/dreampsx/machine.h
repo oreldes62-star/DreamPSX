@@ -40,6 +40,11 @@ bool psx_machine_boot_from_iso(PsxMachine *machine, const PsxIso9660 *iso,
  * image as CD-ROM media for subsequent guest reads. */
 bool psx_machine_boot_from_disc(PsxMachine *machine, const uint8_t *image,
                                 size_t image_size, PsxBootConfig *config);
+/* Boots directly from caller-owned CUE text and BIN bytes without expanding
+ * raw sectors into a separate ISO buffer. Both inputs must remain alive. */
+bool psx_machine_boot_from_cue(PsxMachine *machine, const char *cue_text,
+                               size_t cue_size, const uint8_t *bin_data,
+                               size_t bin_size, PsxBootConfig *config);
 bool psx_machine_init(PsxMachine *machine,
                       uint8_t *ram, size_t ram_size,
                       const uint8_t *bios, size_t bios_size,
