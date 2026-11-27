@@ -110,4 +110,6 @@ GP1 display mode decoding now exposes resolution, PAL/NTSC, color depth and inte
 
 The display API now also derives effective output width and height from GP1(06h/07h), including the hardware's four-pixel horizontal rounding and resolution-specific dot-clock divisors. See [display range milestone 3.71](docs/GPU-DISPLAY-RANGE-MILESTONE-3.71.md).
 
-The GPU now exposes an explicit odd/even field state for 480-line interlace and mirrors it to GPUSTAT bit 31. Field timing remains the responsibility of the future video scheduler. See [interlace field milestone 3.72](docs/GPU-INTERLACE-FIELD-MILESTONE-3.72.md).
+The GPU now exposes an explicit odd/even field state for 480-line interlace and mirrors it to GPUSTAT bit 31. See [interlace field milestone 3.72](docs/GPU-INTERLACE-FIELD-MILESTONE-3.72.md).
+
+A first scanline scheduler now distinguishes NTSC and PAL field lengths, advances progressive frames and alternating interlaced fields, and reports VBlank transitions using GP1(07h). Half-line phase, CPU-clock integration and IRQ0 delivery remain future work. See [video timing milestone 3.73](docs/GPU-VIDEO-TIMING-MILESTONE-3.73.md).
