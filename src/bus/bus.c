@@ -84,6 +84,8 @@ static bool bus_try_gpu_dma(PsxBus *bus)
     uint32_t control;
     uint32_t sync_mode;
     bool transfer_ok;
+    uint64_t payload_before;
+    uint64_t headers_before;
 
     /* CHCR remains the source of truth; DPCR only controls arbitration. */
     psx_dma_refresh_queue(bus->dma);
@@ -97,6 +99,8 @@ static bool bus_try_gpu_dma(PsxBus *bus)
 
     control = bus->dma->channel[2].chcr;
     sync_mode = (control >> 9u) & 3u;
+    payload_before = psx_dma_data_words_transferred(bus->dma);
+    headers_before = psx_dma_linked_list_headers_read(bus->dma);
     if (sync_mode == 0u)
         transfer_ok = psx_dma_execute_gpu_manual(bus->dma, bus->memory,
                                                  bus->gpu);
@@ -113,6 +117,9 @@ static bool bus_try_gpu_dma(PsxBus *bus)
      * the CHCR request pending for a later retry. Successful endpoints call
      * psx_dma_complete_channel(), which retires the active state. */
     if (!transfer_ok) psx_dma_abort_channel(bus->dma, 2u);
+    psx_dma_record_transfer_event(bus->dma, 2u, control,
+                                  payload_before, headers_before,
+                                  transfer_ok);
     psx_dma_refresh_queue(bus->dma);
     return transfer_ok;
 }
