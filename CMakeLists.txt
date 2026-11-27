@@ -18,6 +18,7 @@ add_library(dreampsx_core STATIC
     src/cpu/cpu.c
     src/gte/gte.c
     src/gpu/gpu.c
+    src/media/iso9660.c
     src/machine/machine.c
     src/system/timers.c
 )
@@ -40,6 +41,7 @@ enable_testing()
 set(DREAMPSX_TESTS
     test_dma
     test_cdrom
+    test_iso9660
     test_bus
     test_cop0_exception
     test_cop0_irq
