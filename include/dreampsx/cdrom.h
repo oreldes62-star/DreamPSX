@@ -6,6 +6,7 @@
 
 #define PSX_CDROM_BASE_ADDR 0x1f801800u
 #define PSX_CDROM_FIFO_CAPACITY 16u
+#define PSX_CDROM_SECTOR_SIZE 2048u
 
 typedef struct {
     uint8_t index;
@@ -19,11 +20,18 @@ typedef struct {
     uint8_t interrupt_flags;
     uint8_t request;
     uint8_t drive_status;
+    uint8_t sector_data[PSX_CDROM_SECTOR_SIZE];
+    uint16_t data_index;
+    uint16_t data_count;
+    const uint8_t *iso_data;
+    size_t iso_size;
     uint8_t location[3];
     bool initialized;
 } PsxCdrom;
 
 bool psx_cdrom_init(PsxCdrom *cdrom);
+bool psx_cdrom_mount_iso(PsxCdrom *cdrom, const uint8_t *image, size_t size);
+void psx_cdrom_unmount(PsxCdrom *cdrom);
 void psx_cdrom_reset(PsxCdrom *cdrom);
 bool psx_cdrom_read8(PsxCdrom *cdrom, uint32_t address, uint8_t *value);
 bool psx_cdrom_write8(PsxCdrom *cdrom, uint32_t address, uint8_t value);
