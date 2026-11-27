@@ -137,7 +137,7 @@ int main(void)
     assert(psx_gpu_vram_read(&machine.gpu, 40u, 0u, &half));
     assert(half == 0x03e0u);
     assert(psx_gpu_vram_read(&machine.gpu, 42u, 0u, &half));
-    assert(half == 0x7c00u);
+    assert(half == 0x001fu);
     assert(psx_bus_read32(&machine.bus, 0x1f8010a0u, &word));
     assert(word == 0x00000718u);
     assert(psx_bus_read32(&machine.bus, 0x1f8010a4u, &word));
