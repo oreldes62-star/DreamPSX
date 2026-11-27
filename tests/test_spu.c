@@ -166,6 +166,48 @@ int main(void)
                                PSX_SPU_KEY_OFF_LOW_OFFSET, 0x0001u));
     }
 
+    /* Two voices keep independent software-programmed repeat addresses
+     * while reaching their end+repeat blocks in interleaved calls. */
+    {
+        uint8_t voice0_block[PSX_SPU_ADPCM_BLOCK_BYTES] = {0};
+        uint8_t voice1_block[PSX_SPU_ADPCM_BLOCK_BYTES] = {0};
+        voice0_block[1] = 0x05u;
+        voice0_block[2] = 0x44u;
+        voice1_block[1] = 0x05u;
+        voice1_block[2] = 0x55u;
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + 0x006u, 0x00a0u));
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + 0x016u, 0x00a2u));
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + 0x00eu, 0x0090u));
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + 0x01eu, 0x00b0u));
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                               PSX_SPU_TRANSFER_ADDR_OFFSET, 0x00a0u));
+        for (unsigned i = 0u; i < PSX_SPU_ADPCM_BLOCK_BYTES; i += 2u) {
+            uint16_t word = (uint16_t)(voice0_block[i] |
+                              ((uint16_t)voice0_block[i + 1u] << 8u));
+            assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                                   PSX_SPU_TRANSFER_DATA_OFFSET, word));
+        }
+        for (unsigned i = 0u; i < PSX_SPU_ADPCM_BLOCK_BYTES; i += 2u) {
+            uint16_t word = (uint16_t)(voice1_block[i] |
+                              ((uint16_t)voice1_block[i + 1u] << 8u));
+            assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                                   PSX_SPU_TRANSFER_DATA_OFFSET, word));
+        }
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                               PSX_SPU_KEY_ON_LOW_OFFSET, 0x0003u));
+        for (unsigned i = 0u; i < PSX_SPU_ADPCM_BLOCK_SAMPLES; ++i) {
+            assert(psx_spu_voice_next_sample(&spu, 0u, &voice_sample));
+            assert(psx_spu_voice_next_sample(&spu, 1u, &voice_sample));
+        }
+        assert(spu.voices[0].repeat_address == 0x0090u);
+        assert(spu.voices[1].repeat_address == 0x00b0u);
+        assert(spu.voices[0].playback_address == 0x0480u);
+        assert(spu.voices[1].playback_address == 0x0580u);
+        assert(psx_spu_active_voice_mask(&spu) == 0x00000003u);
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                               PSX_SPU_KEY_OFF_LOW_OFFSET, 0x0003u));
+    }
+
     /* Pitch phase holds/repeats source samples below 1x and advances
      * multiple decoded samples above 1x. */
     {
