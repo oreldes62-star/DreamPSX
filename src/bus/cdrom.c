@@ -66,16 +66,22 @@ static bool load_current_sector(PsxCdrom *cdrom)
     const unsigned absolute_frame = minute * 60u * 75u +
                                     second * 75u + frame;
     size_t offset;
-    if (!cdrom->iso_data || !bcd_valid(cdrom->location[0], 99u) ||
+    if ((!cdrom->iso_data && !cdrom->disc.mounted) || !bcd_valid(cdrom->location[0], 99u) ||
         !bcd_valid(cdrom->location[1], 59u) ||
         !bcd_valid(cdrom->location[2], 74u) || absolute_frame < 150u)
         return false;
-    offset = (size_t)(absolute_frame - 150u) * PSX_CDROM_SECTOR_SIZE;
-    if (offset > cdrom->iso_size ||
-        cdrom->iso_size - offset < PSX_CDROM_SECTOR_SIZE)
-        return false;
-    memcpy(cdrom->sector_data, cdrom->iso_data + offset,
-           PSX_CDROM_SECTOR_SIZE);
+    offset = (size_t)(absolute_frame - 150u);
+    if (cdrom->disc.mounted) {
+        if (!psx_disc_read_sector(&cdrom->disc, offset, cdrom->sector_data))
+            return false;
+    } else {
+        offset *= PSX_CDROM_SECTOR_SIZE;
+        if (offset > cdrom->iso_size ||
+            cdrom->iso_size - offset < PSX_CDROM_SECTOR_SIZE)
+            return false;
+        memcpy(cdrom->sector_data, cdrom->iso_data + offset,
+               PSX_CDROM_SECTOR_SIZE);
+    }
     cdrom->data_index = 0u;
     cdrom->data_count = PSX_CDROM_SECTOR_SIZE;
     cdrom->drive_status &= (uint8_t)~0x01u;
@@ -221,8 +227,28 @@ bool psx_cdrom_mount_iso(PsxCdrom *cdrom, const uint8_t *image, size_t size)
 {
     if (!cdrom || !cdrom->initialized || !image || size == 0u ||
         (size % PSX_CDROM_SECTOR_SIZE) != 0u) return false;
+    psx_disc_unmount(&cdrom->disc);
     cdrom->iso_data = image;
     cdrom->iso_size = size;
+    cdrom->drive_status &= (uint8_t)~0x01u;
+    return true;
+}
+
+bool psx_cdrom_mount_cue(PsxCdrom *cdrom, const char *cue_text,
+                         size_t cue_size, const uint8_t *bin_data,
+                         size_t bin_size)
+{
+    PsxDiscImage disc;
+    if (!cdrom || !cdrom->initialized ||
+        !psx_disc_mount_cue(&disc, cue_text, cue_size, bin_data, bin_size))
+        return false;
+    cdrom->disc = disc;
+    cdrom->iso_data = NULL;
+    cdrom->iso_size = 0u;
+    psx_disc_unmount(&cdrom->disc);
+    cdrom->data_index = 0u;
+    cdrom->data_count = 0u;
+    cdrom->read_active = false;
     cdrom->drive_status &= (uint8_t)~0x01u;
     return true;
 }
