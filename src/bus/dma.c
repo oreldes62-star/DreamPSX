@@ -16,6 +16,7 @@ void psx_dma_reset(PsxDmaController *dma)
     dma->manual_words_transferred = 0u;
     dma->request_words_transferred = 0u;
     dma->linked_list_words_transferred = 0u;
+    dma->cdrom_words_transferred = 0u;
     dma->linked_list_headers_read = 0u;
     dma->last_transfer.sequence = 0u;
     dma->last_transfer.payload_words = 0u;
@@ -175,6 +176,12 @@ uint64_t psx_dma_linked_list_words_transferred(const PsxDmaController *dma)
 {
     if (!dma || !dma->initialized) return 0u;
     return dma->linked_list_words_transferred;
+}
+
+uint64_t psx_dma_cdrom_words_transferred(const PsxDmaController *dma)
+{
+    if (!dma || !dma->initialized) return 0u;
+    return dma->cdrom_words_transferred;
 }
 
 uint64_t psx_dma_linked_list_headers_read(const PsxDmaController *dma)
@@ -543,6 +550,7 @@ bool psx_dma_execute_cdrom(PsxDmaController *dma, PsxMemory *memory,
             return false;
         address = (address + 4u) & 0x00fffffcu;
         ++dma->data_words_transferred;
+        ++dma->cdrom_words_transferred;
     }
 
     /* In burst mode the hardware retains the programmed MADR/BCR values. */
