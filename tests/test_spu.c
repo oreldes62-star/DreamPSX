@@ -477,6 +477,19 @@ int main(void)
     }
 
 
+    /* Reverb arithmetic uses signed Q15 products (divide by 0x8000)
+     * and clamps work-RAM samples to the signed 16-bit range. */
+    assert(psx_spu_reverb_multiply_q15(16384, 16384) == 8192);
+    assert(psx_spu_reverb_multiply_q15(-16384, 16384) == -8192);
+    assert(psx_spu_reverb_multiply_q15(32767, 32767) == 32766);
+    assert(psx_spu_reverb_multiply_q15(-32768, 32767) == -32767);
+    assert(psx_spu_reverb_multiply_q15(-32768, -32768) == 32767);
+    assert(psx_spu_reverb_multiply_q15(0, -32768) == 0);
+    assert(psx_spu_reverb_saturate(40000) == 32767);
+    assert(psx_spu_reverb_saturate(-40000) == -32768);
+    assert(psx_spu_reverb_saturate(1234) == 1234);
+    assert(psx_spu_reverb_saturate(-1234) == -1234);
+
     /* Reverb sample accesses are signed little-endian halfwords and remain
      * inside the ESA..7FFFEh work area, including at the final RAM word. */
     {
