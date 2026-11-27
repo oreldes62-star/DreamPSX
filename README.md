@@ -8,6 +8,7 @@ Experimental PlayStation emulator research project targeting Sega Dreamcast. Cur
 ## Current milestones
 - [DMA channel completion bookkeeping milestone 3.98](docs/DMA-COMPLETION-BOOKKEEPING-MILESTONE-3.98.md)
 - [DMA request retention and arbitration separation milestone 3.99](docs/DMA-REQUEST-RETENTION-MILESTONE-3.99.md)
+- [DMA request queue and priority take milestone 4.00](docs/DMA-REQUEST-QUEUE-MILESTONE-4.00.md)
 - [DMA pending request discovery milestone 3.97](docs/DMA-PENDING-REQUEST-DISCOVERY-MILESTONE-3.97.md)
 - [DPCR priority selector milestone 3.96](docs/DPCR-PRIORITY-SELECTOR-MILESTONE-3.96.md)
 - [DPCR decoding foundation milestone 3.95](docs/DPCR-DECODING-FOUNDATION-MILESTONE-3.95.md)
