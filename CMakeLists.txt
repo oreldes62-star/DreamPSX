@@ -97,3 +97,30 @@ foreach(test_name IN LISTS DREAMPSX_TESTS)
     target_link_libraries(${test_name} PRIVATE dreampsx_core)
     add_test(NAME ${test_name} COMMAND ${test_name})
 endforeach()
+
+# Host-test the Dreamcast KallistiOS wrapper against the documented stream API.
+add_executable(test_kos_audio_backend
+    tests/test_kos_audio_backend.c
+    tests/kos_stub/kos_stream_stub.c
+    src/platform/dreamcast/kos_audio_backend.c
+)
+target_include_directories(test_kos_audio_backend PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/kos_stub
+)
+target_link_libraries(test_kos_audio_backend PRIVATE dreampsx_core)
+add_test(NAME test_kos_audio_backend COMMAND test_kos_audio_backend)
+
+# Optional real KallistiOS backend target. Configure with the Dreamcast
+# cross-toolchain and KOS_BASE set; the final executable must link against KOS.
+option(DREAMPSX_BUILD_KOS_AUDIO_BACKEND "Build the real KallistiOS audio backend" OFF)
+if(DREAMPSX_BUILD_KOS_AUDIO_BACKEND)
+    find_path(KOS_INCLUDE_DIR dc/sound/stream.h
+        HINTS "$ENV{KOS_BASE}/include"
+        REQUIRED
+    )
+    add_library(dreampsx_kos_audio_backend STATIC
+        src/platform/dreamcast/kos_audio_backend.c
+    )
+    target_include_directories(dreampsx_kos_audio_backend PRIVATE ${KOS_INCLUDE_DIR})
+    target_link_libraries(dreampsx_kos_audio_backend PUBLIC dreampsx_core)
+endif()
