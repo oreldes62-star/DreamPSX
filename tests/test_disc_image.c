@@ -85,7 +85,7 @@ int main(void)
     assert(psx_disc_xa_audio_format(&xa_info, &xa_format));
     assert(xa_format.sample_rate_hz == 18900u);
     assert(xa_format.channels == 1u && xa_format.bits_per_sample == 4u);
-    xa_info.coding = 0x15u; /* Stereo, 37.8 kHz, 8-bit. */
+    xa_info.coding = 0x11u; /* Stereo, 37.8 kHz, 8-bit. */
     assert(psx_disc_xa_audio_format(&xa_info, &xa_format));
     assert(xa_format.sample_rate_hz == 37800u);
     assert(xa_format.channels == 2u && xa_format.bits_per_sample == 8u);
