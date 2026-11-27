@@ -41,6 +41,7 @@ bool psx_bus_read8(const PsxBus *bus, uint32_t address, uint8_t *value)
     if (!bus || !bus->initialized || !value) return false;
     address = physical_address(address);
     if (bus->cdrom && psx_cdrom_read8(bus->cdrom, address, value)) return true;
+    if (bus->spu && psx_spu_read8(bus->spu, address, value)) return true;
     if (psx_irq_mmio_read8(bus->irq, address, value)) return true;
     return psx_memory_read8(bus->memory, address, value);
 }
@@ -49,6 +50,7 @@ bool psx_bus_read16(const PsxBus *bus, uint32_t address, uint16_t *value)
 {
     if (!bus || !bus->initialized || !value) return false;
     address = physical_address(address);
+    if (bus->spu && psx_spu_read16(bus->spu, address, value)) return true;
     if (psx_irq_mmio_read16(bus->irq, address, value)) return true;
     if (psx_timers_read16(bus->timers, address, value)) return true;
     return psx_memory_read16(bus->memory, address, value);
@@ -63,6 +65,14 @@ bool psx_bus_read32(const PsxBus *bus, uint32_t address, uint32_t *value)
         return psx_gpu_read_data(bus->gpu, value);
     if (address == PSX_GPU_GP1_ADDR)
         return psx_gpu_read_status(bus->gpu, value);
+    if (bus->spu && address >= PSX_SPU_BASE_ADDR &&
+        address + 2u < PSX_SPU_BASE_ADDR + PSX_SPU_REGISTER_BYTES) {
+        uint16_t low, high;
+        if (!psx_spu_read16(bus->spu, address, &low) ||
+            !psx_spu_read16(bus->spu, address + 2u, &high)) return false;
+        *value = (uint32_t)low | ((uint32_t)high << 16u);
+        return true;
+    }
     if (psx_irq_mmio_read32(bus->irq, address, value)) return true;
     if (psx_timers_read32(bus->timers, address, value)) return true;
     return psx_memory_read32(bus->memory, address, value);
@@ -76,6 +86,7 @@ bool psx_bus_write8(PsxBus *bus, uint32_t address, uint8_t value)
         psx_irq_set_line(bus->irq, 2u, psx_cdrom_irq_output(bus->cdrom));
         return true;
     }
+    if (bus->spu && psx_spu_write8(bus->spu, address, value)) return true;
     if (psx_irq_mmio_write8(bus->irq, address, value)) return true;
     return psx_memory_write8(bus->memory, address, value);
 }
@@ -84,6 +95,7 @@ bool psx_bus_write16(PsxBus *bus, uint32_t address, uint16_t value)
 {
     if (!bus || !bus->initialized) return false;
     address = physical_address(address);
+    if (bus->spu && psx_spu_write16(bus->spu, address, value)) return true;
     if (psx_irq_mmio_write16(bus->irq, address, value)) return true;
     if (psx_timers_write16(bus->timers, address, value)) return true;
     return psx_memory_write16(bus->memory, address, value);
@@ -152,6 +164,12 @@ bool psx_bus_write32(PsxBus *bus, uint32_t address, uint32_t value)
          * after DICR writes and after a channel completion changes its flags. */
         psx_irq_set_line(bus->irq, 3u, psx_dma_irq_output(bus->dma));
         return transfer_ok;
+    }
+    if (bus->spu && address >= PSX_SPU_BASE_ADDR &&
+        address + 2u < PSX_SPU_BASE_ADDR + PSX_SPU_REGISTER_BYTES) {
+        return psx_spu_write16(bus->spu, address, (uint16_t)value) &&
+               psx_spu_write16(bus->spu, address + 2u,
+                               (uint16_t)(value >> 16u));
     }
     if (address == PSX_GPU_GP0_ADDR) {
         const bool ok = psx_gpu_gp0_write(bus->gpu, value);
