@@ -11,6 +11,7 @@ void psx_dma_reset(PsxDmaController *dma)
     dma->dpcr = 0x07654321u;
     dma->dicr = 0u;
     dma->queued_mask = 0u;
+    dma->active_mask = 0u;
 }
 
 bool psx_dma_init(PsxDmaController *dma)
@@ -110,6 +111,33 @@ int psx_dma_take_channel(PsxDmaController *dma)
     return selected;
 }
 
+int psx_dma_begin_channel(PsxDmaController *dma)
+{
+    const int selected;
+    if (!dma || !dma->initialized) return -1;
+    selected = psx_dma_select_channel(dma, dma->queued_mask);
+    if (selected < 0) return -1;
+    dma->queued_mask &= ~(1u << (unsigned)selected);
+    dma->active_mask |= 1u << (unsigned)selected;
+    return selected;
+}
+
+void psx_dma_abort_channel(PsxDmaController *dma, unsigned channel)
+{
+    if (!dma || !dma->initialized || channel >= PSX_DMA_CHANNEL_COUNT)
+        return;
+    dma->active_mask &= ~(1u << channel);
+    /* Keep an aborted request pending only while CHCR still requests it. */
+    if (psx_dma_pending_mask(dma) & (1u << channel))
+        dma->queued_mask |= 1u << channel;
+}
+
+uint32_t psx_dma_active_mask(const PsxDmaController *dma)
+{
+    if (!dma || !dma->initialized) return 0u;
+    return dma->active_mask & ((1u << PSX_DMA_CHANNEL_COUNT) - 1u);
+}
+
 bool psx_dma_complete_channel(PsxDmaController *dma, unsigned channel)
 {
     if (!dma || !dma->initialized || channel >= PSX_DMA_CHANNEL_COUNT)
@@ -119,6 +147,7 @@ bool psx_dma_complete_channel(PsxDmaController *dma, unsigned channel)
      * completion; a failed device transfer must leave the request intact. */
     dma->channel[channel].chcr &= ~((1u << 24u) | (1u << 28u));
     dma->queued_mask &= ~(1u << channel);
+    dma->active_mask &= ~(1u << channel);
     dma->dicr |= 1u << (24u + channel);
     return true;
 }
