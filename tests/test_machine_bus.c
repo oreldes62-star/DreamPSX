@@ -64,6 +64,25 @@ int main(void)
     assert(psx_bus_read32(&machine.bus, 0xbf801814u, &word));
     assert(word == 0x14802000u);
 
+    /* Channel 2 manual DMA streams a GP0 fill command from RAM into VRAM. */
+    assert(psx_bus_write32(&machine.bus, 0x1f801814u, 0x04000002u));
+    assert(psx_bus_write32(&machine.bus, 0x00000400u, 0x0200ff00u));
+    assert(psx_bus_write32(&machine.bus, 0x00000404u, 0x00000014u));
+    assert(psx_bus_write32(&machine.bus, 0x00000408u, 0x00010002u));
+    assert(psx_bus_write32(&machine.bus, 0x1f8010f0u,
+                           0x07654321u | (1u << 11u)));
+    assert(psx_bus_write32(&machine.bus, 0x1f8010a0u, 0x00000400u));
+    assert(psx_bus_write32(&machine.bus, 0x1f8010a4u, 3u));
+    assert(psx_bus_write32(&machine.bus, 0x1f8010a8u, 0x11000001u));
+    assert(psx_gpu_vram_read(&machine.gpu, 20u, 0u, &half));
+    assert(half == 0x03e0u);
+    assert(psx_bus_read32(&machine.bus, 0x1f8010a0u, &word));
+    assert(word == 0x0000040cu);
+    assert(psx_bus_read32(&machine.bus, 0x1f8010a8u, &word));
+    assert((word & ((1u << 24u) | (1u << 28u))) == 0u);
+    assert(psx_bus_read32(&machine.bus, 0x1f8010f4u, &word));
+    assert((word & (1u << 26u)) != 0u);
+
     /* BIOS is readable; unmapped hardware and misaligned words are rejected. */
     assert(psx_bus_read32(&machine.bus, PSX_BIOS_BASE, &word));
     assert(!psx_bus_read32(&machine.bus, 0x1f801080u, &word));
