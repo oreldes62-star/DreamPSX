@@ -457,6 +457,21 @@ bool psx_spu_mix_sample(PsxSpu *spu, int16_t *left, int16_t *right)
 
 
 
+int16_t psx_spu_reverb_saturate(int32_t value)
+{
+    if (value > INT16_MAX) return INT16_MAX;
+    if (value < INT16_MIN) return INT16_MIN;
+    return (int16_t)value;
+}
+
+int16_t psx_spu_reverb_multiply_q15(int16_t lhs, int16_t rhs)
+{
+    const int32_t product = (int32_t)lhs * (int32_t)rhs;
+    /* The PS1 SPU divides each Q15 product by 0x8000, then clamps
+     * values that are stored back into its signed 16-bit work RAM. */
+    return psx_spu_reverb_saturate(product / 0x8000);
+}
+
 uint32_t psx_spu_reverb_resolve_address(const PsxSpu *spu,
                                         uint16_t relative_address)
 {
