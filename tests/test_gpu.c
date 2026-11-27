@@ -311,7 +311,7 @@ int main(void)
     assert(psx_gpu_gp0_write(&gpu, 960u | (464u << 16u)));
     assert(psx_gpu_gp0_write(&gpu, 1u | (1u << 8u)));
     assert(psx_gpu_vram_read(&gpu, 961u, 461u, &pixel));
-    assert(pixel == 0x3defu); /* (red background + white texel) / 2. */
+    assert(pixel == 0x3dffu); /* Red remains full; green and blue are halved. */
 
     /* GPU reset clears texture-window state. */
     assert(psx_gpu_gp1_write(&gpu, 0x00000000u));
