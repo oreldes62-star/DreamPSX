@@ -190,6 +190,28 @@ int main(void)
     assert(psx_bus_read16(&machine.bus, PSX_IRQ_STAT_ADDR, &half));
     assert((half & (1u << 3u)) == 0u);
 
+    /* DICR force-IRQ is independent of per-channel flags/enables and is
+     * delivered through the same DMA source line. */
+    assert(psx_bus_write32(&machine.bus, PSX_DMA_DICR_ADDR, 1u << 15u));
+    assert((machine.irq.source_level & (1u << 3u)) != 0u);
+    assert(psx_bus_read16(&machine.bus, PSX_IRQ_STAT_ADDR, &half));
+    assert((half & (1u << 3u)) != 0u);
+    assert(psx_bus_write32(&machine.bus, PSX_DMA_DICR_ADDR, 0u));
+    assert((machine.irq.source_level & (1u << 3u)) == 0u);
+    assert(psx_bus_write16(&machine.bus, PSX_IRQ_STAT_ADDR,
+                           (uint16_t)~(1u << 3u)));
+    assert(psx_bus_read16(&machine.bus, PSX_IRQ_STAT_ADDR, &half));
+    assert((half & (1u << 3u)) == 0u);
+
+    /* A channel completion flag alone must not assert the DMA IRQ when its
+     * channel enable bit is clear, even if the master enable is set. */
+    assert(psx_bus_write32(&machine.bus, PSX_DMA_DICR_ADDR,
+                           (1u << 23u) | (1u << 26u)));
+    assert((machine.irq.source_level & (1u << 3u)) == 0u);
+    assert(psx_bus_read32(&machine.bus, PSX_DMA_DICR_ADDR, &word));
+    assert((word & (1u << 31u)) == 0u);
+    assert(psx_bus_write32(&machine.bus, PSX_DMA_DICR_ADDR, 1u << 26u));
+
     /* BIOS is readable; unmapped hardware and misaligned words are rejected. */
     assert(psx_bus_read32(&machine.bus, PSX_BIOS_BASE, &word));
     assert(!psx_bus_read32(&machine.bus, 0x1f801078u, &word));
