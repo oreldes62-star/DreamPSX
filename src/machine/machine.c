@@ -32,6 +32,7 @@ void psx_machine_reset(PsxMachine *machine)
     psx_dma_reset(&machine->dma);
     psx_cdrom_reset(&machine->cdrom);
     machine->timer2_div8_phase = 0u;
+    machine->cdrom_sector_cycle_phase = 0u;
     machine->cop0_status = 0u;
     machine->cop0_cause = 0u;
     machine->cop0_epc = 0u;
@@ -106,6 +107,30 @@ bool psx_machine_advance_system_cycles(PsxMachine *machine, uint32_t cycles)
                                          PSX_TIMER_CLOCK_SYSTEM_DIV8,
                                          divided_ticks))
         return false;
+
+    /* The current drive model runs at double speed (150 sectors/s).
+     * One sector interval is 33,868,800 / 150 = 225,792 PS1 system cycles.
+     * Keep one overdue event pending while the single-sector data buffer is
+     * occupied; this avoids silently discarding data until overrun buffering
+     * is modeled explicitly.
+     */
+    if (machine->cdrom.read_active) {
+        uint64_t phase = (uint64_t)machine->cdrom_sector_cycle_phase +
+                         (uint64_t)cycles;
+        if (phase >= PSX_CDROM_DOUBLE_SPEED_SECTOR_CYCLES)
+            phase = PSX_CDROM_DOUBLE_SPEED_SECTOR_CYCLES;
+        machine->cdrom_sector_cycle_phase = (uint32_t)phase;
+        if (machine->cdrom_sector_cycle_phase >=
+                PSX_CDROM_DOUBLE_SPEED_SECTOR_CYCLES &&
+            machine->cdrom.data_count == 0u) {
+            if (psx_machine_cdrom_advance_sector(machine))
+                machine->cdrom_sector_cycle_phase = 0u;
+            else if (!machine->cdrom.read_active)
+                machine->cdrom_sector_cycle_phase = 0u;
+        }
+    } else {
+        machine->cdrom_sector_cycle_phase = 0u;
+    }
     return true;
 }
 
