@@ -145,6 +145,12 @@ void psx_spu_reset(PsxSpu *spu)
     spu->reverb_buffer_address = 0u;
     spu->active_voices = 0u;
     spu->control = 0u;
+    spu->main_volume_left_level = 0;
+    spu->main_volume_right_level = 0;
+    spu->main_volume_left_counter = 0u;
+    spu->main_volume_right_counter = 0u;
+    spu->main_volume_left_sweep_active = false;
+    spu->main_volume_right_sweep_active = false;
 }
 
 bool psx_spu_read16(PsxSpu *spu, uint32_t address, uint16_t *value)
