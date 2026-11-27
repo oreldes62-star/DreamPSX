@@ -17,6 +17,10 @@ int main(void)
                             PSX_BIOS_SIZE, vram,
                             PSX_GPU_VRAM_WIDTH * PSX_GPU_VRAM_HEIGHT));
 
+    /* Enable timer IRQ sources in I_MASK before checking the CPU IRQ output. */
+    assert(psx_bus_write16(&machine.bus, PSX_IRQ_MASK_ADDR,
+                           (uint16_t)((1u << 4u) | (1u << 5u) | (1u << 6u))));
+
     /* Timer 1 target event is routed to PS1 IRQ source 5 (I_STAT bit 5). */
     assert(psx_bus_write16(&machine.bus,
         PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE + 8u, 2u));
