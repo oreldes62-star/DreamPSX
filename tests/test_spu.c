@@ -357,6 +357,39 @@ int main(void)
                                PSX_SPU_KEY_OFF_LOW_OFFSET, 0x0003u));
     }
 
+    /* All 24 voices contribute to both channels at once. Positive and
+     * negative peaks must saturate symmetrically without losing voices. */
+    {
+        psx_spu_reset(&spu);
+        spu.active_voices = 0x00ffffffu;
+        for (unsigned i = 0u; i < PSX_SPU_VOICE_COUNT; ++i) {
+            PsxSpuVoice *voice = &spu.voices[i];
+            voice->volume_left = 0x7fffu;
+            voice->volume_right = 0x7fffu;
+            voice->pitch = 0x1000u;
+            voice->envelope_level = PSX_SPU_ENVELOPE_MAX;
+            voice->envelope_phase = PSX_SPU_ADSR_SUSTAIN;
+            voice->block_valid = true;
+            voice->decoded_samples[0] = 2000;
+            voice->decoded_samples[1] = -2000;
+            voice->sample_index = 0u;
+        }
+        assert(psx_spu_mix_sample(&spu, &mixed_left, &mixed_right));
+        assert(mixed_left == 32767);
+        assert(mixed_right == 32767);
+        assert(psx_spu_active_voice_mask(&spu) == 0x00ffffffu);
+        for (unsigned i = 0u; i < PSX_SPU_VOICE_COUNT; ++i)
+            assert(spu.voices[i].sample_index == 1u);
+
+        assert(psx_spu_mix_sample(&spu, &mixed_left, &mixed_right));
+        assert(mixed_left == -32768);
+        assert(mixed_right == -32768);
+        assert(psx_spu_active_voice_mask(&spu) == 0x00ffffffu);
+        for (unsigned i = 0u; i < PSX_SPU_VOICE_COUNT; ++i)
+            assert(spu.voices[i].sample_index == 2u);
+        psx_spu_reset(&spu);
+    }
+
     /* Fixed-size interleaved stereo PCM blocks: active voice samples are
      * mixed, and the remainder is explicitly zero-filled after voice end. */
     {
