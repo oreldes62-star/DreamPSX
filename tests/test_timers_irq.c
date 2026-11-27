@@ -35,6 +35,24 @@ int main(void)
         PSX_TIMER_CLOCK_SYSTEM, 2u));
     assert((psx_irq_read_stat(&machine.irq) & (1u << 5u)) == 0u);
 
+    /* Timer2's divide-by-eight source retains sub-tick phase across calls. */
+    assert(psx_bus_write16(&machine.bus,
+        PSX_TIMER_BASE_ADDR + 2u * PSX_TIMER_STRIDE + 8u, 2u));
+    assert(psx_bus_write16(&machine.bus,
+        PSX_TIMER_BASE_ADDR + 2u * PSX_TIMER_STRIDE + 4u,
+        (uint16_t)((1u << PSX_TIMER_MODE_CLOCK_SHIFT) |
+                   PSX_TIMER_MODE_IRQ_TARGET)));
+    assert(psx_machine_advance_system_cycles(&machine, 3u));
+    assert(machine.timers.timer[2].counter == 0u);
+    assert(machine.timer2_div8_phase == 3u);
+    assert(psx_machine_advance_system_cycles(&machine, 4u));
+    assert(machine.timers.timer[2].counter == 0u);
+    assert(machine.timer2_div8_phase == 7u);
+    assert(psx_machine_advance_system_cycles(&machine, 1u));
+    assert(machine.timers.timer[2].counter == 1u);
+    assert(machine.timer2_div8_phase == 0u);
+    assert((psx_irq_read_stat(&machine.irq) & (1u << 6u)) != 0u);
+
     /* Timer 0 selected for dot clock ignores system ticks. */
     assert(psx_bus_write16(&machine.bus, PSX_TIMER_BASE_ADDR + 8u, 1u));
     assert(psx_bus_write16(&machine.bus, PSX_TIMER_BASE_ADDR + 4u,
