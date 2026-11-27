@@ -20,6 +20,20 @@ bool psx_dma_init(PsxDmaController *dma)
     return true;
 }
 
+bool psx_dma_channel_enabled(const PsxDmaController *dma, unsigned channel)
+{
+    if (!dma || !dma->initialized || channel >= PSX_DMA_CHANNEL_COUNT)
+        return false;
+    return (dma->dpcr & (1u << (channel * 4u + 3u))) != 0u;
+}
+
+unsigned psx_dma_channel_priority(const PsxDmaController *dma, unsigned channel)
+{
+    if (!dma || !dma->initialized || channel >= PSX_DMA_CHANNEL_COUNT)
+        return 0u;
+    return (unsigned)((dma->dpcr >> (channel * 4u)) & 7u);
+}
+
 bool psx_dma_read32(const PsxDmaController *dma, uint32_t address,
                     uint32_t *value)
 {
@@ -123,7 +137,7 @@ bool psx_dma_execute_gpu_manual(PsxDmaController *dma,
     if ((control & (1u << 24u)) == 0u ||
         (control & (1u << 28u)) == 0u ||
         ((control >> 9u) & 3u) != 0u ||
-        (dma->dpcr & (1u << 11u)) == 0u)
+        !psx_dma_channel_enabled(dma, 2u))
         return true;
 
     if (ram_to_gpu) {
