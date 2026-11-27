@@ -22,6 +22,6 @@ This milestone introduces the PlayStation DMA controller's seven channel registe
 
 ## Deliberate limitations
 
-CHCR is currently a stored register value: setting its start/trigger bits does not launch a transfer. There is no DMA scheduler, bus arbitration, channel priority execution, block-mode loop, linked-list mode, GPU FIFO service, DMA completion flag generation or IRQ delivery yet. Those form the next implementation milestone; software must not assume DMA is operational at this stage.
+At milestone 3.85, CHCR was only a stored register value. The follow-up milestone 3.86 adds a deliberately narrow first transfer path: channel 2 manual mode, RAM to GP0. Block/request mode, linked-list mode, bus arbitration, cycle-accurate scheduling, DMA IRQ-line delivery and transfers for other channels remain future work.
 
 Tests have been added but have not been compiled or run in this environment.
