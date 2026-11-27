@@ -18,17 +18,16 @@ int main(void)
     assert(psx_timers_read16(&timers, PSX_TIMER_BASE_ADDR, &half));
     assert(half == 4u);
     assert(psx_timers_advance(&timers, 0u, 1u));
-    assert(psx_timers_read32(&timers, PSX_TIMER_BASE_ADDR + 4u, &word));
-    assert((word & PSX_TIMER_MODE_REACHED_TARGET) != 0u);
-    assert(psx_timers_read16(&timers, PSX_TIMER_BASE_ADDR, &half));
-    assert(half == 0u);
-
     /* Reading MODE returns then clears event flags, not configuration. */
     assert(psx_timers_read16(&timers, PSX_TIMER_BASE_ADDR + 4u, &half));
     assert((half & PSX_TIMER_MODE_REACHED_TARGET) != 0u);
+    assert(psx_timers_read16(&timers, PSX_TIMER_BASE_ADDR, &half));
+    assert(half == 0u);
     assert(psx_timers_read16(&timers, PSX_TIMER_BASE_ADDR + 4u, &half));
     assert((half & PSX_TIMER_MODE_REACHED_TARGET) == 0u);
     assert((half & PSX_TIMER_MODE_RESET_AT_TARGET) != 0u);
+    assert(psx_timers_read32(&timers, PSX_TIMER_BASE_ADDR + 4u, &word));
+    assert((word & PSX_TIMER_MODE_REACHED_TARGET) == 0u);
 
     /* Timer 2 can be accessed independently and overflow is observable. */
     assert(psx_timers_write16(&timers,
