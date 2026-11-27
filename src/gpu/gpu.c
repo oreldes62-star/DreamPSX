@@ -61,6 +61,16 @@ static bool triangle_edge_is_top_left(int ax, int ay, int bx, int by,
     return dy < 0 || (dy == 0 && dx > 0);
 }
 
+static bool triangle_edge_inside(int64_t edge, int ax, int ay, int bx, int by,
+                                 bool reverse, bool positive_area)
+{
+    if (positive_area)
+        return edge > 0 || (edge == 0 &&
+            triangle_edge_is_top_left(ax, ay, bx, by, reverse));
+    return edge < 0 || (edge == 0 &&
+        triangle_edge_is_top_left(ax, ay, bx, by, reverse));
+}
+
 static void execute_flat_triangle(PsxGpu *gpu)
 {
     const uint32_t xy0 = gpu->parameters[0];
@@ -107,20 +117,14 @@ static void execute_flat_triangle(PsxGpu *gpu)
             const int64_t e1 = triangle_edge(x1, y1, x2, y2, px2, py2);
             const int64_t e2 = triangle_edge(x2, y2, x0, y0, px2, py2);
             const bool reverse = area > 0;
+            const bool positive_area = area > 0;
             const bool inside =
-                (area < 0 ?
-                    ((e0 < 0 || (e0 == 0 &&
-                       triangle_edge_is_top_left(x0, y0, x1, y1, reverse))) &&
-                     (e1 < 0 || (e1 == 0 &&
-                       triangle_edge_is_top_left(x1, y1, x2, y2, reverse))) &&
-                     (e2 < 0 || (e2 == 0 &&
-                       triangle_edge_is_top_left(x2, y2, x0, y0, reverse)))) :
-                    ((e0 > 0 || (e0 == 0 &&
-                       triangle_edge_is_top_left(x0, y0, x1, y1, reverse))) &&
-                     (e1 > 0 || (e1 == 0 &&
-                       triangle_edge_is_top_left(x1, y1, x2, y2, reverse))) &&
-                     (e2 > 0 || (e2 == 0 &&
-                       triangle_edge_is_top_left(x2, y2, x0, y0, reverse))));
+                triangle_edge_inside(e0, x0, y0, x1, y1,
+                                     reverse, positive_area) &&
+                triangle_edge_inside(e1, x1, y1, x2, y2,
+                                     reverse, positive_area) &&
+                triangle_edge_inside(e2, x2, y2, x0, y0,
+                                     reverse, positive_area);
             if (inside)
                 gpu->vram[(unsigned)y * PSX_GPU_VRAM_WIDTH +
                           (unsigned)x] = color;
