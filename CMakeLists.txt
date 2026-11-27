@@ -57,6 +57,7 @@ set(DREAMPSX_TESTS
     test_gpu_textured_rectangles
     test_gpu_framebuffer
     test_gpu_display
+    test_gpu_display_mode
     test_gpu_scanout
     test_machine
     test_machine_bus
