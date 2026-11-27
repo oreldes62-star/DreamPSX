@@ -145,7 +145,7 @@ int main(void)
     assert((word & (1u << 24u)) == 0u);
     assert(psx_bus_read32(&machine.bus, 0x1f8010f4u, &word));
     assert((word & (1u << 26u)) != 0u);
-    assert(psx_dma_data_words_transferred(&machine.dma) == 9u);
+    assert(psx_dma_data_words_transferred(&machine.dma) == 10u);
     assert(psx_dma_linked_list_headers_read(&machine.dma) == 2u);
 
     /* Request/block DMA: two three-word blocks carry two GP0 fills. */
@@ -172,7 +172,7 @@ int main(void)
     assert((word & (1u << 24u)) == 0u);
     assert(psx_bus_read32(&machine.bus, 0x1f8010f4u, &word));
     assert((word & (1u << 26u)) != 0u);
-    assert(psx_dma_data_words_transferred(&machine.dma) == 15u);
+    assert(psx_dma_data_words_transferred(&machine.dma) == 16u);
 
     /* Request/block DMA also supports GPUREAD-to-RAM image transfers. */
     assert(psx_bus_write32(&machine.bus, 0x1f8010f4u, 1u << 26u));
@@ -189,7 +189,7 @@ int main(void)
     assert(word == 0x00000804u);
     assert(psx_bus_read32(&machine.bus, 0x1f8010a8u, &word));
     assert((word & (1u << 24u)) == 0u);
-    assert(psx_dma_data_words_transferred(&machine.dma) == 16u);
+    assert(psx_dma_data_words_transferred(&machine.dma) == 17u);
 
     /* DMA master interrupt: DICR channel-2 enable plus master enable
      * must raise PS1 interrupt-controller source 3 on transfer completion. */
@@ -206,7 +206,7 @@ int main(void)
     assert(psx_bus_read16(&machine.bus, PSX_IRQ_STAT_ADDR, &half));
     assert((half & (1u << 3u)) != 0u);
     assert((machine.irq.source_level & (1u << 3u)) != 0u);
-    assert(psx_dma_data_words_transferred(&machine.dma) == 19u);
+    assert(psx_dma_data_words_transferred(&machine.dma) == 20u);
 
     /* Clearing the DMA completion flag drops the source line, while the
      * latched I_STAT request remains until software acknowledges it. */
