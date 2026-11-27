@@ -89,7 +89,7 @@ Experimental project. The latest GPU work adds monochrome and textured rectangle
 - [GPU monochrome rectangle milestone 3.64](docs/GPU-MONOCHROME-RECTANGLES-MILESTONE-3.64.md)
 - [GPU textured rectangle milestone 3.65](docs/GPU-TEXTURED-RECTANGLES-MILESTONE-3.65.md)
 
-## Target
+- [GTE command latency and result interlock milestone 3.81](docs/GTE-TIMING-INTERLOCK-MILESTONE-3.81.md)\n\n## Target
 Sega Dreamcast with 16 MiB RAM. Long-term target: CDI test build for Flycast, then GDEMU.
 
 ## Limitations
