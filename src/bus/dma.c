@@ -109,8 +109,7 @@ bool psx_dma_execute_gpu_manual(PsxDmaController *dma,
     uint32_t words;
     uint32_t address;
     int32_t step;
-    const bool ram_to_gpu = (control = dma && dma->initialized ?
-                             dma->channel[2].chcr : 0u, (control & 1u) != 0u);
+    bool ram_to_gpu;
 
     if (!dma || !dma->initialized || !memory || !memory->initialized ||
         !gpu || !gpu->initialized)
@@ -118,6 +117,7 @@ bool psx_dma_execute_gpu_manual(PsxDmaController *dma,
 
     channel = &dma->channel[2];
     control = channel->chcr;
+    ram_to_gpu = (control & 1u) != 0u;
 
     /* Manual sync mode requires start, trigger and channel-2 DPCR enable. */
     if ((control & (1u << 24u)) == 0u ||
