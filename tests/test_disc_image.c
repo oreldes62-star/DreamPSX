@@ -139,6 +139,7 @@ int main(void)
         assert(sparse.calls == 1u && sparse.bytes_read == PSX_DISC_SECTOR_DATA_SIZE);
         assert(output[0] == (uint8_t)((target_lba * PSX_DISC_SECTOR_DATA_SIZE) >> 11u));
         assert(!psx_disc_read_sector(&disc, disc.sector_count, output));
+        { PsxDiscImage damaged = disc; damaged.source_sector_size = 0u; assert(!psx_disc_read_sector(&damaged, 0u, output)); }
         assert(sparse.calls == 1u);
         psx_disc_unmount(&disc);
         assert(!disc.mounted);
