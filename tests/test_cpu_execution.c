@@ -938,6 +938,8 @@ int main(void)
     machine.cpu.delay_slot_pending = false;
     machine.cpu.load_delay_pending = false;
     assert(psx_machine_step(&machine));
+    /* NCLIP is timed: its result becomes visible after the remaining clocks. */
+    psx_gte_advance_cycles(&machine.gte, 8u);
     {
         uint32_t nclip_value = 0u;
         assert(psx_gte_read_data(&machine.gte, 24u, &nclip_value));
