@@ -167,7 +167,7 @@ bool psx_disc_mount_reader(PsxDiscImage *disc, size_t source_size, PsxDiscTrackM
 static bool disc_read_raw_sector(const PsxDiscImage *disc, size_t lba, uint8_t raw[2352])
 {
     size_t sector, offset;
-    if (!disc || !disc->mounted || lba >= disc->sector_count || disc->first_sector > SIZE_MAX - lba) return false;
+    if (!disc || !disc->mounted || lba >= disc->sector_count || disc->first_sector > SIZE_MAX - lba || (disc->source_sector_size != 2048u && disc->source_sector_size != 2352u) || disc->source_size % disc->source_sector_size != 0u) return false;
     sector = disc->first_sector + lba;
     if (sector > SIZE_MAX / disc->source_sector_size) return false;
     offset = sector * disc->source_sector_size;
