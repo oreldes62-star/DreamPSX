@@ -25,6 +25,7 @@ void psx_machine_reset(PsxMachine *machine)
     psx_gte_reset(&machine->gte);
     psx_gpu_reset(&machine->gpu);
     psx_timers_reset(&machine->timers);
+    machine->timer2_div8_phase = 0u;
     machine->cop0_status = 0u;
     machine->cop0_cause = 0u;
     machine->cop0_epc = 0u;
@@ -60,6 +61,33 @@ bool psx_machine_timer_advance_clock(PsxMachine *machine, unsigned timer,
         psx_irq_set_line(&machine->irq, 4u + timer, false);
         psx_machine_refresh_interrupts(machine);
     }
+    return true;
+}
+
+/* Feed elapsed system-clock cycles into the three root counters.
+ * Timer2's divide-by-eight clock is modeled with a persistent remainder so
+ * splitting the same interval across calls cannot change the result.
+ */
+bool psx_machine_advance_system_cycles(PsxMachine *machine, uint32_t cycles)
+{
+    if (!machine) return false;
+
+    for (unsigned timer = 0u; timer < 3u; ++timer) {
+        if (!psx_machine_timer_advance_clock(machine, timer,
+                                              PSX_TIMER_CLOCK_SYSTEM,
+                                              cycles))
+            return false;
+    }
+
+    const uint64_t accumulated =
+        (uint64_t)machine->timer2_div8_phase + (uint64_t)cycles;
+    const uint32_t divided_ticks = (uint32_t)(accumulated / 8u);
+    machine->timer2_div8_phase = (uint8_t)(accumulated % 8u);
+    if (divided_ticks != 0u &&
+        !psx_machine_timer_advance_clock(machine, 2u,
+                                         PSX_TIMER_CLOCK_SYSTEM_DIV8,
+                                         divided_ticks))
+        return false;
     return true;
 }
 
