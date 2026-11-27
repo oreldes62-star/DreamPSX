@@ -285,40 +285,31 @@ bool psx_dma_execute_gpu_manual(PsxDmaController *dma,
 
     words = channel->bcr & 0xffffu;
     if (words == 0u) words = 0x10000u;
-    {
-        const uint32_t transfer_words = words;
-        uint32_t remaining_words = words;
-        address = channel->madr;
-        step = (control & 2u) != 0u ? -4 : 4;
+    address = channel->madr;
+    step = (control & 2u) != 0u ? -4 : 4;
 
-        for (uint32_t i = 0u; i < transfer_words; ++i) {
-            uint32_t data;
-            if (ram_to_gpu) {
-                if (!psx_memory_read32(memory, address, &data))
-                    return false;
-                if (!psx_gpu_gp0_write(gpu, data))
-                    return false;
-            } else {
-                /* GPUREAD returns zero when idle, so stop rather than fabricating
-                 * words after the image-transfer payload has been exhausted. */
-                if (gpu->transfer_mode != PSX_GPU_TRANSFER_VRAM_TO_CPU)
-                    return false;
-                if (!psx_gpu_read_data(gpu, &data) ||
-                    !psx_memory_write32(memory, address, data))
-                    return false;
-            }
-
-            /* Commit progress per payload word. If a later access fails, the
-             * aborted request resumes at the first word not yet transferred. */
-            ++dma->data_words_transferred;
-            address = (uint32_t)(address + step) & 0x00fffffcu;
-            channel->madr = address;
-            --remaining_words;
-            channel->bcr = (channel->bcr & 0xffff0000u) |
-                           (remaining_words & 0xffffu);
+    for (uint32_t i = 0u; i < words; ++i) {
+        uint32_t data;
+        if (ram_to_gpu) {
+            if (!psx_memory_read32(memory, address, &data))
+                return false;
+            if (!psx_gpu_gp0_write(gpu, data))
+                return false;
+        } else {
+            /* GPUREAD returns zero when idle, so stop rather than fabricating
+             * words after the image-transfer payload has been exhausted. */
+            if (gpu->transfer_mode != PSX_GPU_TRANSFER_VRAM_TO_CPU)
+                return false;
+            if (!psx_gpu_read_data(gpu, &data) ||
+                !psx_memory_write32(memory, address, data))
+                return false;
         }
+        ++dma->data_words_transferred;
+        address = (uint32_t)(address + step) & 0x00fffffcu;
     }
 
+    channel->madr = address;
+    channel->bcr &= 0xffff0000u;
     return psx_dma_complete_channel(dma, 2u);
 }
 
