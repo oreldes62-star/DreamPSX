@@ -59,6 +59,25 @@ int main(void)
     assert(psx_bus_read16(&machine.bus, PSX_IRQ_STAT_ADDR, &half));
     assert((half & (1u << 2)) == 0u);
 
+    /* CD-ROM byte registers use the bank selector and route INT3 to IRQ2. */
+    assert(psx_bus_write16(&machine.bus, PSX_IRQ_MASK_ADDR,
+                           (uint16_t)(1u << 2u)));
+    assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR, 1u));
+    assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR + 2u, 0x04u));
+    assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR, 0u));
+    assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR + 2u, 0x00u));
+    assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR + 2u, 0x02u));
+    assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR + 2u, 0x15u));
+    assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR + 1u, 0x02u));
+    assert((machine.irq.source_level & (1u << 2u)) != 0u);
+    assert((psx_irq_read_stat(&machine.irq) & (1u << 2u)) != 0u);
+    assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR + 3u, 0x04u));
+    assert((machine.irq.source_level & (1u << 2u)) == 0u);
+    assert((psx_irq_read_stat(&machine.irq) & (1u << 2u)) != 0u);
+    assert(psx_bus_write16(&machine.bus, PSX_IRQ_STAT_ADDR,
+                           (uint16_t)~(1u << 2u)));
+    assert((psx_irq_read_stat(&machine.irq) & (1u << 2u)) == 0u);
+
     /* GPU registers share the machine bus and update its VRAM state. */
     assert(psx_bus_write32(&machine.bus, 0x1f801810u, 0x0200ff00u));
     assert(psx_bus_write32(&machine.bus, 0x1f801810u, 0u));
