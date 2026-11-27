@@ -24,7 +24,8 @@ CORE_SOURCES = \
     ../../../src/media/psx_exe.c \
     ../../../src/machine/machine.c \
     ../../../src/system/timers.c \
-    ../../../src/platform/dreamcast/kos_audio_backend.c
+    ../../../src/platform/dreamcast/kos_audio_backend.c \
+    ../../../src/platform/dreamcast/kos_disc_file.c
 
 CORE_OBJECTS = $(CORE_SOURCES:.c=.o)
 
