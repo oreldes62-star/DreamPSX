@@ -73,9 +73,9 @@ bool psx_gpu_vram_read(const PsxGpu *gpu, unsigned x, unsigned y,
 bool psx_gpu_copy_rgb565(const PsxGpu *gpu, unsigned x, unsigned y,
                          unsigned width, unsigned height,
                          uint16_t *dst, size_t dst_stride);
-/* Read the configured 15-bit display origin with VRAM wraparound.
- * Width/height are supplied by the frontend; disabled and 24-bit modes
- * are rejected until their scanout semantics are implemented.
+/* Read the configured display origin into RGB565 output. Supports PS1
+ * 15-bit pixels and byte-packed 24-bit pixels; width/height and destination
+ * stride are supplied by the frontend.
  */
 bool psx_gpu_scanout_rgb565(const PsxGpu *gpu, unsigned width,
                             unsigned height, uint16_t *dst,
