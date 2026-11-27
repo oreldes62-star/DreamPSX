@@ -105,11 +105,11 @@ int main(void)
      * two packets; packet headers are metadata, not GP0 command words. */
     assert(psx_bus_write32(&machine.bus, 0x1f8010f4u, 1u << 26u));
     assert(psx_bus_write32(&machine.bus, 0x1f801814u, 0x04000002u));
-    assert(psx_bus_write32(&machine.bus, 0x00000600u, 0x02000604u));
+    assert(psx_bus_write32(&machine.bus, 0x00000600u, 0x02000610u));
     assert(psx_bus_write32(&machine.bus, 0x00000604u, 0x0200ff00u));
     assert(psx_bus_write32(&machine.bus, 0x00000608u, 0x0000001eu));
-    assert(psx_bus_write32(&machine.bus, 0x0000060cu, 0x00ffffffu));
-    assert(psx_bus_write32(&machine.bus, 0x00000610u, 0x00010002u));
+    assert(psx_bus_write32(&machine.bus, 0x00000610u, 0x01ffffffu));
+    assert(psx_bus_write32(&machine.bus, 0x00000614u, 0x00010002u));
     assert(psx_bus_write32(&machine.bus, 0x1f8010a0u, 0x00000600u));
     assert(psx_bus_write32(&machine.bus, 0x1f8010a4u, 0u)); /* ignored in linked-list mode */
     assert(psx_bus_write32(&machine.bus, 0x1f8010a8u, 0x01000401u));
