@@ -507,6 +507,104 @@ void psx_spu_reverb_advance(PsxSpu *spu)
 }
 
 
+
+static int32_t reverb_multiply_q15_wide(int32_t sample, int16_t volume)
+{
+    return (int32_t)(((int64_t)sample * (int64_t)volume) / 0x8000);
+}
+
+static uint32_t reverb_previous_sample_address(const PsxSpu *spu,
+                                                uint16_t relative_address)
+{
+    const uint32_t base =
+        ((uint32_t)load_le16(&spu->registers[
+            PSX_SPU_REVERB_WORK_AREA_START_OFFSET]) *
+         PSX_SPU_REVERB_ADDRESS_UNIT_BYTES) &
+        PSX_SPU_REVERB_BUFFER_END_ADDRESS;
+    const uint32_t address =
+        psx_spu_reverb_resolve_address(spu, relative_address);
+    return address >= base + 2u ? address - 2u : base;
+}
+
+static int16_t reverb_read_absolute(const PsxSpu *spu, uint32_t address)
+{
+    return (int16_t)load_le16(&spu->ram[address]);
+}
+
+static void reverb_write_absolute(PsxSpu *spu, uint32_t address,
+                                  int32_t value)
+{
+    store_le16(&spu->ram[address],
+               (uint16_t)psx_spu_reverb_saturate(value));
+}
+
+static void reverb_process_reflection(PsxSpu *spu, int32_t input,
+                                      uint16_t destination_offset,
+                                      uint16_t delay_offset,
+                                      int16_t wall_volume,
+                                      int16_t iir_volume)
+{
+    const uint16_t destination_relative = load_le16(
+        &spu->registers[destination_offset]);
+    const uint16_t delay_relative = load_le16(
+        &spu->registers[delay_offset]);
+    const uint32_t destination = psx_spu_reverb_resolve_address(
+        spu, destination_relative);
+    const uint32_t previous_address = reverb_previous_sample_address(
+        spu, destination_relative);
+    const int32_t delayed = reverb_read_absolute(
+        spu, psx_spu_reverb_resolve_address(spu, delay_relative));
+    const int32_t previous = reverb_read_absolute(spu, previous_address);
+    const int32_t wall = reverb_multiply_q15_wide(delayed, wall_volume);
+    const int32_t reflected = reverb_multiply_q15_wide(
+        input + wall - previous, iir_volume) + previous;
+
+    reverb_write_absolute(spu, destination, reflected);
+}
+
+bool psx_spu_reverb_process_reflections(PsxSpu *spu, int16_t left_input,
+                                       int16_t right_input)
+{
+    int16_t input_left_volume;
+    int16_t input_right_volume;
+    int16_t wall_volume;
+    int16_t iir_volume;
+    int32_t input_left;
+    int32_t input_right;
+
+    if (!spu || !spu->initialized)
+        return false;
+
+    input_left_volume = (int16_t)load_le16(&spu->registers[
+        PSX_SPU_REVERB_CONFIG_VLIN_OFFSET]);
+    input_right_volume = (int16_t)load_le16(&spu->registers[
+        PSX_SPU_REVERB_CONFIG_VRIN_OFFSET]);
+    wall_volume = (int16_t)load_le16(&spu->registers[
+        PSX_SPU_REVERB_CONFIG_VWALL_OFFSET]);
+    iir_volume = (int16_t)load_le16(&spu->registers[
+        PSX_SPU_REVERB_CONFIG_VIIR_OFFSET]);
+
+    input_left = psx_spu_reverb_multiply_q15(left_input,
+                                              input_left_volume);
+    input_right = psx_spu_reverb_multiply_q15(right_input,
+                                               input_right_volume);
+
+    /* The DIFF stage crosses channels: left reads dRDIFF and right dLDIFF. */
+    reverb_process_reflection(spu, input_left,
+        PSX_SPU_REVERB_CONFIG_MLSAME_OFFSET,
+        PSX_SPU_REVERB_CONFIG_DLSAME_OFFSET, wall_volume, iir_volume);
+    reverb_process_reflection(spu, input_right,
+        PSX_SPU_REVERB_CONFIG_MRSAME_OFFSET,
+        PSX_SPU_REVERB_CONFIG_DRSAME_OFFSET, wall_volume, iir_volume);
+    reverb_process_reflection(spu, input_left,
+        PSX_SPU_REVERB_CONFIG_MLDIFF_OFFSET,
+        PSX_SPU_REVERB_CONFIG_DRDIFF_OFFSET, wall_volume, iir_volume);
+    reverb_process_reflection(spu, input_right,
+        PSX_SPU_REVERB_CONFIG_MRDIFF_OFFSET,
+        PSX_SPU_REVERB_CONFIG_DLDIFF_OFFSET, wall_volume, iir_volume);
+    return true;
+}
+
 bool psx_spu_reverb_read16(const PsxSpu *spu, uint16_t relative_address,
                            int16_t *value)
 {
