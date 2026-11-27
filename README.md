@@ -2,7 +2,7 @@
 PlayStation emulator research and development for Sega Dreamcast.
 
 ## Development status
-Experimental project. The host-side CMake build and all 14 CTest targets passed in GitHub Actions on commit `ef68fb7f1828b4a73e312277ad7034adf3ff30d1`. The Gouraud-textured triangle milestone is under validation; host tests do not validate Dreamcast hardware performance or compatibility.
+Experimental project. The latest GPU work adds regression coverage for textured-triangle UV interpolation and all four semi-transparency blend modes. The new host test and complete CTest suite have not yet been executed; runtime validation is pending. Host tests do not validate Dreamcast hardware performance or compatibility.
 
 ## Current milestones
 - [COP2 CU2 milestone 1.2](docs/COP2-CU2-MILESTONE-1.2.md)
@@ -83,6 +83,7 @@ Experimental project. The host-side CMake build and all 14 CTest targets passed 
 - [GPU texture and VRAM boundary validation milestone 3.58](docs/GPU-TEXTURE-VRAM-WRAP-MILESTONE-3.58.md)
 - [GPU raw textured triangle correction milestone 3.59](docs/GPU-RAW-TEXTURE-MILESTONE-3.59.md)
 - [GPU textured triangle opcode matrix milestone 3.60](docs/GPU-TEXTURED-OPCODE-MATRIX-MILESTONE-3.60.md)
+- [GPU texture rasterization validation milestone 3.61](docs/GPU-TEXTURE-RASTERIZATION-MILESTONE-3.61.md)
 
 ## Target
 Sega Dreamcast with 16 MiB RAM. Long-term target: CDI test build for Flycast, then GDEMU.
