@@ -6,6 +6,7 @@ on:
     paths:
       - "platform/dreamcast/**"
       - "src/audio/**"
+      - "src/platform/dreamcast/**"
       - "include/dreampsx/**"
       - ".github/workflows/dreamcast-kos-audio.yml"
   pull_request:
@@ -59,7 +60,7 @@ jobs:
             -v "$GITHUB_WORKSPACE:/project" \
             -w /project/platform/dreamcast/audio-smoke \
             pcercuei/dreamcast-toolchain:stable \
-            sh -lc '. /workspace/environ.sh && sh-elf-readelf -h dreampsx-audio-smoke.elf && test "$(sh-elf-ar t libdreampsx_core.a | wc -l)" -eq 23'
+            sh -lc '. /workspace/environ.sh && sh-elf-readelf -h dreampsx-audio-smoke.elf && test "$(sh-elf-ar t libdreampsx_core.a | wc -l)" -eq 24'
 
       - name: Upload Dreamcast ELF
         uses: actions/upload-artifact@v4
