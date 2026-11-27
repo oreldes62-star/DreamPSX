@@ -16,6 +16,10 @@ The PSX-SPX DMA channel reference identifies channel 3 as CD-ROM-to-RAM, documen
 
 Reference: https://psx-spx.consoledev.net/dmachannels/
 
+## Validation
+
+GitHub Actions host build and CTest passed on commit `0bd196213856d273cde0f518fcf244ff555b14c6` (34/34 tests). The workflow validates the host build only, not the Dreamcast target.
+
 ## Boundaries still outstanding
 
 - This endpoint is synchronous and transfers only data already present in the emulated sector FIFO.
