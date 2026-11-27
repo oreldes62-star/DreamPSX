@@ -1,21 +1,47 @@
-# DreamPSX KallistiOS AICA audio smoke test
+# DreamPSX KallistiOS cross-build: complete emulator core + audio smoke app
 TARGET = dreampsx-audio-smoke.elf
-OBJS = main.o \
-       ../../../src/audio/audio_buffer.o \
-       ../../../src/audio/dreamcast_audio_stream.o \
-       ../../../src/platform/dreamcast/kos_audio_backend.o
+
+CORE_SOURCES = \
+    ../../../src/bus/bus.c \
+    ../../../src/bus/cdrom.c \
+    ../../../src/bus/dma.c \
+    ../../../src/bus/irq.c \
+    ../../../src/bus/irq_mmio.c \
+    ../../../src/bus/memory.c \
+    ../../../src/bus/spu.c \
+    ../../../src/audio/spu_adpcm.c \
+    ../../../src/audio/audio_buffer.c \
+    ../../../src/audio/dreamcast_audio_stream.c \
+    ../../../src/cpu/cop0.c \
+    ../../../src/cpu/cop0_irq.c \
+    ../../../src/cpu/cpu.c \
+    ../../../src/gte/gte.c \
+    ../../../src/gpu/gpu.c \
+    ../../../src/media/iso9660.c \
+    ../../../src/media/disc_image.c \
+    ../../../src/media/xa_adpcm.c \
+    ../../../src/media/boot_config.c \
+    ../../../src/media/psx_exe.c \
+    ../../../src/machine/machine.c \
+    ../../../src/system/timers.c \
+    ../../../src/platform/dreamcast/kos_audio_backend.c
+
+CORE_OBJECTS = $(CORE_SOURCES:.c=.o)
 
 CFLAGS += -I../../../include
 
-all: $(TARGET)
+all: libdreampsx_core.a $(TARGET)
 
 include $(KOS_BASE)/Makefile.rules
 
-$(TARGET): $(OBJS)
-	kos-cc -o $@ $(OBJS)
+libdreampsx_core.a: $(CORE_OBJECTS)
+	kos-ar rcs $@ $(CORE_OBJECTS)
+
+$(TARGET): main.o libdreampsx_core.a
+	kos-cc -o $@ main.o libdreampsx_core.a
 
 clean:
-	-rm -f $(TARGET) $(OBJS)
+	-rm -f $(TARGET) main.o libdreampsx_core.a $(CORE_OBJECTS)
 
 dist: $(TARGET)
 	$(KOS_STRIP) $(TARGET)
