@@ -173,6 +173,7 @@ bool psx_machine_advance_system_cycles(PsxMachine *machine, uint32_t cycles)
 
     /* CD-ROM command completion and sector cadence share the PS1 clock. */
     psx_cdrom_advance_cycles(&machine->cdrom, cycles);
+    psx_cdrom_advance_xa_audio_cycles(&machine->cdrom, cycles);
     psx_irq_set_line(&machine->irq, 2u,
                      psx_cdrom_irq_output(&machine->cdrom));
     psx_machine_refresh_interrupts(machine);
