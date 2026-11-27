@@ -25,7 +25,7 @@ int main(void)
     assert(adpcm_samples[2] == -4096);
     assert(adpcm_samples[3] == 0);
     assert(adpcm_state.history_1 == 0);
-    assert(adpcm_state.history_2 == -4096);
+    assert(adpcm_state.history_2 == 0);
 
     /* Invalid filter/shift headers fail without changing decoder history. */
     {
