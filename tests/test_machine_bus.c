@@ -18,6 +18,10 @@ int main(void)
     assert(psx_machine_init(&machine, ram, PSX_RAM_SIZE, bios, PSX_BIOS_SIZE,
                             gpu_vram, PSX_GPU_VRAM_WIDTH * PSX_GPU_VRAM_HEIGHT));
     assert(machine.bus.initialized);
+    {
+        PsxDmaTransferEvent event;
+        assert(!psx_dma_last_transfer_event(&machine.dma, &event));
+    }
 
     /* DMA channel registers are visible through physical and KSEG1 bus
      * addresses; channel 2 is reserved for the GPU transfer path. */
@@ -215,6 +219,17 @@ int main(void)
     assert((half & (1u << 3u)) != 0u);
     assert((machine.irq.source_level & (1u << 3u)) != 0u);
     assert(psx_dma_data_words_transferred(&machine.dma) == 20u);
+    {
+        PsxDmaTransferEvent event;
+        assert(psx_dma_last_transfer_event(&machine.dma, &event));
+        assert(event.sequence >= 1u);
+        assert(event.channel == 2u);
+        assert(event.sync_mode == 0u);
+        assert(event.ram_to_device);
+        assert(event.completed);
+        assert(event.payload_words == 3u);
+        assert(event.packet_headers == 0u);
+    }
     assert(psx_dma_manual_words_transferred(&machine.dma) == 10u);
     assert(psx_dma_request_words_transferred(&machine.dma) == 7u);
     assert(psx_dma_linked_list_words_transferred(&machine.dma) == 3u);
