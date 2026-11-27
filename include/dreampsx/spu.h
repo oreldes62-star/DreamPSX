@@ -133,6 +133,10 @@ bool psx_spu_mix_sample(PsxSpu *spu, int16_t *left, int16_t *right);
 uint32_t psx_spu_reverb_resolve_address(const PsxSpu *spu,
                                         uint16_t relative_address);
 void psx_spu_reverb_advance(PsxSpu *spu);
+bool psx_spu_reverb_read16(const PsxSpu *spu, uint16_t relative_address,
+                           int16_t *value);
+bool psx_spu_reverb_write16(PsxSpu *spu, uint16_t relative_address,
+                            int16_t value);
 bool psx_spu_mix_block(PsxSpu *spu, int16_t *interleaved_stereo,
                        size_t frame_capacity, size_t *frames_written);
 bool psx_spu_read8(PsxSpu *spu, uint32_t address, uint8_t *value);
