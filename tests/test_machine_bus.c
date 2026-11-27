@@ -82,7 +82,7 @@ int main(void)
     assert((word & ((1u << 24u) | (1u << 28u))) == 0u);
     assert(psx_bus_read32(&machine.bus, 0x1f8010f4u, &word));
     assert((word & (1u << 26u)) != 0u);
-    assert(psx_dma_data_words_transferred(&machine.dma) == 3u);
+    fprintf(stderr, "DMA payload counter after first manual transfer: %llu\\n",\n            (unsigned long long)psx_dma_data_words_transferred(&machine.dma));\n    assert(psx_dma_data_words_transferred(&machine.dma) == 3u);
     assert(psx_dma_linked_list_headers_read(&machine.dma) == 0u);
 
     /* A channel armed while DPCR disables GPU DMA remains pending. Enabling
