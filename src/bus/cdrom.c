@@ -34,7 +34,8 @@ static bool pop_parameter(PsxCdrom *cdrom, uint8_t *value)
 
 static void command_complete(PsxCdrom *cdrom, uint8_t interrupt)
 {
-    cdrom->interrupt_flags = (uint8_t)(interrupt & 7u);
+    cdrom->interrupt_flags = interrupt >= 1u && interrupt <= 5u
+        ? (uint8_t)(1u << (interrupt - 1u)) : 0u;
 }
 
 static void execute_command(PsxCdrom *cdrom, uint8_t command)
