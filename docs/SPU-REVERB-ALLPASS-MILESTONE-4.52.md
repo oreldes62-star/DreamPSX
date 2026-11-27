@@ -15,3 +15,13 @@ Tests cover both channels through both stages, the feedback values written to al
 Equations and register ordering follow psx-spx, section 7.11: https://psx-spx.consoledev.net/soundprocessingunitspu/
 
 This is not yet a complete hardware-accurate reverb engine. Scheduling, disabled-reverb behavior, output-volume routing, exact wrap and cycle timing, and validation on Flycast/real Dreamcast remain outstanding.
+
+
+## Milestone 4.53 — complete wet-sample orchestration
+
+A new `psx_spu_reverb_process_sample` API sequences input reflection, four-tap
+comb, APF1/APF2, signed output-volume scaling, and one cursor advance per
+enabled output sample. SPUCNT bit 7 gates the path; when disabled, wet output
+is zero and the cursor is left unchanged. This API deliberately accepts
+already-routed reverb-send samples: per-voice reverb-send routing and mixing
+into the dry voice output are not yet integrated.
