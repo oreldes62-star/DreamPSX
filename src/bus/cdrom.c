@@ -79,7 +79,7 @@ static bool load_current_sector(PsxCdrom *cdrom)
     cdrom->data_index = 0u;
     cdrom->data_count = PSX_CDROM_SECTOR_SIZE;
     cdrom->drive_status &= (uint8_t)~0x01u;
-    cdrom->drive_status |= 0x20u;
+    cdrom->drive_status |= 0x22u;
     command_complete(cdrom, 1u);
     return true;
 }
