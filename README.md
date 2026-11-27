@@ -103,3 +103,5 @@ GP1 display-control register decoding (display origin, horizontal/vertical range
 
 
 The display backend can now extract an RGB565 frame from the GP1-configured VRAM origin with wraparound and display-disable handling. See [GPU scanout milestone 3.68](docs/GPU-SCANOUT-MILESTONE-3.68.md).
+
+Packed 24-bit display scanout is now available through the RGB565 framebuffer API. See [GPU scanout milestone 3.69](docs/GPU-SCANOUT-MILESTONE-3.69.md).
