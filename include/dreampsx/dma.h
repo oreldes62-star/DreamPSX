@@ -3,6 +3,8 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "dreampsx/memory.h"
+#include "dreampsx/gpu.h"
 
 #define PSX_DMA_BASE_ADDR 0x1f801080u
 #define PSX_DMA_DPCR_ADDR 0x1f8010f0u
@@ -28,5 +30,8 @@ bool psx_dma_read32(const PsxDmaController *dma, uint32_t address,
                     uint32_t *value);
 bool psx_dma_write32(PsxDmaController *dma, uint32_t address,
                      uint32_t value);
+/* Execute a triggered channel-2 manual RAM-to-GP0 transfer. */
+bool psx_dma_execute_gpu_manual(PsxDmaController *dma,
+                                 PsxMemory *memory, PsxGpu *gpu);
 
 #endif
