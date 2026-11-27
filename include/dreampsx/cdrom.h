@@ -9,6 +9,7 @@
 #define PSX_CDROM_BASE_ADDR 0x1f801800u
 #define PSX_CDROM_FIFO_CAPACITY 16u
 #define PSX_CDROM_SECTOR_SIZE 2048u
+#define PSX_CDROM_MAX_SECTOR_SIZE PSX_DISC_SECTOR_FORM2_DATA_SIZE
 /* PS1 system cycles per sector at double speed (33,868,800 / 150). */
 #define PSX_CDROM_DOUBLE_SPEED_SECTOR_CYCLES 225792u
 #define PSX_CDROM_NORMAL_SPEED_SECTOR_CYCLES 451584u
@@ -30,7 +31,7 @@ typedef struct {
     uint8_t interrupt_flags;
     uint8_t request;
     uint8_t drive_status;
-    uint8_t sector_data[PSX_CDROM_SECTOR_SIZE];
+    uint8_t sector_data[PSX_CDROM_MAX_SECTOR_SIZE];
     uint16_t data_index;
     uint16_t data_count;
     bool read_active;
