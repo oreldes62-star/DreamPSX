@@ -245,7 +245,6 @@ bool psx_cdrom_mount_cue(PsxCdrom *cdrom, const char *cue_text,
     cdrom->disc = disc;
     cdrom->iso_data = NULL;
     cdrom->iso_size = 0u;
-    psx_disc_unmount(&cdrom->disc);
     cdrom->data_index = 0u;
     cdrom->data_count = 0u;
     cdrom->read_active = false;
@@ -258,6 +257,7 @@ void psx_cdrom_unmount(PsxCdrom *cdrom)
     if (!cdrom || !cdrom->initialized) return;
     cdrom->iso_data = NULL;
     cdrom->iso_size = 0u;
+    psx_disc_unmount(&cdrom->disc);
     cdrom->data_index = 0u;
     cdrom->data_count = 0u;
     cdrom->read_active = false;
