@@ -722,6 +722,56 @@ int main(void)
         psx_spu_reset(&spu);
     }
 
+    /* Cascaded APF1/APF2 stages, including feedback writes and signed
+     * stereo delayed samples. */
+    {
+        int16_t apf_left = 0;
+        int16_t apf_right = 0;
+        int16_t sample = 0;
+        psx_spu_reset(&spu);
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+            PSX_SPU_REVERB_WORK_AREA_START_OFFSET, 0u));
+        spu.reverb_buffer_address = 0x100u;
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+            PSX_SPU_REVERB_CONFIG_DAPF1_OFFSET, 4u));
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+            PSX_SPU_REVERB_CONFIG_DAPF2_OFFSET, 2u));
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+            PSX_SPU_REVERB_CONFIG_VAPF1_OFFSET, 0x4000u));
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+            PSX_SPU_REVERB_CONFIG_VAPF2_OFFSET, 0x4000u));
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+            PSX_SPU_REVERB_CONFIG_MLAPF1_OFFSET, 20u));
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+            PSX_SPU_REVERB_CONFIG_MRAPF1_OFFSET, 24u));
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+            PSX_SPU_REVERB_CONFIG_MLAPF2_OFFSET, 30u));
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+            PSX_SPU_REVERB_CONFIG_MRAPF2_OFFSET, 34u));
+        assert(psx_spu_reverb_write16(&spu, 16u, 2000));
+        assert(psx_spu_reverb_write16(&spu, 20u, -2000));
+        assert(psx_spu_reverb_write16(&spu, 28u, 1000));
+        assert(psx_spu_reverb_write16(&spu, 32u, -1000));
+        assert(psx_spu_reverb_process_allpass(&spu, 10000, -10000,
+                                               &apf_left, &apf_right));
+        assert(apf_left == 4500);
+        assert(apf_right == -4500);
+        assert(psx_spu_reverb_read16(&spu, 20u, &sample));
+        assert(sample == 9000);
+        assert(psx_spu_reverb_read16(&spu, 24u, &sample));
+        assert(sample == -9000);
+        assert(psx_spu_reverb_read16(&spu, 30u, &sample));
+        assert(sample == 6500);
+        assert(psx_spu_reverb_read16(&spu, 34u, &sample));
+        assert(sample == -6500);
+        assert(spu.reverb_buffer_address == 0x100u);
+        assert(!psx_spu_reverb_process_allpass(NULL, 0, 0,
+                                                &apf_left, &apf_right));
+        assert(!psx_spu_reverb_process_allpass(&spu, 0, 0,
+                                                NULL, &apf_right));
+        psx_spu_reset(&spu);
+    }
+
     puts("DreamPSX SPU register/RAM tests: OK");
     return 0;
 }
