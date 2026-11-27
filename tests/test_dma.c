@@ -11,6 +11,15 @@ int main(void)
     assert(psx_dma_init(&dma));
     assert(psx_dma_read32(&dma, PSX_DMA_DPCR_ADDR, &value));
     assert(value == 0x07654321u);
+    /* DPCR has one four-bit field per channel: priority[2:0], enable[3]. */
+    assert(!psx_dma_channel_enabled(&dma, 2u));
+    assert(psx_dma_channel_priority(&dma, 2u) == 3u);
+    assert(!psx_dma_channel_enabled(&dma, PSX_DMA_CHANNEL_COUNT));
+    assert(psx_dma_channel_priority(&dma, PSX_DMA_CHANNEL_COUNT) == 0u);
+    assert(psx_dma_write32(&dma, PSX_DMA_DPCR_ADDR, 0x07654b21u));
+    assert(psx_dma_channel_enabled(&dma, 2u));
+    assert(psx_dma_channel_priority(&dma, 2u) == 3u);
+    assert(psx_dma_write32(&dma, PSX_DMA_DPCR_ADDR, 0x07654321u));
     assert(psx_dma_read32(&dma, PSX_DMA_DICR_ADDR, &value));
     assert(value == 0u);
 
