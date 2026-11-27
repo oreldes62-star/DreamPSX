@@ -905,8 +905,8 @@ bool psx_gpu_read_status(const PsxGpu *gpu, uint32_t *value)
     status |= (gpu->dma_direction & 3u) << 29u;
 
     switch (gpu->dma_direction & 3u) {
-    case 1u: /* FIFO: request while GP0 can accept a word. */
-        dma_request = can_receive_command;
+    case 1u: /* FIFO: no bounded GP0 FIFO is modeled yet. */
+        dma_request = true;
         break;
     case 2u: /* CPU to GP0: request while write FIFO is empty. */
         dma_request = can_receive_dma_block;
