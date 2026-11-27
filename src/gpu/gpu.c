@@ -990,5 +990,26 @@ bool psx_gpu_get_display_mode_info(const PsxGpu *gpu,
     info->color_24bit = (mode & (1u << 4u)) != 0u;
     info->interlaced = (mode & (1u << 5u)) != 0u;
     info->reverse = (mode & (1u << 7u)) != 0u;
+
+    /* GP1(06h) counts video-clock ticks, not pixels. The dot-clock
+     * divisors are fixed by HRes and are independent of PAL/NTSC mode.
+     */
+    static const unsigned cycles_per_pixel[5] = {10u, 8u, 5u, 4u, 7u};
+    const unsigned hres_index = (mode & (1u << 6u)) != 0u ?
+                                4u : (mode & 3u);
+    const unsigned h_start = gpu->display.horizontal_start;
+    const unsigned h_end = gpu->display.horizontal_end;
+    const unsigned v_start = gpu->display.vertical_start;
+    const unsigned v_end = gpu->display.vertical_end;
+
+    info->range_valid = h_end > h_start && v_end > v_start;
+    info->range_width = 0u;
+    info->range_height = 0u;
+    if (info->range_valid) {
+        const unsigned clocks = h_end - h_start;
+        info->range_width =
+            ((clocks / cycles_per_pixel[hres_index] + 2u) & ~3u);
+        info->range_height = v_end - v_start;
+    }
     return true;
 }
