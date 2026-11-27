@@ -49,7 +49,8 @@ int main(void)
     psx_machine_refresh_interrupts(&machine);
     assert((psx_irq_read_stat(&machine.irq) & (1u << 5u)) == 0u);
     assert(machine.timers.timer[1].counter == 1u);
-    assert(psx_machine_video_advance_scanline(&machine, &video));
+    assert(psx_machine_timer_advance_clock(&machine, 1u,
+                                            PSX_TIMER_CLOCK_HBLANK, 1u));
     assert(machine.timers.timer[1].counter == 2u);
     assert((psx_irq_read_stat(&machine.irq) & (1u << 5u)) == 0u);
 
