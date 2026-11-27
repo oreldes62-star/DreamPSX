@@ -40,6 +40,8 @@ bool psx_exe_load(PsxMemory *memory, const uint8_t *image, size_t image_size,
     parsed.bss_size = read_le32(image + 0x2cu);
     parsed.stack_base = read_le32(image + 0x30u);
     parsed.stack_offset = read_le32(image + 0x34u);
+    if (parsed.stack_offset > UINT32_MAX - parsed.stack_base)
+        return false;
     parsed.initial_stack_pointer = parsed.stack_base + parsed.stack_offset;
 
     if (parsed.file_size == 0u ||
