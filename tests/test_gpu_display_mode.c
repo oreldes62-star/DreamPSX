@@ -42,7 +42,7 @@ int main(void)
     assert(!info.pal && !info.color_24bit);
     assert(!info.interlaced && !info.reverse);
     assert(psx_gpu_read_status(&gpu, &status));
-    assert((status & ((0x7fu << 16u) | (1u << 14u))) == (2u << 18u));
+    assert((status & ((0x7fu << 16u) | (1u << 14u))) == (2u << 17u));
 
     assert(!psx_gpu_get_display_mode_info(NULL, &info));
     assert(!psx_gpu_get_display_mode_info(&gpu, NULL));
