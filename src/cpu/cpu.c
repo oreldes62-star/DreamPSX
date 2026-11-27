@@ -108,6 +108,7 @@ PsxCpuStepResult psx_cpu_step_result_with_cop0_gte(PsxCpu *cpu, PsxBus *bus,
     uint8_t byte_value;
     uint16_t half_value;
     bool hilo_interlock;
+    bool gte_interlock;
 
     if (!cpu || !cpu->initialized || !bus)
         return PSX_CPU_STEP_FETCH_BUS_ERROR;
@@ -145,6 +146,17 @@ PsxCpuStepResult psx_cpu_step_result_with_cop0_gte(PsxCpu *cpu, PsxBus *bus,
     shamt = (instruction >> 6) & 31u;
     funct = instruction & 63u;
     imm = (uint16_t)instruction;
+    gte_interlock = op == 0x12u && gte &&
+                    psx_gte_busy_cycles(gte) != 0u;
+    if (gte && psx_gte_busy_cycles(gte) != 0u) {
+        if (gte_interlock) {
+            uint32_t wait = psx_gte_busy_cycles(gte);
+            cpu->last_step_cycles += wait;
+            psx_gte_advance_cycles(gte, wait);
+        } else {
+            psx_gte_advance_cycles(gte, 1u);
+        }
+    }
     hilo_interlock = op == 0u &&
         (funct == 0x10u || funct == 0x11u ||
          funct == 0x12u || funct == 0x13u ||
@@ -296,7 +308,7 @@ PsxCpuStepResult psx_cpu_step_result_with_cop0_gte(PsxCpu *cpu, PsxBus *bus,
         if (!cop0_status || ((*cop0_status & 0x40000000u) == 0u) || !gte)
             return PSX_CPU_STEP_COPROCESSOR_UNUSABLE;
         if ((cop_rs & 0x10u) != 0u) {
-            if (!psx_gte_execute(gte, instruction))
+            if (!psx_gte_issue(gte, instruction))
                 return PSX_CPU_STEP_RESERVED_INSTRUCTION;
             break;
         }
