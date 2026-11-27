@@ -6,6 +6,7 @@ PlayStation emulator research and development for Sega Dreamcast.
 Experimental project. The latest GPU work adds monochrome and textured rectangle primitives (variable, 1x1, 8x8 and 16x16), including indexed/direct texture sampling, STP semi-transparency, modulation, draw-area clipping and signed offsets, alongside textured-triangle coverage. The new host tests and complete CTest suite have not yet been executed; runtime validation is pending. Host tests do not validate Dreamcast hardware performance or compatibility.
 
 ## Current milestones
+- [GPU VRAM readback through manual DMA milestone 3.87](docs/GPU-DMA-READBACK-MILESTONE-3.87.md)
 - [First GPU DMA transfer: manual RAM-to-GP0 milestone 3.86](docs/GPU-DMA-MANUAL-RAM-TO-GP0-MILESTONE-3.86.md)
 - [DMA register bank and bus integration milestone 3.85](docs/DMA-REGISTER-BANK-MILESTONE-3.85.md)
 - [GP1 DMA direction and GPUSTAT request milestone 3.84](docs/GP1-DMA-DIRECTION-MILESTONE-3.84.md)
