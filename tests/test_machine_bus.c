@@ -163,6 +163,33 @@ int main(void)
     assert(psx_bus_read32(&machine.bus, 0x1f8010a8u, &word));
     assert((word & (1u << 24u)) == 0u);
 
+    /* DMA master interrupt: DICR channel-2 enable plus master enable
+     * must raise PS1 interrupt-controller source 3 on transfer completion. */
+    assert(psx_bus_write32(&machine.bus, 0x1f8010f4u, 1u << 26u));
+    assert(psx_bus_write32(&machine.bus, 0x1f8010f4u,
+                           (1u << 23u) | (1u << 18u)));
+    assert(psx_bus_write32(&machine.bus, 0x1f801814u, 0x04000002u));
+    assert(psx_bus_write32(&machine.bus, 0x00000900u, 0x0200ff00u));
+    assert(psx_bus_write32(&machine.bus, 0x00000904u, 0x00000032u));
+    assert(psx_bus_write32(&machine.bus, 0x00000908u, 0x00010002u));
+    assert(psx_bus_write32(&machine.bus, 0x1f8010a0u, 0x00000900u));
+    assert(psx_bus_write32(&machine.bus, 0x1f8010a4u, 3u));
+    assert(psx_bus_write32(&machine.bus, 0x1f8010a8u, 0x11000001u));
+    assert(psx_bus_read16(&machine.bus, PSX_IRQ_STAT_ADDR, &half));
+    assert((half & (1u << 3u)) != 0u);
+    assert((machine.irq.source_level & (1u << 3u)) != 0u);
+
+    /* Clearing the DMA completion flag drops the source line, while the
+     * latched I_STAT request remains until software acknowledges it. */
+    assert(psx_bus_write32(&machine.bus, 0x1f8010f4u, 1u << 26u));
+    assert((machine.irq.source_level & (1u << 3u)) == 0u);
+    assert(psx_bus_read16(&machine.bus, PSX_IRQ_STAT_ADDR, &half));
+    assert((half & (1u << 3u)) != 0u);
+    assert(psx_bus_write16(&machine.bus, PSX_IRQ_STAT_ADDR,
+                           (uint16_t)~(1u << 3u)));
+    assert(psx_bus_read16(&machine.bus, PSX_IRQ_STAT_ADDR, &half));
+    assert((half & (1u << 3u)) == 0u);
+
     /* BIOS is readable; unmapped hardware and misaligned words are rejected. */
     assert(psx_bus_read32(&machine.bus, PSX_BIOS_BASE, &word));
     assert(!psx_bus_read32(&machine.bus, 0x1f801078u, &word));
