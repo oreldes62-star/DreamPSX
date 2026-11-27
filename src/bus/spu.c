@@ -484,6 +484,8 @@ bool psx_spu_mix_sample(PsxSpu *spu, int16_t *left, int16_t *right)
 
     *left = clamp_audio_sample(mix_left + wet_left);
     *right = clamp_audio_sample(mix_right + wet_right);
+    /* A reverb tail can remain audible after the last source voice ends. */
+    produced = produced || wet_left != 0 || wet_right != 0;
     return produced;
 }
 
