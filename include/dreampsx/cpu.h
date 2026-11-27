@@ -32,6 +32,7 @@ typedef struct {
     uint32_t delay_branch_pc;
     uint32_t fault_address;
     uint32_t load_delay_value;
+    uint32_t last_step_cycles;
     uint8_t load_delay_register;
     bool load_delay_pending;
     bool load_delay_mergeable;
@@ -44,6 +45,11 @@ uint32_t psx_cpu_read_gpr(const PsxCpu *cpu, unsigned index);
 void psx_cpu_write_gpr(PsxCpu *cpu, unsigned index, uint32_t value);
 bool psx_cpu_fetch_instruction(const PsxCpu *cpu, const PsxBus *bus,
                                uint32_t *instruction);
+/* Baseline timing estimate for the most recent attempted instruction.
+ * Currently one system cycle; memory wait states and variable latencies
+ * are intentionally not modeled yet.
+ */
+uint32_t psx_cpu_last_step_cycles(const PsxCpu *cpu);
 /* Detailed result lets the machine translate CPU faults into COP0 exceptions. */
 PsxCpuStepResult psx_cpu_step_result_with_cop0(
     PsxCpu *cpu, PsxBus *bus, uint32_t *status, uint32_t *cause,
