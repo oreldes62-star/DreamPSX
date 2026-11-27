@@ -89,46 +89,47 @@ bool psx_bus_write16(PsxBus *bus, uint32_t address, uint16_t value)
     return psx_memory_write16(bus->memory, address, value);
 }
 
-static bool bus_try_gpu_dma(PsxBus *bus)
+static bool bus_try_dma(PsxBus *bus)
 {
     int selected;
+    unsigned channel;
     uint32_t control;
     uint32_t sync_mode;
     bool transfer_ok;
     uint64_t payload_before;
     uint64_t headers_before;
 
-    /* CHCR remains the source of truth; DPCR only controls arbitration. */
     psx_dma_refresh_queue(bus->dma);
     selected = psx_dma_select_channel(bus->dma,
                                       psx_dma_queued_mask(bus->dma));
-    /* Other DMA channels are retained in the queue until their device
-     * endpoints exist. They must not be silently consumed by the GPU path. */
-    if (selected != 2) return true;
+    /* Only endpoints implemented in this build may claim the DMA bus. */
+    if (selected != 2 && selected != 3) return true;
+    channel = (unsigned)selected;
+    if (psx_dma_begin_channel(bus->dma) != selected) return true;
 
-    if (psx_dma_begin_channel(bus->dma) != 2) return true;
-
-    control = bus->dma->channel[2].chcr;
+    control = bus->dma->channel[channel].chcr;
     sync_mode = (control >> 9u) & 3u;
     payload_before = psx_dma_data_words_transferred(bus->dma);
     headers_before = psx_dma_linked_list_headers_read(bus->dma);
-    if (sync_mode == 0u)
+
+    if (channel == 3u) {
+        transfer_ok = sync_mode == 0u &&
+            psx_dma_execute_cdrom(bus->dma, bus->memory, bus->cdrom);
+    } else if (sync_mode == 0u) {
         transfer_ok = psx_dma_execute_gpu_manual(bus->dma, bus->memory,
                                                  bus->gpu);
-    else if (sync_mode == 1u)
+    } else if (sync_mode == 1u) {
         transfer_ok = psx_dma_execute_gpu_request(bus->dma, bus->memory,
                                                   bus->gpu);
-    else if (sync_mode == 2u)
+    } else if (sync_mode == 2u) {
         transfer_ok = psx_dma_execute_gpu_linked_list(bus->dma, bus->memory,
                                                       bus->gpu);
-    else
-        transfer_ok = true;
+    } else {
+        transfer_ok = false;
+    }
 
-    /* A failed endpoint operation relinquishes the active slot and keeps
-     * the CHCR request pending for a later retry. Successful endpoints call
-     * psx_dma_complete_channel(), which retires the active state. */
-    if (!transfer_ok) psx_dma_abort_channel(bus->dma, 2u);
-    psx_dma_record_transfer_event(bus->dma, 2u, control,
+    if (!transfer_ok) psx_dma_abort_channel(bus->dma, channel);
+    psx_dma_record_transfer_event(bus->dma, channel, control,
                                   payload_before, headers_before,
                                   transfer_ok);
     psx_dma_refresh_queue(bus->dma);
@@ -141,8 +142,7 @@ bool psx_bus_write32(PsxBus *bus, uint32_t address, uint32_t value)
     address = physical_address(address);
     if (bus->dma && psx_dma_write32(bus->dma, address, value)) {
         bool transfer_ok = true;
-        /* A channel can be armed before DPCR enables it. Re-check channel 2
-         * when either CHCR is programmed or its DPCR enable bit changes. */
+        /* Re-arbitrate after any channel is armed or DPCR is changed. */
         if ((address >= PSX_DMA_BASE_ADDR &&
              address < PSX_DMA_BASE_ADDR + 0x70u &&
              ((address - PSX_DMA_BASE_ADDR) & 0x0fu) == 0x08u) ||
