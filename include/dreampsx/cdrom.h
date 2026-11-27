@@ -56,6 +56,7 @@ typedef struct {
     uint16_t xa_pcm_count;
     uint32_t xa_dropped_sectors;
     uint64_t xa_audio_clock_phase;
+    uint16_t xa_audio_clock_rate_hz;
     uint32_t xa_audio_due_frames;
     uint32_t xa_audio_underrun_frames;
     const uint8_t *iso_data;
