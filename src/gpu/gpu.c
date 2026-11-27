@@ -533,7 +533,7 @@ bool psx_gpu_gp0_write(PsxGpu *gpu, uint32_t value)
             else if (opcode == 0x24u)
                 execute_textured_triangle(gpu, true, false, false);
             else if (opcode == 0x25u)
-                execute_textured_triangle(gpu, false, true, false);
+                execute_textured_triangle(gpu, false, false, false);
             else if (opcode == 0x34u)
                 execute_textured_triangle(gpu, true, false, true);
             else if (opcode == 0x36u)
