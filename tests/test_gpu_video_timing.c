@@ -29,9 +29,11 @@ int main(void)
 
     /* NTSC progressive: 263 scanlines per frame. */
     assert(psx_gpu_gp1_write(&gpu, 0x08000000u));
-    advance(&gpu, &state, 15u);
-    assert(state.scanline == 15u && !state.pal);
+    advance(&gpu, &state, 1u);
+    assert(state.scanline == 1u && !state.pal);
     assert(state.vblank && state.vblank_started);
+    advance(&gpu, &state, 14u);
+    assert(state.scanline == 15u && state.vblank);
     advance(&gpu, &state, 1u);
     assert(state.scanline == 16u && !state.vblank);
     assert(state.vblank_ended);
