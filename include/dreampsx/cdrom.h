@@ -67,5 +67,8 @@ void psx_cdrom_reset(PsxCdrom *cdrom);
 bool psx_cdrom_read8(PsxCdrom *cdrom, uint32_t address, uint8_t *value);
 bool psx_cdrom_write8(PsxCdrom *cdrom, uint32_t address, uint8_t value);
 bool psx_cdrom_irq_output(const PsxCdrom *cdrom);
+/* Returns the format only when the currently loaded sector is XA audio. */
+bool psx_cdrom_get_xa_audio_format(const PsxCdrom *cdrom,
+                                   PsxDiscXaAudioFormat *format);
 
 #endif
