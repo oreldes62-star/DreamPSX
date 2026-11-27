@@ -78,7 +78,7 @@ uint64_t psx_dma_linked_list_headers_read(const PsxDmaController *dma);
 /* Snapshot the most recently attempted endpoint transfer; false before first event. */
 bool psx_dma_last_transfer_event(const PsxDmaController *dma,
                                  PsxDmaTransferEvent *event);
-/* Record one channel-2 endpoint attempt using cumulative counter deltas. */
+/* Record one DMA endpoint attempt using cumulative counter deltas. */
 void psx_dma_record_transfer_event(PsxDmaController *dma, unsigned channel,
                                    uint32_t control,
                                    uint64_t payload_before,
