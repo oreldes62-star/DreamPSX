@@ -1,0 +1,55 @@
+#include "dreampsx/machine.h"
+#include <assert.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+int main(void)
+{
+    PsxMachine machine;
+    uint8_t *ram = (uint8_t *)calloc(1u, PSX_RAM_SIZE);
+    uint8_t *bios = (uint8_t *)calloc(1u, PSX_BIOS_SIZE);
+    uint16_t *vram = (uint16_t *)calloc(
+        PSX_GPU_VRAM_WIDTH * PSX_GPU_VRAM_HEIGHT, sizeof(uint16_t));
+    assert(ram && bios && vram);
+    assert(psx_machine_init(&machine, ram, PSX_RAM_SIZE, bios,
+                            PSX_BIOS_SIZE, vram,
+                            PSX_GPU_VRAM_WIDTH * PSX_GPU_VRAM_HEIGHT));
+
+    /* Timer 1 target event is routed to PS1 IRQ source 5 (I_STAT bit 5). */
+    assert(psx_bus_write16(&machine.bus,
+        PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE + 8u, 2u));
+    assert(psx_bus_write16(&machine.bus,
+        PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE + 4u,
+        PSX_TIMER_MODE_IRQ_TARGET));
+    assert(psx_machine_timer_advance_clock(&machine, 1u,
+        PSX_TIMER_CLOCK_SYSTEM, 2u));
+    assert((psx_irq_read_stat(&machine.irq) & (1u << 5u)) != 0u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) != 0u);
+
+    /* Acknowledge the latched request; one-shot mode must not retrigger. */
+    psx_irq_write_stat(&machine.irq, (uint16_t)~(1u << 5u));
+    psx_machine_refresh_interrupts(&machine);
+    assert((psx_irq_read_stat(&machine.irq) & (1u << 5u)) == 0u);
+    assert(psx_machine_timer_advance_clock(&machine, 1u,
+        PSX_TIMER_CLOCK_SYSTEM, 2u));
+    assert((psx_irq_read_stat(&machine.irq) & (1u << 5u)) == 0u);
+
+    /* Timer 0 selected for dot clock ignores system ticks. */
+    assert(psx_bus_write16(&machine.bus, PSX_TIMER_BASE_ADDR + 8u, 1u));
+    assert(psx_bus_write16(&machine.bus, PSX_TIMER_BASE_ADDR + 4u,
+        (uint16_t)((1u << PSX_TIMER_MODE_CLOCK_SHIFT) |
+                   PSX_TIMER_MODE_IRQ_TARGET)));
+    assert(psx_machine_timer_advance_clock(&machine, 0u,
+        PSX_TIMER_CLOCK_SYSTEM, 3u));
+    assert(machine.timers.timer[0].counter == 0u);
+    assert(psx_machine_timer_advance_clock(&machine, 0u,
+        PSX_TIMER_CLOCK_DOT, 1u));
+    assert(machine.timers.timer[0].counter == 1u);
+
+    free(vram);
+    free(bios);
+    free(ram);
+    puts("DreamPSX timer IRQ integration tests: OK");
+    return 0;
+}
