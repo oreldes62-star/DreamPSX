@@ -34,6 +34,8 @@ void psx_machine_reset(PsxMachine *machine);
 void psx_machine_refresh_interrupts(PsxMachine *machine);
 bool psx_machine_interrupt_eligible(const PsxMachine *machine);
 /* Advance one GPU scanline and route VBlank transitions to IRQ0. */
+bool psx_machine_timer_advance_clock(PsxMachine *machine, unsigned timer,
+                                     PsxTimerClock clock, uint32_t ticks);
 bool psx_machine_video_advance_scanline(PsxMachine *machine,
                                         PsxGpuVideoState *state);
 bool psx_machine_step(PsxMachine *machine);
