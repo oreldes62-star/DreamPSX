@@ -80,6 +80,7 @@ Experimental project. The host-side CMake build and all 14 CTest targets passed 
 - [GPU Gouraud semi-transparent textured triangle milestone 3.55](docs/GPU-GOURAUD-SEMITRANSPARENT-TRIANGLE-MILESTONE-3.55.md)
 - [GPU TPAGE blend-mode validation milestone 3.56](docs/GPU-TPAGE-BLEND-MODE-MILESTONE-3.56.md)
 - [GPU textured triangle clipping milestone 3.57](docs/GPU-TEXTURED-CLIPPING-MILESTONE-3.57.md)
+- [GPU texture and VRAM boundary validation milestone 3.58](docs/GPU-TEXTURE-VRAM-WRAP-MILESTONE-3.58.md)
 
 ## Target
 Sega Dreamcast with 16 MiB RAM. Long-term target: CDI test build for Flycast, then GDEMU.
