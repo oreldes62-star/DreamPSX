@@ -121,32 +121,28 @@ int main(void)
     assert(pixel == 0x2d67u);
 
     /* GP0 25h samples a direct 15-bit texture page. */
-    fprintf(stderr, "texture test start\\n");
     vram[2u * PSX_GPU_VRAM_WIDTH + 2u] = 0x7c00u;
     assert(psx_gpu_gp0_write(&gpu, 0x25000000u));
-    fprintf(stderr, "texture command\\n");
     assert(psx_gpu_gp0_write(&gpu, 500u | (500u << 16u)));
     assert(psx_gpu_gp0_write(&gpu, 1u | (1u << 8u)));
     assert(psx_gpu_gp0_write(&gpu, 504u | (500u << 16u)));
     assert(psx_gpu_gp0_write(&gpu, 0x01000000u | 5u | (1u << 8u)));
     assert(psx_gpu_gp0_write(&gpu, 500u | (504u << 16u)));
     assert(psx_gpu_gp0_write(&gpu, 1u | (5u << 8u)));
-    fprintf(stderr, "texture packet complete\\n");
     assert(psx_gpu_vram_read(&gpu, 501u, 501u, &pixel));
     assert(pixel == 0x7c00u);
-    fprintf(stderr, "texture readback complete\\n");
 
     /* Transparent zero texels leave the destination pixel untouched. */
     vram[10u * PSX_GPU_VRAM_WIDTH + 10u] = 0u;
-    vram[601u * PSX_GPU_VRAM_WIDTH + 601u] = 0x1234u;
+    vram[451u * PSX_GPU_VRAM_WIDTH + 601u] = 0x1234u;
     assert(psx_gpu_gp0_write(&gpu, 0x25000000u));
-    assert(psx_gpu_gp0_write(&gpu, 600u | (600u << 16u)));
+    assert(psx_gpu_gp0_write(&gpu, 600u | (450u << 16u)));
     assert(psx_gpu_gp0_write(&gpu, 10u | (10u << 8u)));
-    assert(psx_gpu_gp0_write(&gpu, 604u | (600u << 16u)));
+    assert(psx_gpu_gp0_write(&gpu, 604u | (450u << 16u)));
     assert(psx_gpu_gp0_write(&gpu, 0x01000000u | 10u | (10u << 8u)));
-    assert(psx_gpu_gp0_write(&gpu, 600u | (604u << 16u)));
+    assert(psx_gpu_gp0_write(&gpu, 600u | (454u << 16u)));
     assert(psx_gpu_gp0_write(&gpu, 10u | (10u << 8u)));
-    assert(psx_gpu_vram_read(&gpu, 601u, 601u, &pixel));
+    assert(psx_gpu_vram_read(&gpu, 601u, 451u, &pixel));
     assert(pixel == 0x1234u);
 
     /* GPU reset preserves VRAM but restores status and parser state. */
