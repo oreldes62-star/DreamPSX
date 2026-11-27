@@ -806,8 +806,12 @@ bool psx_gpu_gp1_write(PsxGpu *gpu, uint32_t value)
         gpu->display.vertical_start = value & 0x3ffu;
         gpu->display.vertical_end = (value >> 10u) & 0x3ffu;
         break;
-    case 0x08u: /* GP1(08h): display mode. */
+    case 0x08u: /* GP1(08h): display mode and GPUSTAT mirrors. */
         gpu->display.mode = value & 0xffu;
+        gpu->status &= ~((0x7fu << 16u) | (1u << 14u));
+        gpu->status |= ((gpu->display.mode & 0x40u) << 10u) |
+                       ((gpu->display.mode & 0x3fu) << 17u) |
+                       ((gpu->display.mode & 0x80u) >> 1u);
         break;
     case 0x01u: /* GP1(01h): reset command buffer and pending transfer. */
         gpu->command = 0u;
