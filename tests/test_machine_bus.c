@@ -119,6 +119,45 @@ int main(void)
     assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR + 3u, 0x10u));
     assert((machine.irq.source_level & (1u << 2u)) == 0u);
 
+    /* Re-read sector zero through DMA3. CD-ROM DMA is a forced SyncMode-0
+     * device-to-RAM burst, with the data FIFO enabled in bank 2. */
+    psx_cdrom_reset(&machine.cdrom);
+    assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR, 1u));
+    assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR + 2u, 0x15u));
+    assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR, 0u));
+    assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR + 2u, 0x00u));
+    assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR + 2u, 0x02u));
+    assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR + 2u, 0x00u));
+    assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR + 1u, 0x02u));
+    assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR + 1u, 0x06u));
+    assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR, 2u));
+    assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR + 2u, 0x80u));
+    assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR, 0u));
+    assert(machine.cdrom.data_count == PSX_CDROM_SECTOR_SIZE);
+    assert(psx_bus_write32(&machine.bus, PSX_DMA_DPCR_ADDR,
+                           0x07654321u | (1u << 15u)));
+    assert(psx_bus_write32(&machine.bus, 0x1f8010b0u, 0x00001000u));
+    assert(psx_bus_write32(&machine.bus, 0x1f8010b4u, 512u));
+    assert(psx_bus_write32(&machine.bus, 0x1f8010b8u, 0x11000000u));
+    assert(machine.cdrom.data_count == 0u);
+    assert(psx_bus_read32(&machine.bus, 0x00001000u, &word));
+    assert(word == 0x03020100u);
+    assert(psx_bus_read32(&machine.bus, 0x00001004u, &word));
+    assert(word == 0x07060504u);
+    assert(psx_bus_read32(&machine.bus, 0x1f8010b8u, &word));
+    assert((word & (1u << 24u)) == 0u);
+    assert(psx_bus_read32(&machine.bus, PSX_DMA_DICR_ADDR, &word));
+    assert((word & (1u << 27u)) != 0u);
+    {
+        PsxDmaTransferEvent event;
+        assert(psx_dma_last_transfer_event(&machine.dma, &event));
+        assert(event.channel == 3u);
+        assert(event.sync_mode == 0u);
+        assert(!event.ram_to_device);
+        assert(event.completed);
+        assert(event.payload_words == 512u);
+    }
+
     /* GPU registers share the machine bus and update its VRAM state. */
     assert(psx_bus_write32(&machine.bus, 0x1f801810u, 0x0200ff00u));
     assert(psx_bus_write32(&machine.bus, 0x1f801810u, 0u));
