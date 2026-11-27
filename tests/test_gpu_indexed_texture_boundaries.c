@@ -56,7 +56,7 @@ static void test_8bit_high_byte_and_clut_wrap(void)
     assert(read_pixel(&gpu, 121u, 101u) == 0x6318u);
 }
 
-static void test_zero_index_is_transparent(void)
+static void test_zero_clut_color_is_transparent(void)
 {
     PsxGpu gpu;
     static uint16_t vram[PSX_GPU_VRAM_WIDTH * PSX_GPU_VRAM_HEIGHT];
@@ -64,7 +64,6 @@ static void test_zero_index_is_transparent(void)
                         PSX_GPU_VRAM_WIDTH * PSX_GPU_VRAM_HEIGHT));
 
     vram[1u * PSX_GPU_VRAM_WIDTH] = 0u;
-    vram[30u * PSX_GPU_VRAM_WIDTH + 32u] = 0x7fffu;
     vram[151u * PSX_GPU_VRAM_WIDTH + 151u] = 0x03e0u;
     draw_indexed_triangle(&gpu, 150u, 150u, 1u, 1u,
                           2u | (30u << 6u), 0u);
@@ -75,7 +74,7 @@ int main(void)
 {
     test_4bit_nibble_and_clut_lookup();
     test_8bit_high_byte_and_clut_wrap();
-    test_zero_index_is_transparent();
+    test_zero_clut_color_is_transparent();
     puts("GPU indexed texture boundary tests passed");
     return 0;
 }
