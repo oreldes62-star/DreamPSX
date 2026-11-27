@@ -78,27 +78,30 @@ bool psx_bus_write16(PsxBus *bus, uint32_t address, uint16_t value)
     return psx_memory_write16(bus->memory, address, value);
 }
 
+static bool bus_try_gpu_dma(PsxBus *bus)
+{
+    const uint32_t control = bus->dma->channel[2].chcr;
+    const uint32_t sync_mode = (control >> 9u) & 3u;
+    if (sync_mode == 0u)
+        return psx_dma_execute_gpu_manual(bus->dma, bus->memory, bus->gpu);
+    if (sync_mode == 1u)
+        return psx_dma_execute_gpu_request(bus->dma, bus->memory, bus->gpu);
+    if (sync_mode == 2u)
+        return psx_dma_execute_gpu_linked_list(bus->dma, bus->memory, bus->gpu);
+    return true;
+}
+
 bool psx_bus_write32(PsxBus *bus, uint32_t address, uint32_t value)
 {
     if (!bus || !bus->initialized) return false;
     address = physical_address(address);
     if (bus->dma && psx_dma_write32(bus->dma, address, value)) {
         bool transfer_ok = true;
-        if (address == PSX_DMA_BASE_ADDR + 0x28u) {
-            const uint32_t sync_mode = (value >> 9u) & 3u;
-            if (sync_mode == 0u)
-                transfer_ok = psx_dma_execute_gpu_manual(bus->dma,
-                                                         bus->memory,
-                                                         bus->gpu);
-            else if (sync_mode == 1u)
-                transfer_ok = psx_dma_execute_gpu_request(bus->dma,
-                                                          bus->memory,
-                                                          bus->gpu);
-            else if (sync_mode == 2u)
-                transfer_ok = psx_dma_execute_gpu_linked_list(bus->dma,
-                                                              bus->memory,
-                                                              bus->gpu);
-        }
+        /* A channel can be armed before DPCR enables it. Re-check channel 2
+         * when either CHCR is programmed or its DPCR enable bit changes. */
+        if (address == PSX_DMA_BASE_ADDR + 0x28u ||
+            address == PSX_DMA_DPCR_ADDR)
+            transfer_ok = bus_try_gpu_dma(bus);
         /* PS1 DMA is IRQ source 3. Keep the controller input synchronized
          * after DICR writes and after a channel completion changes its flags. */
         psx_irq_set_line(bus->irq, 3u, psx_dma_irq_output(bus->dma));
