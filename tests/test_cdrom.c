@@ -157,11 +157,12 @@ int main(void)
             "TRACK 01 MODE2/2352\n"
             "INDEX 01 00:00:00\n";
         uint32_t word = 0u;
+        PsxDiscXaAudioFormat xa_format;
         memset(xa_track, 0, sizeof(xa_track));
         for (i = 1u; i <= 10u; ++i) xa_track[i] = 0xffu;
         xa_track[15] = 2u;
         xa_track[16] = 1u; xa_track[17] = 2u;
-        xa_track[18] = 0x20u; xa_track[19] = 4u;
+        xa_track[18] = 0x24u; xa_track[19] = 4u;
         memcpy(xa_track + 20u, xa_track + 16u, 4u);
         for (i = 0u; i < PSX_DISC_SECTOR_FORM2_DATA_SIZE; ++i)
             xa_track[24u + i] = (uint8_t)(0x60u + i);
@@ -177,7 +178,10 @@ int main(void)
         assert(cdrom.xa_subheader_valid);
         assert(cdrom.xa_subheader.file == 1u);
         assert(cdrom.xa_subheader.channel == 2u);
-        assert(cdrom.xa_subheader.submode == 0x20u);
+        assert(cdrom.xa_subheader.submode == 0x24u);
+        assert(psx_cdrom_get_xa_audio_format(&cdrom, &xa_format));
+        assert(xa_format.sample_rate_hz == 18900u);
+        assert(xa_format.channels == 1u && xa_format.bits_per_sample == 4u);
         assert(cdrom.xa_subheader.coding == 4u);
         select_bank(&cdrom, 2u);
         assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 2u, 0x80u));
