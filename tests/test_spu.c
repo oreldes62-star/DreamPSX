@@ -16,6 +16,8 @@ int main(void)
     int16_t rendered_sample = 0;
     int16_t mixed_left = 0;
     int16_t mixed_right = 0;
+    int16_t pcm_block[128] = {0};
+    size_t pcm_frames = 0u;
 
     psx_spu_adpcm_reset(&adpcm_state);
     adpcm_block[1] = 0x05u;
@@ -176,6 +178,42 @@ int main(void)
         assert(mixed_right == 0);
         assert(spu.voices[0].envelope_level > 0u);
         assert(!psx_spu_mix_sample(NULL, &mixed_left, &mixed_right));
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                               PSX_SPU_KEY_OFF_LOW_OFFSET, 0x0001u));
+    }
+
+
+    /* Fixed-size interleaved stereo PCM blocks: active voice samples are
+     * mixed, and the remainder is explicitly zero-filled after voice end. */
+    {
+        uint8_t pcm_adpcm[PSX_SPU_ADPCM_BLOCK_BYTES] = {0};
+        pcm_adpcm[1] = 0x01u; /* End-of-sound marker */
+        pcm_adpcm[2] = 0x11u;
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + 0x000u, 0x7fffu));
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + 0x002u, 0x7fffu));
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + 0x004u, 0x1000u));
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + 0x006u, 0x0050u));
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + 0x008u, 0x000fu));
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                               PSX_SPU_TRANSFER_ADDR_OFFSET, 0x0050u));
+        for (unsigned i = 0u; i < PSX_SPU_ADPCM_BLOCK_BYTES; i += 2u) {
+            const uint16_t word = (uint16_t)(pcm_adpcm[i] |
+                                    ((uint16_t)pcm_adpcm[i + 1u] << 8u));
+            assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                                   PSX_SPU_TRANSFER_DATA_OFFSET, word));
+        }
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                               PSX_SPU_KEY_ON_LOW_OFFSET, 0x0001u));
+        assert(psx_spu_mix_block(&spu, pcm_block, 64u, &pcm_frames));
+        assert(pcm_frames == 64u);
+        assert(pcm_block[0] > 0);
+        assert(pcm_block[1] > 0);
+        for (unsigned i = 56u; i < 128u; ++i)
+            assert(pcm_block[i] == 0);
+        assert(!psx_spu_mix_block(NULL, pcm_block, 64u, &pcm_frames));
+        assert(pcm_frames == 0u);
+        assert(psx_spu_mix_block(&spu, NULL, 0u, &pcm_frames));
+        assert(pcm_frames == 0u);
         assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
                                PSX_SPU_KEY_OFF_LOW_OFFSET, 0x0001u));
     }
