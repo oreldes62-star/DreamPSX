@@ -135,12 +135,43 @@ static void execute_command(PsxCdrom *cdrom, uint8_t command)
         (void)push_response(cdrom, cdrom->drive_status);
         command_complete(cdrom, 3u);
         break;
+    case 0x08u: /* Stop: acknowledgement now, mechanical completion later. */
+    case 0x09u: { /* Pause */
+        uint32_t delay;
+        if (cdrom->pending_command != 0u) {
+            command_error(cdrom);
+            break;
+        }
+        if (command == 0x09u) {
+            delay = (cdrom->mode & 0x80u) != 0u
+                ? PSX_CDROM_PAUSE_DOUBLE_CYCLES
+                : PSX_CDROM_PAUSE_NORMAL_CYCLES;
+        } else {
+            delay = (cdrom->mode & 0x80u) != 0u
+                ? PSX_CDROM_STOP_DOUBLE_CYCLES
+                : PSX_CDROM_STOP_NORMAL_CYCLES;
+        }
+        cdrom->pending_command = command;
+        cdrom->command_cycles_remaining = delay;
+        (void)push_response(cdrom, cdrom->drive_status);
+        command_complete(cdrom, 3u);
+        break;
+    }
     case 0x0au: /* Init */
         cdrom->drive_status = 0u;
         cdrom->request = 0u;
         cdrom->data_index = 0u;
         cdrom->data_count = 0u;
         cdrom->read_active = false;
+        (void)push_response(cdrom, cdrom->drive_status);
+        command_complete(cdrom, 3u);
+        break;
+    case 0x0eu: /* Setmode */
+        if (cdrom->parameter_count < 1u ||
+            !pop_parameter(cdrom, &cdrom->mode)) {
+            command_error(cdrom);
+            break;
+        }
         (void)push_response(cdrom, cdrom->drive_status);
         command_complete(cdrom, 3u);
         break;
@@ -175,6 +206,9 @@ void psx_cdrom_reset(PsxCdrom *cdrom)
     cdrom->data_index = 0u;
     cdrom->data_count = 0u;
     cdrom->read_active = false;
+    cdrom->mode = 0u;
+    cdrom->pending_command = 0u;
+    cdrom->command_cycles_remaining = 0u;
     cdrom->location[0] = 0u;
     cdrom->location[1] = 0u;
     cdrom->location[2] = 0u;
@@ -217,6 +251,41 @@ bool psx_cdrom_advance_sector(PsxCdrom *cdrom)
         return false;
     }
     return true;
+}
+
+uint32_t psx_cdrom_sector_period_cycles(const PsxCdrom *cdrom)
+{
+    if (!cdrom || !cdrom->initialized) return 0u;
+    return (cdrom->mode & 0x80u) != 0u
+        ? PSX_CDROM_DOUBLE_SPEED_SECTOR_CYCLES
+        : PSX_CDROM_NORMAL_SPEED_SECTOR_CYCLES;
+}
+
+void psx_cdrom_advance_cycles(PsxCdrom *cdrom, uint32_t cycles)
+{
+    if (!cdrom || !cdrom->initialized ||
+        cdrom->pending_command == 0u)
+        return;
+    if (cycles < cdrom->command_cycles_remaining) {
+        cdrom->command_cycles_remaining -= cycles;
+        return;
+    }
+
+    cdrom->command_cycles_remaining = 0u;
+    if (cdrom->pending_command == 0x09u) {
+        cdrom->read_active = false;
+        cdrom->drive_status &= (uint8_t)~0x20u;
+        cdrom->drive_status |= 0x02u;
+    } else if (cdrom->pending_command == 0x08u) {
+        cdrom->read_active = false;
+        cdrom->drive_status &= (uint8_t)~0x22u;
+        cdrom->data_index = 0u;
+        cdrom->data_count = 0u;
+        cdrom->request = 0u;
+    }
+    cdrom->pending_command = 0u;
+    (void)push_response(cdrom, cdrom->drive_status);
+    command_complete(cdrom, 2u);
 }
 
 bool psx_cdrom_read_data32(PsxCdrom *cdrom, uint32_t *value)
