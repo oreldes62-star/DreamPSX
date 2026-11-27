@@ -36,5 +36,8 @@ bool psx_dma_execute_gpu_manual(PsxDmaController *dma,
 /* Execute channel-2 RAM-to-GP0 linked-list mode (CHCR sync=2). */
 bool psx_dma_execute_gpu_linked_list(PsxDmaController *dma,
                                      PsxMemory *memory, PsxGpu *gpu);
+/* Execute channel-2 request/block mode (CHCR sync=1), in either direction. */
+bool psx_dma_execute_gpu_request(PsxDmaController *dma,
+                                  PsxMemory *memory, PsxGpu *gpu);
 
 #endif
