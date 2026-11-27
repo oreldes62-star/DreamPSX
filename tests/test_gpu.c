@@ -40,6 +40,12 @@ int main(void)
     assert(psx_gpu_read_status(&gpu, &status));
     assert((status & (1u << 26u)) == 0u);
     assert((status & (1u << 28u)) == 0u);
+    assert(psx_gpu_gp1_write(&gpu, 0x04000001u));
+    assert(psx_gpu_read_status(&gpu, &status));
+    assert((status & (1u << 25u)) != 0u); /* FIFO mode has no modeled full state */
+    assert(psx_gpu_gp1_write(&gpu, 0x04000002u));
+    assert(psx_gpu_read_status(&gpu, &status));
+    assert((status & (1u << 25u)) == 0u); /* write-FIFO-empty is not asserted */
     assert(psx_gpu_gp1_write(&gpu, 0x01000000u));
     assert(psx_gpu_read_status(&gpu, &status));
     assert((status & 0x14000000u) == 0x14000000u);
