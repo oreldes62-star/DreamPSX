@@ -1,5 +1,6 @@
 # DreamPSX KallistiOS cross-build: complete emulator core + audio smoke app
 TARGET = dreampsx-audio-smoke.elf
+BOOT_TARGET = dreampsx-boot-smoke.elf
 
 CORE_SOURCES = \
     ../../../src/bus/bus.c \
@@ -31,7 +32,7 @@ CORE_OBJECTS = $(CORE_SOURCES:.c=.o)
 
 CFLAGS += -I../../../include
 
-all: libdreampsx_core.a $(TARGET)
+all: libdreampsx_core.a $(TARGET) $(BOOT_TARGET)
 
 include $(KOS_BASE)/Makefile.rules
 
@@ -41,8 +42,11 @@ libdreampsx_core.a: $(CORE_OBJECTS)
 $(TARGET): main.o libdreampsx_core.a
 	kos-cc -o $@ main.o libdreampsx_core.a
 
+$(BOOT_TARGET): boot_smoke.o libdreampsx_core.a
+	kos-cc -o $@ boot_smoke.o libdreampsx_core.a
+
 clean:
-	-rm -f $(TARGET) main.o libdreampsx_core.a $(CORE_OBJECTS)
+	-rm -f $(TARGET) $(BOOT_TARGET) main.o boot_smoke.o libdreampsx_core.a $(CORE_OBJECTS)
 
 dist: $(TARGET)
 	$(KOS_STRIP) $(TARGET)
