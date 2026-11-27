@@ -5,14 +5,16 @@ static snd_stream_callback_t current_callback;
 static void *current_userdata;
 static int initialized, started, stopped, destroyed, shutdown_count;
 static int next_poll_result;
+static int next_init_result;
+static int next_alloc_result = 7;
 static int last_buffer_size, last_frequency, last_stereo;
 static int16_t poll_samples[8];
 static int poll_received;
 
-int snd_stream_init(void) { initialized++; return 0; }
+int snd_stream_init(void) { initialized++; return next_init_result; }
 void snd_stream_shutdown(void) { shutdown_count++; }
 snd_stream_hnd_t snd_stream_alloc(snd_stream_callback_t cb, int size) {
-    current_callback = cb; last_buffer_size = size; return 7;
+    current_callback = cb; last_buffer_size = size; return next_alloc_result;
 }
 void snd_stream_set_userdata(snd_stream_hnd_t h, void *d) { (void)h; current_userdata=d; }
 void *snd_stream_get_userdata(snd_stream_hnd_t h) { (void)h; return current_userdata; }
@@ -31,10 +33,12 @@ void snd_stream_stop(snd_stream_hnd_t h) { (void)h; stopped++; }
 void snd_stream_destroy(snd_stream_hnd_t h) { (void)h; destroyed++; }
 void kos_stub_reset(void) {
     current_callback=NULL; current_userdata=NULL; initialized=started=stopped=destroyed=shutdown_count=0;
-    next_poll_result=0; last_buffer_size=last_frequency=last_stereo=0; poll_received=0;
+    next_poll_result=0; next_init_result=0; next_alloc_result=7; last_buffer_size=last_frequency=last_stereo=0; poll_received=0;
     memset(poll_samples,0,sizeof(poll_samples));
 }
 void kos_stub_set_poll_result(int r) { next_poll_result=r; }
+void kos_stub_set_init_result(int r) { next_init_result=r; }
+void kos_stub_set_alloc_result(int r) { next_alloc_result=r; }
 int kos_stub_initialized(void){return initialized;}
 int kos_stub_started(void){return started;}
 int kos_stub_stopped(void){return stopped;}
