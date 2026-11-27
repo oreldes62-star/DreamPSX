@@ -46,6 +46,7 @@ typedef struct {
 
 bool psx_cdrom_init(PsxCdrom *cdrom);
 bool psx_cdrom_mount_iso(PsxCdrom *cdrom, const uint8_t *image, size_t size);
+bool psx_cdrom_mount_disc(PsxCdrom *cdrom, const PsxDiscImage *disc);
 /* Mounts a CUE-described BIN track without copying the image. */
 bool psx_cdrom_mount_cue(PsxCdrom *cdrom, const char *cue_text,
                          size_t cue_size, const uint8_t *bin_data,
