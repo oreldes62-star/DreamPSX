@@ -263,26 +263,41 @@ static void execute_command(PsxCdrom *cdrom, uint8_t command)
         cdrom->data_count = 0u;
         cdrom->read_active = false;
         cdrom->mode = 0u;
+        reset_xa_audio(cdrom);
         cdrom->pending_command = 0u;
         cdrom->command_cycles_remaining = 0u;
         (void)push_response(cdrom, cdrom->drive_status);
         command_complete(cdrom, 3u);
         break;
     case 0x0du: /* Setfilter: XA file and channel selection. */
-        if (cdrom->parameter_count < 2u ||
-            !pop_parameter(cdrom, &cdrom->xa_filter_file) ||
-            !pop_parameter(cdrom, &cdrom->xa_filter_channel)) {
-            command_error(cdrom);
-            break;
+        {
+            uint8_t old_file = cdrom->xa_filter_file;
+            uint8_t old_channel = cdrom->xa_filter_channel;
+            if (cdrom->parameter_count < 2u ||
+                !pop_parameter(cdrom, &cdrom->xa_filter_file) ||
+                !pop_parameter(cdrom, &cdrom->xa_filter_channel)) {
+                command_error(cdrom);
+                break;
+            }
+            if (old_file != cdrom->xa_filter_file ||
+                old_channel != cdrom->xa_filter_channel)
+                reset_xa_audio(cdrom);
         }
         (void)push_response(cdrom, cdrom->drive_status);
         command_complete(cdrom, 3u);
         break;
     case 0x0eu: /* Setmode */
-        if (cdrom->parameter_count < 1u ||
-            !pop_parameter(cdrom, &cdrom->mode)) {
-            command_error(cdrom);
-            break;
+        {
+            uint8_t old_mode = cdrom->mode;
+            uint8_t new_mode;
+            if (cdrom->parameter_count < 1u ||
+                !pop_parameter(cdrom, &new_mode)) {
+                command_error(cdrom);
+                break;
+            }
+            cdrom->mode = new_mode;
+            if (((old_mode ^ new_mode) & 0x48u) != 0u)
+                reset_xa_audio(cdrom);
         }
         (void)push_response(cdrom, cdrom->drive_status);
         command_complete(cdrom, 3u);
@@ -338,6 +353,7 @@ bool psx_cdrom_mount_iso(PsxCdrom *cdrom, const uint8_t *image, size_t size)
     psx_disc_unmount(&cdrom->disc);
     cdrom->iso_data = image;
     cdrom->iso_size = size;
+    reset_xa_audio(cdrom);
     cdrom->drive_status &= (uint8_t)~0x01u;
     return true;
 }
