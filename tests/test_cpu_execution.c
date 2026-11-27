@@ -1067,6 +1067,50 @@ int main(void)
     assert(machine.cop0_badvaddr == 0xcafebabeu);
     assert(machine.gte.data[0u] == 0x2468ace0u);
 
+
+    /* R3000A MULT starts in one cycle; MFLO waits for the remaining
+     * operand-dependent multiplier latency before observing the result.
+     */
+    psx_cpu_reset(&machine.cpu);
+    psx_cpu_write_gpr(&machine.cpu, 8u, 5u);
+    psx_cpu_write_gpr(&machine.cpu, 9u, 7u);
+    put_word(ram, 0x640u, (8u << 21) | (9u << 16) | 0x19u); /* MULTU t0,t1 */
+    put_word(ram, 0x644u, (10u << 11) | 0x12u); /* MFLO t2 */
+    machine.cpu.pc = 0x640u; machine.cpu.next_pc = 0x644u;
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(psx_cpu_last_step_cycles(&machine.cpu) == 1u);
+    assert(machine.cpu.hilo_busy_cycles == 5u);
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(psx_cpu_last_step_cycles(&machine.cpu) == 6u);
+    assert(psx_cpu_read_gpr(&machine.cpu, 10u) == 35u);
+    assert(!machine.cpu.hilo_pending);
+
+    /* Signed multiplication selects 6/9/13 cycles from rs magnitude. */
+    psx_cpu_reset(&machine.cpu);
+    psx_cpu_write_gpr(&machine.cpu, 8u, 0x00000800u);
+    psx_cpu_write_gpr(&machine.cpu, 9u, 2u);
+    put_word(ram, 0x648u, (8u << 21) | (9u << 16) | 0x18u); /* MULT */
+    put_word(ram, 0x64cu, (11u << 11) | 0x10u); /* MFHI */
+    machine.cpu.pc = 0x648u; machine.cpu.next_pc = 0x64cu;
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(machine.cpu.hilo_busy_cycles == 8u);
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(psx_cpu_last_step_cycles(&machine.cpu) == 9u);
+    assert(psx_cpu_read_gpr(&machine.cpu, 11u) == 0u);
+
+    /* DIVU always takes 36 cycles; a following MFLO interlocks. */
+    psx_cpu_reset(&machine.cpu);
+    psx_cpu_write_gpr(&machine.cpu, 8u, 100u);
+    psx_cpu_write_gpr(&machine.cpu, 9u, 7u);
+    put_word(ram, 0x650u, (8u << 21) | (9u << 16) | 0x1bu); /* DIVU */
+    put_word(ram, 0x654u, (12u << 11) | 0x12u); /* MFLO t4 */
+    machine.cpu.pc = 0x650u; machine.cpu.next_pc = 0x654u;
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(machine.cpu.hilo_busy_cycles == 35u);
+    assert(psx_cpu_step(&machine.cpu, &machine.bus));
+    assert(psx_cpu_last_step_cycles(&machine.cpu) == 36u);
+    assert(psx_cpu_read_gpr(&machine.cpu, 12u) == 14u);
+
     free(bios); free(ram);
     puts("DreamPSX R3000A execution tests: OK");
     return 0;
