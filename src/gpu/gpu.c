@@ -46,6 +46,41 @@ static int sign_extend_11(uint32_t value)
     return (bits & 0x400u) != 0u ? (int)bits - 0x800 : (int)bits;
 }
 
+static void execute_rectangle(PsxGpu *gpu, unsigned width,
+                              unsigned height)
+{
+    const uint32_t xy = gpu->parameters[0];
+    const int x = sign_extend_11(xy) + gpu->draw_offset_x;
+    const int y = sign_extend_11(xy >> 16u) + gpu->draw_offset_y;
+    const int64_t right = (int64_t)x + (int64_t)width - 1;
+    const int64_t bottom = (int64_t)y + (int64_t)height - 1;
+    const int start_x = x < (int)gpu->draw_area_left ?
+                        (int)gpu->draw_area_left : x;
+    const int start_y = y < (int)gpu->draw_area_top ?
+                        (int)gpu->draw_area_top : y;
+    const int end_x = right > (int64_t)gpu->draw_area_right ?
+                      (int)gpu->draw_area_right : (int)right;
+    const int end_y = bottom > (int64_t)gpu->draw_area_bottom ?
+                      (int)gpu->draw_area_bottom : (int)bottom;
+    const uint16_t color = rgb24_to_rgb15(gpu->command);
+
+    if (width == 0u || height == 0u || end_x < start_x || end_y < start_y)
+        return;
+
+    for (int py = start_y; py <= end_y; ++py) {
+        for (int px = start_x; px <= end_x; ++px) {
+            gpu->vram[(unsigned)py * PSX_GPU_VRAM_WIDTH + (unsigned)px] =
+                color;
+        }
+    }
+}
+
+static void execute_variable_rectangle(PsxGpu *gpu)
+{
+    const uint32_t wh = gpu->parameters[1];
+    execute_rectangle(gpu, wh & 0x3ffu, (wh >> 16u) & 0x1ffu);
+}
+
 static int64_t triangle_edge(int ax, int ay, int bx, int by,
                              int px2, int py2)
 {
@@ -522,6 +557,14 @@ bool psx_gpu_gp0_write(PsxGpu *gpu, uint32_t value)
             const unsigned opcode = gpu->command >> 24u;
             if (opcode == 0x02u)
                 execute_fill_rectangle(gpu);
+            else if (opcode == 0x60u)
+                execute_variable_rectangle(gpu);
+            else if (opcode == 0x68u)
+                execute_rectangle(gpu, 1u, 1u);
+            else if (opcode == 0x70u)
+                execute_rectangle(gpu, 8u, 8u);
+            else if (opcode == 0x78u)
+                execute_rectangle(gpu, 16u, 16u);
             else if (opcode == 0xa0u)
                 begin_image_transfer(gpu, PSX_GPU_TRANSFER_CPU_TO_VRAM);
             else if (opcode == 0xc0u)
@@ -574,6 +617,19 @@ bool psx_gpu_gp0_write(PsxGpu *gpu, uint32_t value)
     case 0xe5u: /* Drawing offset, signed 11-bit coordinates. */
         gpu->draw_offset_x = sign_extend_11(value);
         gpu->draw_offset_y = sign_extend_11(value >> 11u);
+        break;
+    case 0x60u: /* Variable-size monochrome rectangle */
+        gpu->parameter_expected = 2u;
+        gpu->parameter_count = 0u;
+        break;
+    case 0x68u: /* 1x1 monochrome rectangle */
+        gpu->parameter_expected = 1u;
+        gpu->parameter_count = 0u;
+        break;
+    case 0x70u: /* 8x8 monochrome rectangle */
+    case 0x78u: /* 16x16 monochrome rectangle */
+        gpu->parameter_expected = 1u;
+        gpu->parameter_count = 0u;
         break;
     case 0x20u: /* Flat-shaded triangle */
         gpu->parameter_expected = 3u;
