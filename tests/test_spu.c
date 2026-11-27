@@ -490,6 +490,61 @@ int main(void)
     assert(psx_spu_reverb_saturate(1234) == 1234);
     assert(psx_spu_reverb_saturate(-1234) == -1234);
 
+
+    /* First IIR reflection stage: input gain, feedback history, wall
+     * coefficient and opposite-channel DIFF delay taps. */
+    {
+        const uint32_t cursor = 0x100u;
+        const uint32_t reg_base = PSX_SPU_BASE_ADDR;
+        int16_t sample;
+        psx_spu_reset(&spu);
+        assert(psx_spu_write16(&spu, reg_base +
+            PSX_SPU_REVERB_WORK_AREA_START_OFFSET, 0u));
+        spu.reverb_buffer_address = cursor;
+        assert(psx_spu_write16(&spu, reg_base +
+            PSX_SPU_REVERB_CONFIG_VLIN_OFFSET, 0x4000u));
+        assert(psx_spu_write16(&spu, reg_base +
+            PSX_SPU_REVERB_CONFIG_VRIN_OFFSET, 0x4000u));
+        assert(psx_spu_write16(&spu, reg_base +
+            PSX_SPU_REVERB_CONFIG_VWALL_OFFSET, 0u));
+        assert(psx_spu_write16(&spu, reg_base +
+            PSX_SPU_REVERB_CONFIG_VIIR_OFFSET, 0x4000u));
+
+        assert(psx_spu_write16(&spu, reg_base +
+            PSX_SPU_REVERB_CONFIG_MLSAME_OFFSET, 2u));
+        assert(psx_spu_write16(&spu, reg_base +
+            PSX_SPU_REVERB_CONFIG_MRSAME_OFFSET, 6u));
+        assert(psx_spu_write16(&spu, reg_base +
+            PSX_SPU_REVERB_CONFIG_MLDIFF_OFFSET, 10u));
+        assert(psx_spu_write16(&spu, reg_base +
+            PSX_SPU_REVERB_CONFIG_MRDIFF_OFFSET, 14u));
+        assert(psx_spu_write16(&spu, reg_base +
+            PSX_SPU_REVERB_CONFIG_DLSAME_OFFSET, 4u));
+        assert(psx_spu_write16(&spu, reg_base +
+            PSX_SPU_REVERB_CONFIG_DRSAME_OFFSET, 8u));
+        assert(psx_spu_write16(&spu, reg_base +
+            PSX_SPU_REVERB_CONFIG_DRDIFF_OFFSET, 12u));
+        assert(psx_spu_write16(&spu, reg_base +
+            PSX_SPU_REVERB_CONFIG_DLDIFF_OFFSET, 16u));
+
+        spu.ram[0x10eu] = 0xc8u; spu.ram[0x10fu] = 0x00u;
+        spu.ram[0x12eu] = 0x90u; spu.ram[0x12fu] = 0x01u;
+        spu.ram[0x14eu] = 0x58u; spu.ram[0x14fu] = 0x02u;
+        spu.ram[0x16eu] = 0x20u; spu.ram[0x16fu] = 0x03u;
+
+        assert(psx_spu_reverb_process_reflections(&spu, 1000, 2000));
+        assert(psx_spu_reverb_read16(&spu, 2u, &sample));
+        assert(sample == 350);
+        assert(psx_spu_reverb_read16(&spu, 6u, &sample));
+        assert(sample == 700);
+        assert(psx_spu_reverb_read16(&spu, 10u, &sample));
+        assert(sample == 550);
+        assert(psx_spu_reverb_read16(&spu, 14u, &sample));
+        assert(sample == 900);
+        assert(!psx_spu_reverb_process_reflections(NULL, 0, 0));
+        psx_spu_reset(&spu);
+    }
+
     /* Reverb sample accesses are signed little-endian halfwords and remain
      * inside the ESA..7FFFEh work area, including at the final RAM word. */
     {
