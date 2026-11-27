@@ -508,6 +508,47 @@ bool psx_dma_execute_gpu_request(PsxDmaController *dma,
 
 /* DICR master interrupt output: force bit 15, or master enable combined
  * with at least one enabled channel completion flag. */
+bool psx_dma_execute_cdrom(PsxDmaController *dma, PsxMemory *memory,
+                           PsxCdrom *cdrom)
+{
+    PsxDmaChannel *channel;
+    uint32_t control;
+    uint32_t words;
+    uint32_t address;
+
+    if (!dma || !dma->initialized || !memory || !memory->initialized ||
+        !cdrom || !cdrom->initialized)
+        return false;
+
+    channel = &dma->channel[3];
+    control = channel->chcr;
+
+    /* CD-ROM DMA is device-to-RAM, SyncMode 0. The CD-ROM does not
+     * generate DREQ for DMA3, so software must force-start with bit 28. */
+    if ((control & (1u << 24u)) == 0u ||
+        (control & (1u << 28u)) == 0u ||
+        (control & 1u) != 0u ||
+        ((control >> 9u) & 3u) != 0u ||
+        !psx_dma_channel_enabled(dma, 3u))
+        return true;
+
+    words = channel->bcr & 0xffffu;
+    if (words == 0u) words = 0x10000u;
+    address = channel->madr;
+
+    for (uint32_t i = 0u; i < words; ++i) {
+        uint32_t data;
+        if (!psx_cdrom_read_data32(cdrom, &data) ||
+            !psx_memory_write32(memory, address, data))
+            return false;
+        address = (address + 4u) & 0x00fffffcu;
+        ++dma->data_words_transferred;
+    }
+
+    /* In burst mode the hardware retains the programmed MADR/BCR values. */
+    return psx_dma_complete_channel(dma, 3u);
+}
+
 bool psx_dma_irq_output(const PsxDmaController *dma)
 {
     uint32_t flags;
