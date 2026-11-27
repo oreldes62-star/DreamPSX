@@ -33,7 +33,8 @@ bool psx_machine_init(PsxMachine *machine,
 void psx_machine_reset(PsxMachine *machine);
 void psx_machine_refresh_interrupts(PsxMachine *machine);
 bool psx_machine_interrupt_eligible(const PsxMachine *machine);
-/* Advance one GPU scanline and route VBlank transitions to IRQ0. */
+/* Advance one GPU scanline, route its HBlank pulse to Timer1, and route
+ * VBlank level transitions to IRQ0. */
 bool psx_machine_timer_advance_clock(PsxMachine *machine, unsigned timer,
                                      PsxTimerClock clock, uint32_t ticks);
 bool psx_machine_video_advance_scanline(PsxMachine *machine,
