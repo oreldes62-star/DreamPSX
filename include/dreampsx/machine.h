@@ -45,6 +45,8 @@ bool psx_machine_timer_advance_clock(PsxMachine *machine, unsigned timer,
 /* Advance the shared system-clock domain. Timer2's /8 source keeps a
  * fractional phase across calls; CPU instruction timing must supply cycles. */
 bool psx_machine_advance_system_cycles(PsxMachine *machine, uint32_t cycles);
+/* Advance the next CD-ROM sector event after the current sector is drained. */
+bool psx_machine_cdrom_advance_sector(PsxMachine *machine);
 bool psx_machine_video_advance_scanline(PsxMachine *machine,
                                         PsxGpuVideoState *state);
 bool psx_machine_step(PsxMachine *machine);
