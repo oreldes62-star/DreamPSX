@@ -451,3 +451,12 @@ bool psx_cdrom_write8(PsxCdrom *cdrom, uint32_t address, uint8_t value)
         return false;
     }
 }
+
+
+bool psx_cdrom_get_xa_audio_format(const PsxCdrom *cdrom,
+                                   PsxDiscXaAudioFormat *format)
+{
+    if (!cdrom || !cdrom->initialized || !cdrom->xa_subheader_valid)
+        return false;
+    return psx_disc_xa_audio_format(&cdrom->xa_subheader, format);
+}
