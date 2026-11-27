@@ -71,6 +71,93 @@ static bool triangle_edge_inside(int64_t edge, int ax, int ay, int bx, int by,
         triangle_edge_is_top_left(ax, ay, bx, by, reverse));
 }
 
+static unsigned interpolate_color_channel(unsigned c0, unsigned c1,
+                                                   unsigned c2, int64_t e0,
+                                                   int64_t e1, int64_t e2,
+                                                   int64_t area)
+{
+    const int64_t weighted = (int64_t)c0 * e1 +
+                             (int64_t)c1 * e2 +
+                             (int64_t)c2 * e0;
+    int64_t result = weighted / area;
+    if (result < 0) result = 0;
+    if (result > 255) result = 255;
+    return (unsigned)result;
+}
+
+static void execute_gouraud_triangle(PsxGpu *gpu)
+{
+    const uint32_t color0 = gpu->command;
+    const uint32_t xy0 = gpu->parameters[0];
+    const uint32_t color1 = gpu->parameters[1];
+    const uint32_t xy1 = gpu->parameters[2];
+    const uint32_t color2 = gpu->parameters[3];
+    const uint32_t xy2 = gpu->parameters[4];
+    const int x0 = sign_extend_11(xy0) + gpu->draw_offset_x;
+    const int y0 = sign_extend_11(xy0 >> 16u) + gpu->draw_offset_y;
+    const int x1 = sign_extend_11(xy1) + gpu->draw_offset_x;
+    const int y1 = sign_extend_11(xy1 >> 16u) + gpu->draw_offset_y;
+    const int x2 = sign_extend_11(xy2) + gpu->draw_offset_x;
+    const int y2 = sign_extend_11(xy2 >> 16u) + gpu->draw_offset_y;
+    const int min_x = x0 < x1 ? (x0 < x2 ? x0 : x2) :
+                                (x1 < x2 ? x1 : x2);
+    const int max_x = x0 > x1 ? (x0 > x2 ? x0 : x2) :
+                                (x1 > x2 ? x1 : x2);
+    const int min_y = y0 < y1 ? (y0 < y2 ? y0 : y2) :
+                                (y1 < y2 ? y1 : y2);
+    const int max_y = y0 > y1 ? (y0 > y2 ? y0 : y2) :
+                                (y1 > y2 ? y1 : y2);
+    const int64_t area = triangle_edge(x0, y0, x1, y1, 2 * x2, 2 * y2);
+    const bool reverse = area > 0;
+    int start_x, end_x, start_y, end_y;
+
+    if (area == 0 || max_x < (int)gpu->draw_area_left ||
+        max_y < (int)gpu->draw_area_top ||
+        min_x > (int)gpu->draw_area_right ||
+        min_y > (int)gpu->draw_area_bottom)
+        return;
+
+    start_x = min_x < (int)gpu->draw_area_left ?
+              (int)gpu->draw_area_left : min_x;
+    end_x = max_x > (int)gpu->draw_area_right ?
+            (int)gpu->draw_area_right : max_x;
+    start_y = min_y < (int)gpu->draw_area_top ?
+              (int)gpu->draw_area_top : min_y;
+    end_y = max_y > (int)gpu->draw_area_bottom ?
+            (int)gpu->draw_area_bottom : max_y;
+
+    for (int y = start_y; y <= end_y; ++y) {
+        for (int x = start_x; x <= end_x; ++x) {
+            const int px2 = 2 * x + 1;
+            const int py2 = 2 * y + 1;
+            const int64_t e0 = triangle_edge(x0, y0, x1, y1, px2, py2);
+            const int64_t e1 = triangle_edge(x1, y1, x2, y2, px2, py2);
+            const int64_t e2 = triangle_edge(x2, y2, x0, y0, px2, py2);
+            const bool inside =
+                triangle_edge_inside(e0, x0, y0, x1, y1,
+                                     reverse, area > 0) &&
+                triangle_edge_inside(e1, x1, y1, x2, y2,
+                                     reverse, area > 0) &&
+                triangle_edge_inside(e2, x2, y2, x0, y0,
+                                     reverse, area > 0);
+            if (inside) {
+                const unsigned red = interpolate_color_channel(
+                    color0 & 0xffu, color1 & 0xffu, color2 & 0xffu,
+                    e0, e1, e2, area);
+                const unsigned green = interpolate_color_channel(
+                    (color0 >> 8u) & 0xffu, (color1 >> 8u) & 0xffu,
+                    (color2 >> 8u) & 0xffu, e0, e1, e2, area);
+                const unsigned blue = interpolate_color_channel(
+                    (color0 >> 16u) & 0xffu, (color1 >> 16u) & 0xffu,
+                    (color2 >> 16u) & 0xffu, e0, e1, e2, area);
+                const uint32_t color = red | (green << 8u) | (blue << 16u);
+                gpu->vram[(unsigned)y * PSX_GPU_VRAM_WIDTH +
+                          (unsigned)x] = rgb24_to_rgb15(color);
+            }
+        }
+    }
+}
+
 static void execute_flat_triangle(PsxGpu *gpu)
 {
     const uint32_t xy0 = gpu->parameters[0];
@@ -226,6 +313,8 @@ bool psx_gpu_gp0_write(PsxGpu *gpu, uint32_t value)
                 begin_image_transfer(gpu, PSX_GPU_TRANSFER_VRAM_TO_CPU);
             else if (opcode == 0x20u)
                 execute_flat_triangle(gpu);
+            else if (opcode == 0x30u)
+                execute_gouraud_triangle(gpu);
             gpu->parameter_count = 0u;
             gpu->parameter_expected = 0u;
         }
@@ -248,6 +337,10 @@ bool psx_gpu_gp0_write(PsxGpu *gpu, uint32_t value)
         break;
     case 0x20u: /* Flat-shaded triangle */
         gpu->parameter_expected = 3u;
+        gpu->parameter_count = 0u;
+        break;
+    case 0x30u: /* Gouraud-shaded triangle */
+        gpu->parameter_expected = 5u;
         gpu->parameter_count = 0u;
         break;
     case 0x02u: /* Fill rectangle */
