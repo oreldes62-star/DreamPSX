@@ -23,4 +23,5 @@ Complete the first file-backed disc mount path by loading a CUE sheet from the D
 
 ## Validation
 
-Host and pinned KallistiOS CI are triggered by the implementation commit. Results are recorded in the pull request after completion.
+- Host build and CTest passed on commit `ef1149334a49e06f936483d583bdff9f83eb8ff3`: workflow run 46079477092, 45/45 tests passed, including the CUE-to-BIN sector-read test.
+- The pinned KallistiOS/Dreamcast build for the same commit is running as workflow 46079477119; the final SH-4 build result is not yet confirmed.
