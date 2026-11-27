@@ -51,6 +51,22 @@ int main(void)
 
     assert(psx_spu_init(&spu));
     assert(spu.initialized);
+
+    /* An inactive SPU must overwrite every requested output frame with
+     * silence; callers must never receive stale samples from a prior block. */
+    {
+        int16_t silent_block[6] = {123, -123, 456, -456, 789, -789};
+        size_t silent_frames = 99u;
+        assert(psx_spu_mix_block(&spu, silent_block, 3u, &silent_frames));
+        assert(silent_frames == 3u);
+        for (unsigned i = 0u; i < 6u; ++i)
+            assert(silent_block[i] == 0);
+        silent_frames = 99u;
+        assert(!psx_spu_mix_block(&spu, NULL, 3u, &silent_frames));
+        assert(silent_frames == 0u);
+        assert(!psx_spu_mix_block(&spu, silent_block, 3u, NULL));
+    }
+
     assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR, 0x1234u));
     assert(psx_spu_read16(&spu, PSX_SPU_BASE_ADDR, &value));
     assert(value == 0x1234u);
