@@ -928,7 +928,8 @@ bool psx_gpu_scanout_rgb565(const PsxGpu *gpu, unsigned width,
                             size_t dst_stride)
 {
     if (!gpu || !gpu->initialized || !gpu->vram || !dst ||
-        width == 0u || height == 0u || dst_stride < width ||
+        width == 0u || height == 0u || width > PSX_GPU_VRAM_WIDTH ||
+        height > PSX_GPU_VRAM_HEIGHT || dst_stride < width ||
         gpu->display.disabled)
         return false;
 
