@@ -490,6 +490,29 @@ void psx_spu_reverb_advance(PsxSpu *spu)
         spu->reverb_buffer_address = base;
 }
 
+
+bool psx_spu_reverb_read16(const PsxSpu *spu, uint16_t relative_address,
+                           int16_t *value)
+{
+    uint32_t address;
+    if (!spu || !spu->initialized || !value)
+        return false;
+    address = psx_spu_reverb_resolve_address(spu, relative_address);
+    *value = (int16_t)load_le16(&spu->ram[address]);
+    return true;
+}
+
+bool psx_spu_reverb_write16(PsxSpu *spu, uint16_t relative_address,
+                            int16_t value)
+{
+    uint32_t address;
+    if (!spu || !spu->initialized)
+        return false;
+    address = psx_spu_reverb_resolve_address(spu, relative_address);
+    store_le16(&spu->ram[address], (uint16_t)value);
+    return true;
+}
+
 bool psx_spu_mix_block(PsxSpu *spu, int16_t *interleaved_stereo,
                        size_t frame_capacity, size_t *frames_written)
 {
