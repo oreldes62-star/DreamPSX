@@ -41,7 +41,10 @@ typedef struct {
     uint32_t playback_address;
     uint8_t sample_index;
     uint8_t block_flags;
+    uint16_t pitch_phase;
+    int16_t current_sample;
     bool block_valid;
+    bool current_sample_valid;
 } PsxSpuVoice;
 
 typedef struct {
@@ -67,6 +70,8 @@ bool psx_spu_write16(PsxSpu *spu, uint32_t address, uint16_t value);
 uint32_t psx_spu_active_voice_mask(const PsxSpu *spu);
 bool psx_spu_voice_next_sample(PsxSpu *spu, unsigned voice_index,
                                int16_t *sample);
+bool psx_spu_voice_render_sample(PsxSpu *spu, unsigned voice_index,
+                                 int16_t *sample);
 bool psx_spu_read8(PsxSpu *spu, uint32_t address, uint8_t *value);
 bool psx_spu_write8(PsxSpu *spu, uint32_t address, uint8_t value);
 
