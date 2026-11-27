@@ -281,6 +281,20 @@ int main(void)
     assert(psx_gpu_vram_read(&gpu, 841u, 101u, &pixel));
     assert(pixel == 0x6318u);
 
+    /* GP0(34h) interpolates vertex colors while sampling a textured triangle. */
+    vram[1u * PSX_GPU_VRAM_WIDTH + 1u] = 0x7fffu;
+    assert(psx_gpu_gp0_write(&gpu, 0x340000ffu)); /* Red vertex 0. */
+    assert(psx_gpu_gp0_write(&gpu, 900u | (300u << 16u)));
+    assert(psx_gpu_gp0_write(&gpu, 1u | (1u << 8u)));
+    assert(psx_gpu_gp0_write(&gpu, 0x0000ff00u)); /* Green vertex 1. */
+    assert(psx_gpu_gp0_write(&gpu, 904u | (300u << 16u)));
+    assert(psx_gpu_gp0_write(&gpu, 0x01000000u | 1u | (1u << 8u)));
+    assert(psx_gpu_gp0_write(&gpu, 0x00ff0000u)); /* Blue vertex 2. */
+    assert(psx_gpu_gp0_write(&gpu, 900u | (304u << 16u)));
+    assert(psx_gpu_gp0_write(&gpu, 1u | (1u << 8u)));
+    assert(psx_gpu_vram_read(&gpu, 901u, 300u, &pixel));
+    assert(pixel == 0x1dffu);
+
     /* GPU reset clears texture-window state. */
     assert(psx_gpu_gp1_write(&gpu, 0x00000000u));
     assert(gpu.texture_window_mask_x == 0u);
