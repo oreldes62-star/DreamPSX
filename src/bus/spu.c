@@ -32,7 +32,7 @@ bool psx_spu_voice_volume_tick(PsxSpu *spu, unsigned voice_index)
     PsxSpuVoice *voice;
     uint16_t *registers[2];
     int16_t *levels[2];
-    uint16_t *counters[2];
+    uint32_t *counters[2];
 
     if (!spu || !spu->initialized || voice_index >= PSX_SPU_VOICE_COUNT)
         return false;
