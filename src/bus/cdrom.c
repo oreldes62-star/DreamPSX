@@ -234,15 +234,12 @@ bool psx_cdrom_mount_iso(PsxCdrom *cdrom, const uint8_t *image, size_t size)
     return true;
 }
 
-bool psx_cdrom_mount_cue(PsxCdrom *cdrom, const char *cue_text,
-                         size_t cue_size, const uint8_t *bin_data,
-                         size_t bin_size)
+bool psx_cdrom_mount_disc(PsxCdrom *cdrom, const PsxDiscImage *disc)
 {
-    PsxDiscImage disc;
-    if (!cdrom || !cdrom->initialized ||
-        !psx_disc_mount_cue(&disc, cue_text, cue_size, bin_data, bin_size))
+    if (!cdrom || !cdrom->initialized || !disc || !disc->mounted ||
+        !disc->source || disc->sector_count == 0u)
         return false;
-    cdrom->disc = disc;
+    cdrom->disc = *disc;
     cdrom->iso_data = NULL;
     cdrom->iso_size = 0u;
     cdrom->data_index = 0u;
@@ -250,6 +247,16 @@ bool psx_cdrom_mount_cue(PsxCdrom *cdrom, const char *cue_text,
     cdrom->read_active = false;
     cdrom->drive_status &= (uint8_t)~0x01u;
     return true;
+}
+
+bool psx_cdrom_mount_cue(PsxCdrom *cdrom, const char *cue_text,
+                         size_t cue_size, const uint8_t *bin_data,
+                         size_t bin_size)
+{
+    PsxDiscImage disc;
+    return cdrom && cdrom->initialized &&
+           psx_disc_mount_cue(&disc, cue_text, cue_size, bin_data, bin_size) &&
+           psx_cdrom_mount_disc(cdrom, &disc);
 }
 
 void psx_cdrom_unmount(PsxCdrom *cdrom)
