@@ -74,6 +74,7 @@ int main(void)
                           (i & 0xffu));
     /* XA PCM ring wrap and whole-sector overflow are deterministic. */
     {
+        PsxCdrom xa_cdrom;
         static uint8_t wrap_stream[4u * 2352u];
         static const char wrap_cue[] =
             "FILE \"wrap.bin\" BINARY\n"
@@ -84,6 +85,7 @@ int main(void)
         size_t frames = 0u;
         uint16_t rate = 0u;
 
+        assert(psx_cdrom_init(&xa_cdrom));
         for (unsigned sector = 0u; sector < 4u; ++sector) {
             uint8_t *raw = wrap_stream + sector * 2352u;
             for (i = 1u; i <= 10u; ++i) raw[i] = 0xffu;
@@ -95,41 +97,41 @@ int main(void)
             memcpy(raw + 20u, raw + 16u, 4u);
             raw[24u + 16u] = 0x71u;
         }
-        assert(psx_cdrom_mount_cue(&cdrom, wrap_cue,
+        assert(psx_cdrom_mount_cue(&xa_cdrom, wrap_cue,
                                    sizeof(wrap_cue) - 1u,
                                    wrap_stream, sizeof(wrap_stream)));
-        select_bank(&cdrom, 0u);
-        assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 2u, 1u));
-        assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 2u, 2u));
-        assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 1u, 0x0du));
-        assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 2u, 0x48u));
-        assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 1u, 0x0eu));
-        assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 2u, 0u));
-        assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 2u, 2u));
-        assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 2u, 0u));
-        assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 1u, 0x02u));
-        assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 1u, 0x06u));
-        assert(cdrom.xa_pcm_count == 4032u);
-        assert(psx_cdrom_advance_sector(&cdrom));
-        assert(cdrom.xa_pcm_count == 8064u);
+        select_bank(&xa_cdrom, 0u);
+        assert(psx_cdrom_write8(&xa_cdrom, PSX_CDROM_BASE_ADDR + 2u, 1u));
+        assert(psx_cdrom_write8(&xa_cdrom, PSX_CDROM_BASE_ADDR + 2u, 2u));
+        assert(psx_cdrom_write8(&xa_cdrom, PSX_CDROM_BASE_ADDR + 1u, 0x0du));
+        assert(psx_cdrom_write8(&xa_cdrom, PSX_CDROM_BASE_ADDR + 2u, 0x48u));
+        assert(psx_cdrom_write8(&xa_cdrom, PSX_CDROM_BASE_ADDR + 1u, 0x0eu));
+        assert(psx_cdrom_write8(&xa_cdrom, PSX_CDROM_BASE_ADDR + 2u, 0u));
+        assert(psx_cdrom_write8(&xa_cdrom, PSX_CDROM_BASE_ADDR + 2u, 2u));
+        assert(psx_cdrom_write8(&xa_cdrom, PSX_CDROM_BASE_ADDR + 2u, 0u));
+        assert(psx_cdrom_write8(&xa_cdrom, PSX_CDROM_BASE_ADDR + 1u, 0x02u));
+        assert(psx_cdrom_write8(&xa_cdrom, PSX_CDROM_BASE_ADDR + 1u, 0x06u));
+        assert(xa_cdrom.xa_pcm_count == 4032u);
+        assert(psx_cdrom_advance_sector(&xa_cdrom));
+        assert(xa_cdrom.xa_pcm_count == 8064u);
 
-        assert(psx_cdrom_read_xa_audio(&cdrom, samples_l, samples_r,
+        assert(psx_cdrom_read_xa_audio(&xa_cdrom, samples_l, samples_r,
                                        4064u, &frames, &rate));
         assert(frames == 4064u && rate == 18900u);
-        assert(cdrom.xa_pcm_count == 4000u);
-        assert(psx_cdrom_advance_sector(&cdrom));
-        assert(cdrom.xa_pcm_count == 8032u);
-        assert(cdrom.xa_pcm_head == 4064u);
+        assert(xa_cdrom.xa_pcm_count == 4000u);
+        assert(psx_cdrom_advance_sector(&xa_cdrom));
+        assert(xa_cdrom.xa_pcm_count == 8032u);
+        assert(xa_cdrom.xa_pcm_head == 4064u);
         /* Only 160 frames remain: the fourth 4032-frame sector is dropped. */
-        assert(psx_cdrom_advance_sector(&cdrom));
-        assert(cdrom.xa_pcm_count == 8032u);
-        assert(cdrom.xa_dropped_sectors == 1u);
-        assert(psx_cdrom_read_xa_audio(&cdrom, samples_l, samples_r,
+        assert(psx_cdrom_advance_sector(&xa_cdrom));
+        assert(xa_cdrom.xa_pcm_count == 8032u);
+        assert(xa_cdrom.xa_dropped_sectors == 1u);
+        assert(psx_cdrom_read_xa_audio(&xa_cdrom, samples_l, samples_r,
                                        8032u, &frames, &rate));
         assert(frames == 8032u && rate == 0u);
-        assert(cdrom.xa_pcm_count == 0u && cdrom.xa_pcm_head == 0u);
-        assert(cdrom.xa_pcm_sample_rate == 0u);
-        psx_cdrom_unmount(&cdrom);
+        assert(xa_cdrom.xa_pcm_count == 0u && xa_cdrom.xa_pcm_head == 0u);
+        assert(xa_cdrom.xa_pcm_sample_rate == 0u);
+        psx_cdrom_unmount(&xa_cdrom);
     }
 
     assert(psx_cdrom_mount_iso(&cdrom, iso, sizeof(iso)));
