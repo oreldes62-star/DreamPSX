@@ -10,10 +10,12 @@ bool psx_machine_init(PsxMachine *machine,
     if (!machine || !psx_memory_init(&machine->memory, ram, ram_size,
                                      bios, bios_size)) return false;
     if (!psx_gpu_init(&machine->gpu, gpu_vram, gpu_vram_pixels)) return false;
+    if (!psx_dma_init(&machine->dma)) return false;
     psx_machine_reset(machine);
     if (!psx_bus_init(&machine->bus, &machine->memory, &machine->irq,
                      &machine->gpu, &machine->timers))
         return false;
+    psx_bus_attach_dma(&machine->bus, &machine->dma);
     return true;
 }
 
@@ -25,6 +27,7 @@ void psx_machine_reset(PsxMachine *machine)
     psx_gte_reset(&machine->gte);
     psx_gpu_reset(&machine->gpu);
     psx_timers_reset(&machine->timers);
+    psx_dma_reset(&machine->dma);
     machine->timer2_div8_phase = 0u;
     machine->cop0_status = 0u;
     machine->cop0_cause = 0u;
