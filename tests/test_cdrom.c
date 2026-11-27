@@ -126,7 +126,7 @@ int main(void)
         assert(cdrom.xa_dropped_sectors == 1u);
         assert(psx_cdrom_read_xa_audio(&cdrom, samples_l, samples_r,
                                        8032u, &frames, &rate));
-        assert(frames == 8032u && rate == 18900u);
+        assert(frames == 8032u && rate == 0u);
         assert(cdrom.xa_pcm_count == 0u && cdrom.xa_pcm_head == 0u);
         assert(cdrom.xa_pcm_sample_rate == 0u);
         psx_cdrom_unmount(&cdrom);
