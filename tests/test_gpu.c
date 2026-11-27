@@ -15,6 +15,16 @@ int main(void)
     assert((status & 0x1c000000u) == 0x14000000u); /* ready cmd + DMA block */
     assert((status & (1u << 27u)) == 0u);
 
+    /* GP0(1Fh) raises GPUSTAT IRQ and GP1(02h) acknowledges it. */
+    assert(psx_gpu_gp0_write(&gpu, 0x1f000000u));
+    assert(psx_gpu_irq_output(&gpu));
+    assert(psx_gpu_read_status(&gpu, &status));
+    assert((status & (1u << 24u)) != 0u);
+    assert(psx_gpu_gp1_write(&gpu, 0x02000000u));
+    assert(!psx_gpu_irq_output(&gpu));
+    assert(psx_gpu_read_status(&gpu, &status));
+    assert((status & (1u << 24u)) == 0u);
+
     /* GP1(04h): direction is mirrored in GPUSTAT bits 29-30 and
      * selects the meaning of the DMA request bit 25. */
     assert(psx_gpu_gp1_write(&gpu, 0x04000000u));
