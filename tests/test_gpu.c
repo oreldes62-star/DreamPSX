@@ -97,6 +97,19 @@ int main(void)
     assert(psx_gpu_vram_read(&gpu, 101u, 101u, &pixel));
     assert(pixel == 0x03e0u); /* Existing primitive remains untouched. */
 
+    /* Shared diagonal pixels belong to exactly one triangle. */
+    assert(psx_gpu_gp0_write(&gpu, 0xe5000000u));
+    assert(psx_gpu_gp0_write(&gpu, 0x200000ffu)); /* First triangle red. */
+    assert(psx_gpu_gp0_write(&gpu, 300u | (300u << 16u)));
+    assert(psx_gpu_gp0_write(&gpu, 304u | (300u << 16u)));
+    assert(psx_gpu_gp0_write(&gpu, 300u | (304u << 16u)));
+    assert(psx_gpu_gp0_write(&gpu, 0x2000ff00u)); /* Second triangle green. */
+    assert(psx_gpu_gp0_write(&gpu, 304u | (300u << 16u)));
+    assert(psx_gpu_gp0_write(&gpu, 304u | (304u << 16u)));
+    assert(psx_gpu_gp0_write(&gpu, 300u | (304u << 16u)));
+    assert(psx_gpu_vram_read(&gpu, 302u, 301u, &pixel));
+    assert(pixel == 0x03e0u);
+
     /* GPU reset preserves VRAM but restores status and parser state. */
     assert(psx_gpu_gp1_write(&gpu, 0x00000000u));
     assert(psx_gpu_read_status(&gpu, &status));
