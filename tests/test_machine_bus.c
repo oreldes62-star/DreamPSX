@@ -200,6 +200,25 @@ int main(void)
     assert((machine.cdrom.interrupt_flags & (1u << 4u)) != 0u);
     assert(machine.cdrom_sector_cycle_phase == 0u);
 
+    /* Pause's second response is timed by the machine clock and reaches IRQ2. */
+    assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR, 0u));
+    assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR + 3u, 0x1fu));
+    assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR, 1u));
+    assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR + 2u, 0x17u));
+    assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR, 0u));
+    assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR + 1u, 0x09u));
+    assert(machine.cdrom.pending_command == 0x09u);
+    assert(psx_machine_advance_system_cycles(
+        &machine, PSX_CDROM_PAUSE_DOUBLE_CYCLES - 1u));
+    assert(machine.cdrom.pending_command == 0x09u);
+    assert((machine.cdrom.interrupt_flags & (1u << 1u)) == 0u);
+    assert(psx_machine_advance_system_cycles(&machine, 1u));
+    assert(machine.cdrom.pending_command == 0u);
+    assert((machine.cdrom.interrupt_flags & (1u << 1u)) != 0u);
+    assert((machine.irq.source_level & (1u << 2u)) != 0u);
+    assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR + 3u, 0x02u));
+    assert((machine.irq.source_level & (1u << 2u)) == 0u);
+
     /* GPU registers share the machine bus and update its VRAM state. */
     assert(psx_bus_write32(&machine.bus, 0x1f801810u, 0x0200ff00u));
     assert(psx_bus_write32(&machine.bus, 0x1f801810u, 0u));
