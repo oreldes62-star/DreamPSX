@@ -134,6 +134,10 @@ int16_t psx_spu_reverb_saturate(int32_t value);
 int32_t psx_spu_reverb_multiply_q15(int16_t lhs, int16_t rhs);
 bool psx_spu_reverb_process_reflections(PsxSpu *spu, int16_t left_input,
                                        int16_t right_input);
+bool psx_spu_reverb_process_allpass(PsxSpu *spu,
+                                    int16_t comb_left, int16_t comb_right,
+                                    int16_t *left_output,
+                                    int16_t *right_output);
 bool psx_spu_reverb_process_comb(const PsxSpu *spu,
                                    int16_t *left_output,
                                    int16_t *right_output);
