@@ -16,6 +16,6 @@ Dedicated host tests cover BOOT/BOOT2 parsing, CRLF, path normalization, unsuppo
 ## Limitations
 
 - BOOT and BOOT2 are recognized, but fallback selection policy when both exist is not implemented; the first recognized assignment wins.
-- CPU PC/GP/SP register handoff and actual machine execution are not yet connected.
+- CPU PC/GP/SP register handoff is now covered by milestone 4.17; full BIOS startup services and game compatibility remain outside this milestone.
 - No multi-disc handling, subchannel metadata, or copy-protection support.
 - Host CI does not validate Dreamcast builds, CDI packaging, Flycast, GDEMU, or real games.
