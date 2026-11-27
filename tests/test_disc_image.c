@@ -47,6 +47,20 @@ int main(void)
     assert(psx_disc_read_sector(&disc, 0u, output));
     assert(output[0] == 0x20u && output[2047] == (uint8_t)(0x20u + 2047u));
     assert(!psx_disc_read_sector(&disc, 3u, output));
+    {
+        PsxDiscImage damaged = disc;
+        damaged.user_data_offset = UINT16_MAX;
+        assert(!psx_disc_read_sector(&damaged, 0u, output));
+        damaged = disc;
+        damaged.source = NULL;
+        assert(!psx_disc_read_sector(&damaged, 0u, output));
+        damaged = disc;
+        damaged.sector_count = SIZE_MAX;
+        assert(!psx_disc_read_sector(&damaged, 0u, output));
+        damaged = disc;
+        damaged.mode = (PsxDiscTrackMode)99;
+        assert(!psx_disc_read_sector(&damaged, 0u, output));
+    }
     psx_disc_unmount(&disc);
     assert(!disc.mounted);
 
