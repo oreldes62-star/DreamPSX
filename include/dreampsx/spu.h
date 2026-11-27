@@ -15,6 +15,8 @@
 #define PSX_SPU_KEY_OFF_LOW_OFFSET 0x18cu
 #define PSX_SPU_KEY_OFF_HIGH_OFFSET 0x18eu
 #define PSX_SPU_CONTROL_OFFSET 0x1aau
+#define PSX_SPU_MAIN_VOLUME_LEFT_OFFSET 0x180u
+#define PSX_SPU_MAIN_VOLUME_RIGHT_OFFSET 0x182u
 #define PSX_SPU_VOICE_COUNT 24u
 #define PSX_SPU_VOICE_REGISTER_BYTES 0x10u
 #define PSX_SPU_VOICE_CURRENT_VOLUME_OFFSET 0x0cu
@@ -115,6 +117,12 @@ typedef struct {
     uint32_t reverb_buffer_address;
     uint32_t active_voices;
     uint16_t control;
+    int16_t main_volume_left_level;
+    int16_t main_volume_right_level;
+    uint32_t main_volume_left_counter;
+    uint32_t main_volume_right_counter;
+    bool main_volume_left_sweep_active;
+    bool main_volume_right_sweep_active;
     bool initialized;
 } PsxSpu;
 
