@@ -33,6 +33,8 @@ bool psx_dma_write32(PsxDmaController *dma, uint32_t address,
 /* DPCR channel controls: priority is 0..7, enable is the field's bit 3. */
 bool psx_dma_channel_enabled(const PsxDmaController *dma, unsigned channel);
 unsigned psx_dma_channel_priority(const PsxDmaController *dma, unsigned channel);
+/* Select the enabled pending channel with best priority (0 is highest); -1 if none. */
+int psx_dma_select_channel(const PsxDmaController *dma, uint32_t pending_mask);
 /* Execute a triggered channel-2 manual RAM-to-GP0 transfer. */
 bool psx_dma_execute_gpu_manual(PsxDmaController *dma,
                                  PsxMemory *memory, PsxGpu *gpu);
