@@ -605,6 +605,58 @@ bool psx_spu_reverb_process_reflections(PsxSpu *spu, int16_t left_input,
     return true;
 }
 
+bool psx_spu_reverb_process_comb(const PsxSpu *spu,
+                                   int16_t *left_output,
+                                   int16_t *right_output)
+{
+    static const uint16_t left_taps[4] = {
+        PSX_SPU_REVERB_CONFIG_MLCOMB1_OFFSET,
+        PSX_SPU_REVERB_CONFIG_MLCOMB2_OFFSET,
+        PSX_SPU_REVERB_CONFIG_MLCOMB3_OFFSET,
+        PSX_SPU_REVERB_CONFIG_MLCOMB4_OFFSET
+    };
+    static const uint16_t right_taps[4] = {
+        PSX_SPU_REVERB_CONFIG_MRCOMB1_OFFSET,
+        PSX_SPU_REVERB_CONFIG_MRCOMB2_OFFSET,
+        PSX_SPU_REVERB_CONFIG_MRCOMB3_OFFSET,
+        PSX_SPU_REVERB_CONFIG_MRCOMB4_OFFSET
+    };
+    static const uint16_t volumes[4] = {
+        PSX_SPU_REVERB_CONFIG_VCOMB1_OFFSET,
+        PSX_SPU_REVERB_CONFIG_VCOMB2_OFFSET,
+        PSX_SPU_REVERB_CONFIG_VCOMB3_OFFSET,
+        PSX_SPU_REVERB_CONFIG_VCOMB4_OFFSET
+    };
+    int64_t left_sum = 0;
+    int64_t right_sum = 0;
+
+    if (!spu || !spu->initialized || !left_output || !right_output)
+        return false;
+
+    /* Each channel has four independently delayed taps. Accumulate the
+     * signed Q15 products at full width and saturate only at the output. */
+    for (unsigned i = 0u; i < 4u; ++i) {
+        const uint16_t left_address = load_le16(&spu->registers[left_taps[i]]);
+        const uint16_t right_address = load_le16(&spu->registers[right_taps[i]]);
+        const int16_t coefficient = (int16_t)load_le16(
+            &spu->registers[volumes[i]]);
+        const int32_t left_sample = reverb_read_absolute(
+            spu, psx_spu_reverb_resolve_address(spu, left_address));
+        const int32_t right_sample = reverb_read_absolute(
+            spu, psx_spu_reverb_resolve_address(spu, right_address));
+        left_sum += reverb_multiply_q15_wide(left_sample, coefficient);
+        right_sum += reverb_multiply_q15_wide(right_sample, coefficient);
+    }
+
+    *left_output = psx_spu_reverb_saturate(
+        left_sum > INT32_MAX ? INT32_MAX :
+        left_sum < INT32_MIN ? INT32_MIN : (int32_t)left_sum);
+    *right_output = psx_spu_reverb_saturate(
+        right_sum > INT32_MAX ? INT32_MAX :
+        right_sum < INT32_MIN ? INT32_MIN : (int32_t)right_sum);
+    return true;
+}
+
 bool psx_spu_reverb_read16(const PsxSpu *spu, uint16_t relative_address,
                            int16_t *value)
 {
