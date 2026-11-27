@@ -109,6 +109,8 @@ PsxCpuStepResult psx_cpu_step_result_with_cop0_gte(PsxCpu *cpu, PsxBus *bus,
     uint16_t half_value;
     bool hilo_interlock;
     bool gte_interlock;
+    uint32_t coprocessor_wait;
+    uint32_t elapsed_cycles;
 
     if (!cpu || !cpu->initialized || !bus)
         return PSX_CPU_STEP_FETCH_BUS_ERROR;
@@ -150,29 +152,31 @@ PsxCpuStepResult psx_cpu_step_result_with_cop0_gte(PsxCpu *cpu, PsxBus *bus,
                     gte && cop0_status &&
                     ((*cop0_status & 0x40000000u) != 0u) &&
                     psx_gte_busy_cycles(gte) != 0u;
-    if (gte && psx_gte_busy_cycles(gte) != 0u) {
-        if (gte_interlock) {
-            uint32_t wait = psx_gte_busy_cycles(gte);
-            cpu->last_step_cycles += wait;
-            psx_gte_advance_cycles(gte, wait);
-        } else {
-            psx_gte_advance_cycles(gte, 1u);
-        }
-    }
     hilo_interlock = op == 0u &&
         (funct == 0x10u || funct == 0x11u ||
          funct == 0x12u || funct == 0x13u ||
          funct == 0x18u || funct == 0x19u ||
          funct == 0x1au || funct == 0x1bu);
+
+    /* GTE and HI/LO share the CPU clock. A wait on either unit also advances
+     * the other one; when both are busy, the waits overlap rather than add. */
+    coprocessor_wait = 0u;
+    if (gte_interlock && psx_gte_busy_cycles(gte) > coprocessor_wait)
+        coprocessor_wait = psx_gte_busy_cycles(gte);
+    if (hilo_interlock && cpu->hilo_busy_cycles > coprocessor_wait)
+        coprocessor_wait = cpu->hilo_busy_cycles;
+    elapsed_cycles = coprocessor_wait + 1u;
+    cpu->last_step_cycles += coprocessor_wait;
+
+    if (gte && psx_gte_busy_cycles(gte) != 0u)
+        psx_gte_advance_cycles(gte, elapsed_cycles);
     if (cpu->hilo_busy_cycles != 0u) {
-        if (hilo_interlock) {
-            /* HI/LO consumers and a new HI/LO operation wait for the unit. */
-            cpu->last_step_cycles += cpu->hilo_busy_cycles;
+        if (elapsed_cycles >= cpu->hilo_busy_cycles) {
+            cpu->hilo_busy_cycles = 0u;
             cpu_commit_hilo(cpu);
         } else {
-            --cpu->hilo_busy_cycles;
-            if (cpu->hilo_busy_cycles == 0u)
-                cpu_commit_hilo(cpu);
+            cpu->hilo_busy_cycles =
+                (uint8_t)(cpu->hilo_busy_cycles - elapsed_cycles);
         }
     }
     a = psx_cpu_read_gpr(cpu, rs);
