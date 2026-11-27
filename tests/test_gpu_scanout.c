@@ -38,15 +38,38 @@ int main(void)
     assert(output[6] == 0xffe0u);
     assert(output[7] == 0xaaaau);
 
-    /* Reject 24-bit mode until packed 24-bit scanout is implemented. */
+    /* 24-bit pixels are packed RGB bytes within each VRAM scanline.
+     * The first pixel starts at byte 2044; later pixels cross the row edge.
+     */
     assert(psx_gpu_gp1_write(&gpu, 0x08000010u));
-    assert(!psx_gpu_scanout_rgb565(&gpu, 3u, 2u, output, 4u));
+    vram[511u * PSX_GPU_VRAM_WIDTH + 1022u] = 0x80ffu;
+    vram[511u * PSX_GPU_VRAM_WIDTH + 1023u] = 0x40u;
+    vram[511u * PSX_GPU_VRAM_WIDTH] = 0xff20u;
+    vram[511u * PSX_GPU_VRAM_WIDTH + 1u] = 0x0000u;
+    vram[511u * PSX_GPU_VRAM_WIDTH + 2u] = 0x00ffu;
+    /* Next scanline is independently read from VRAM row zero. */
+    vram[1022u] = 0x00ffu;
+    vram[1023u] = 0x00ffu;
+    vram[0u] = 0x0000u;
+    vram[1u] = 0x0000u;
+    vram[2u] = 0xff00u;
+    assert(psx_gpu_scanout_rgb565(&gpu, 3u, 2u, output, 4u));
+    assert(output[0] == 0x041fu); /* (255,128,0) */
+    assert(output[1] == 0xf908u); /* (64,32,255) */
+    assert(output[2] == 0xf800u); /* (0,0,255) */
+    assert(output[3] == 0xaaaau);
+    assert(output[4] == 0x001fu); /* (255,0,0) */
+    assert(output[5] == 0x001fu);
+    assert(output[6] == 0x07e0u); /* (0,255,0) */
+    assert(output[7] == 0xaaaau);
 
     /* Reject invalid dimensions and destination stride. */
     assert(psx_gpu_gp1_write(&gpu, 0x08000000u));
     assert(!psx_gpu_scanout_rgb565(&gpu, 0u, 2u, output, 4u));
     assert(!psx_gpu_scanout_rgb565(&gpu, 3u, 2u, output, 2u));
     assert(!psx_gpu_scanout_rgb565(&gpu, 3u, 2u, NULL, 4u));
+    assert(!psx_gpu_scanout_rgb565(&gpu, PSX_GPU_VRAM_WIDTH + 1u,
+                                   1u, output, PSX_GPU_VRAM_WIDTH + 1u));
 
     puts("GPU display scanout tests passed");
     return 0;
