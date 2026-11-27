@@ -55,6 +55,55 @@ static void command_error(PsxCdrom *cdrom)
     command_complete(cdrom, 5u);
 }
 
+static bool load_current_sector(PsxCdrom *cdrom)
+{
+    const unsigned minute = (unsigned)(cdrom->location[0] >> 4u) * 10u +
+                            (unsigned)(cdrom->location[0] & 0x0fu);
+    const unsigned second = (unsigned)(cdrom->location[1] >> 4u) * 10u +
+                            (unsigned)(cdrom->location[1] & 0x0fu);
+    const unsigned frame = (unsigned)(cdrom->location[2] >> 4u) * 10u +
+                           (unsigned)(cdrom->location[2] & 0x0fu);
+    const unsigned absolute_frame = minute * 60u * 75u +
+                                    second * 75u + frame;
+    size_t offset;
+    if (!cdrom->iso_data || !bcd_valid(cdrom->location[0], 99u) ||
+        !bcd_valid(cdrom->location[1], 59u) ||
+        !bcd_valid(cdrom->location[2], 74u) || absolute_frame < 150u)
+        return false;
+    offset = (size_t)(absolute_frame - 150u) * PSX_CDROM_SECTOR_SIZE;
+    if (offset > cdrom->iso_size ||
+        cdrom->iso_size - offset < PSX_CDROM_SECTOR_SIZE)
+        return false;
+    memcpy(cdrom->sector_data, cdrom->iso_data + offset,
+           PSX_CDROM_SECTOR_SIZE);
+    cdrom->data_index = 0u;
+    cdrom->data_count = PSX_CDROM_SECTOR_SIZE;
+    cdrom->drive_status &= (uint8_t)~0x01u;
+    cdrom->drive_status |= 0x20u;
+    command_complete(cdrom, 1u);
+    return true;
+}
+
+static void increment_location(PsxCdrom *cdrom)
+{
+    unsigned minute = (unsigned)(cdrom->location[0] >> 4u) * 10u +
+                      (unsigned)(cdrom->location[0] & 0x0fu);
+    unsigned second = (unsigned)(cdrom->location[1] >> 4u) * 10u +
+                      (unsigned)(cdrom->location[1] & 0x0fu);
+    unsigned frame = (unsigned)(cdrom->location[2] >> 4u) * 10u +
+                     (unsigned)(cdrom->location[2] & 0x0fu);
+    if (++frame >= 75u) {
+        frame = 0u;
+        if (++second >= 60u) {
+            second = 0u;
+            if (minute < 99u) ++minute;
+        }
+    }
+    cdrom->location[0] = (uint8_t)(((minute / 10u) << 4u) | (minute % 10u));
+    cdrom->location[1] = (uint8_t)(((second / 10u) << 4u) | (second % 10u));
+    cdrom->location[2] = (uint8_t)(((frame / 10u) << 4u) | (frame % 10u));
+}
+
 static void execute_command(PsxCdrom *cdrom, uint8_t command)
 {
     switch (command) {
@@ -76,45 +125,22 @@ static void execute_command(PsxCdrom *cdrom, uint8_t command)
         (void)push_response(cdrom, cdrom->drive_status);
         command_complete(cdrom, 3u);
         break;
-    case 0x06u: { /* ReadN: one 2048-byte ISO data sector. */
-        const unsigned minute = (unsigned)(cdrom->location[0] >> 4u) * 10u +
-                                (unsigned)(cdrom->location[0] & 0x0fu);
-        const unsigned second = (unsigned)(cdrom->location[1] >> 4u) * 10u +
-                                (unsigned)(cdrom->location[1] & 0x0fu);
-        const unsigned frame = (unsigned)(cdrom->location[2] >> 4u) * 10u +
-                               (unsigned)(cdrom->location[2] & 0x0fu);
-        const unsigned absolute_frame = minute * 60u * 75u +
-                                        second * 75u + frame;
-        size_t offset;
-        if (!cdrom->iso_data || !bcd_valid(cdrom->location[0], 99u) ||
-            !bcd_valid(cdrom->location[1], 59u) ||
-            !bcd_valid(cdrom->location[2], 74u) ||
-            absolute_frame < 150u) {
+    case 0x06u: /* ReadN starts a continuous sector stream. */
+        cdrom->read_active = true;
+        if (!load_current_sector(cdrom)) {
+            cdrom->read_active = false;
             command_error(cdrom);
             break;
         }
-        offset = (size_t)(absolute_frame - 150u) * PSX_CDROM_SECTOR_SIZE;
-        if (offset > cdrom->iso_size ||
-            cdrom->iso_size - offset < PSX_CDROM_SECTOR_SIZE) {
-            command_error(cdrom);
-            break;
-        }
-        memcpy(cdrom->sector_data, cdrom->iso_data + offset,
-               PSX_CDROM_SECTOR_SIZE);
-        cdrom->data_index = 0u;
-        cdrom->data_count = PSX_CDROM_SECTOR_SIZE;
-        cdrom->drive_status &= (uint8_t)~0x01u;
-        cdrom->drive_status |= 0x20u;
         (void)push_response(cdrom, cdrom->drive_status);
         command_complete(cdrom, 3u);
-        command_complete(cdrom, 1u);
         break;
-    }
     case 0x0au: /* Init */
         cdrom->drive_status = 0u;
         cdrom->request = 0u;
         cdrom->data_index = 0u;
         cdrom->data_count = 0u;
+        cdrom->read_active = false;
         (void)push_response(cdrom, cdrom->drive_status);
         command_complete(cdrom, 3u);
         break;
@@ -148,6 +174,7 @@ void psx_cdrom_reset(PsxCdrom *cdrom)
     cdrom->drive_status = 0u;
     cdrom->data_index = 0u;
     cdrom->data_count = 0u;
+    cdrom->read_active = false;
     cdrom->location[0] = 0u;
     cdrom->location[1] = 0u;
     cdrom->location[2] = 0u;
@@ -170,9 +197,26 @@ void psx_cdrom_unmount(PsxCdrom *cdrom)
     cdrom->iso_size = 0u;
     cdrom->data_index = 0u;
     cdrom->data_count = 0u;
+    cdrom->read_active = false;
     cdrom->drive_status |= 0x01u;
     cdrom->drive_status &= (uint8_t)~0x20u;
     cdrom->interrupt_flags &= (uint8_t)~0x01u;
+}
+
+bool psx_cdrom_advance_sector(PsxCdrom *cdrom)
+{
+    if (!cdrom || !cdrom->initialized || !cdrom->read_active ||
+        cdrom->data_count != 0u)
+        return false;
+    increment_location(cdrom);
+    if (!load_current_sector(cdrom)) {
+        cdrom->read_active = false;
+        cdrom->drive_status |= 0x01u;
+        cdrom->drive_status &= (uint8_t)~0x20u;
+        command_complete(cdrom, 5u);
+        return false;
+    }
+    return true;
 }
 
 bool psx_cdrom_irq_output(const PsxCdrom *cdrom)
