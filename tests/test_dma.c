@@ -104,14 +104,22 @@ int main(void)
     psx_dma_refresh_queue(&dma);
     assert(psx_dma_queued_mask(&dma) == (1u << 2u));
     assert(psx_dma_active_mask(&dma) == 0u);
+    assert(psx_dma_enqueue_channel(&dma, 3u));
     assert(psx_dma_begin_channel(&dma) == 2);
-    assert(psx_dma_queued_mask(&dma) == 0u);
+    assert(psx_dma_queued_mask(&dma) == (1u << 3u));
     assert(psx_dma_active_mask(&dma) == (1u << 2u));
+    /* A second channel cannot claim the DMA bus while channel 2 is active. */
+    assert(psx_dma_begin_channel(&dma) == -1);
     psx_dma_abort_channel(&dma, 2u);
     assert(psx_dma_active_mask(&dma) == 0u);
     assert(psx_dma_queued_mask(&dma) == (1u << 2u));
     assert(psx_dma_begin_channel(&dma) == 2);
     assert(psx_dma_complete_channel(&dma, 2u));
+    assert(psx_dma_active_mask(&dma) == 0u);
+    assert(psx_dma_queued_mask(&dma) == (1u << 3u));
+    assert(psx_dma_begin_channel(&dma) == 3);
+    assert(psx_dma_active_mask(&dma) == (1u << 3u));
+    psx_dma_abort_channel(&dma, 3u);
     assert(psx_dma_active_mask(&dma) == 0u);
     assert(psx_dma_queued_mask(&dma) == 0u);
     assert(psx_dma_pending_mask(&dma) == 0u);
