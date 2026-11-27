@@ -5,7 +5,8 @@
 - The DMA controller now grants only one active channel at a time.
 - `psx_dma_begin_channel()` refuses a second claim while any channel remains active.
 - A completed or aborted channel releases ownership; the next eligible queued channel can then be selected by DPCR priority.
-- Added regression coverage for channel handoff: channel 2 claims the bus, channel 3 remains queued, a second begin is rejected, and channel 3 can start after channel 2 retires.
+- Queue refresh excludes channels already marked active, preventing an in-flight CHCR request from reappearing as pending.
+- Added regression coverage for channel handoff: channel 2 claims the bus, channel 3 remains queued through refresh, a second begin is rejected, and channel 3 can start after channel 2 retires.
 - This prevents the software arbitration layer from representing simultaneous DMA transfers on a single shared bus.
 
 ## Scope and limitations
