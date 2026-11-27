@@ -948,6 +948,18 @@ int main(void)
                                (11u << 2u)));
         assert(psx_spu_voice_volume_tick(&spu, 0u));
         assert(spu.voices[0].volume_left_level == 16380);
+
+        /* A sweep stops when its positive target is reached. */
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR, 0x3fffu));
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR,
+                               0x8000u | (11u << 2u)));
+        assert(psx_spu_voice_volume_tick(&spu, 0u));
+        assert(spu.voices[0].volume_left_level == 32767);
+        assert(!spu.voices[0].volume_left_sweep_active);
+
+        /* The maximum shift/step encoding is an explicitly frozen sweep. */
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR, 0xffffu));
+        assert(!spu.voices[0].volume_left_sweep_active);
         assert(!psx_spu_voice_volume_tick(NULL, 0u));
         assert(!psx_spu_voice_volume_tick(&spu, PSX_SPU_VOICE_COUNT));
         psx_spu_reset(&spu);
