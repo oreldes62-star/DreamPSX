@@ -30,6 +30,10 @@ typedef struct {
     int draw_offset_x;
     int draw_offset_y;
     unsigned draw_mode;
+    unsigned texture_window_mask_x;
+    unsigned texture_window_mask_y;
+    unsigned texture_window_offset_x;
+    unsigned texture_window_offset_y;
     unsigned parameter_count;
     unsigned parameter_expected;
     PsxGpuTransferMode transfer_mode;
