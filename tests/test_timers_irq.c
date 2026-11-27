@@ -75,6 +75,8 @@ int main(void)
      * instruction boundary.
      */
     psx_machine_reset(&machine);
+    assert(psx_bus_write16(&machine.bus, PSX_IRQ_MASK_ADDR,
+                           (uint16_t)(1u << 4u)));
     assert(psx_bus_write32(&machine.bus, 0u, 0x24080001u)); /* ADDIU t0,zero,1 */
     assert(psx_bus_write16(&machine.bus, PSX_TIMER_BASE_ADDR + 8u, 1u));
     assert(psx_bus_write16(&machine.bus, PSX_TIMER_BASE_ADDR + 4u,
