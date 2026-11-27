@@ -88,6 +88,9 @@ bool psx_bus_write32(PsxBus *bus, uint32_t address, uint32_t value)
             if (sync_mode == 0u)
                 return psx_dma_execute_gpu_manual(bus->dma, bus->memory,
                                                   bus->gpu);
+            if (sync_mode == 1u)
+                return psx_dma_execute_gpu_request(bus->dma, bus->memory,
+                                                   bus->gpu);
             if (sync_mode == 2u)
                 return psx_dma_execute_gpu_linked_list(bus->dma, bus->memory,
                                                        bus->gpu);
