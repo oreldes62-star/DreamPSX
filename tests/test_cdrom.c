@@ -148,6 +148,7 @@ int main(void)
         assert(!cdrom.disc.mounted && cdrom.iso_data == NULL);
     }
 
+    assert(psx_cdrom_mount_iso(&cdrom, iso, sizeof(iso)));
     psx_cdrom_reset(&cdrom);
     assert(cdrom.iso_data == iso); /* reset does not eject mounted media */
     assert(!psx_cdrom_irq_output(&cdrom));
