@@ -4,6 +4,11 @@
 #define PSX_GPU_GP0_ADDR 0x1f801810u
 #define PSX_GPU_GP1_ADDR 0x1f801814u
 
+void psx_bus_attach_dma(PsxBus *bus, PsxDmaController *dma)
+{
+    if (bus && bus->initialized) bus->dma = dma;
+}
+
 static uint32_t physical_address(uint32_t address)
 {
     if ((address >= 0x80000000u && address <= 0x9fffffffu) ||
@@ -45,6 +50,7 @@ bool psx_bus_read32(const PsxBus *bus, uint32_t address, uint32_t *value)
 {
     if (!bus || !bus->initialized || !value) return false;
     address = physical_address(address);
+    if (bus->dma && psx_dma_read32(bus->dma, address, value)) return true;
     if (address == PSX_GPU_GP0_ADDR)
         return psx_gpu_read_data(bus->gpu, value);
     if (address == PSX_GPU_GP1_ADDR)
@@ -75,6 +81,7 @@ bool psx_bus_write32(PsxBus *bus, uint32_t address, uint32_t value)
 {
     if (!bus || !bus->initialized) return false;
     address = physical_address(address);
+    if (bus->dma && psx_dma_write32(bus->dma, address, value)) return true;
     if (address == PSX_GPU_GP0_ADDR)
         return psx_gpu_gp0_write(bus->gpu, value);
     if (address == PSX_GPU_GP1_ADDR)
