@@ -53,6 +53,14 @@ static int64_t triangle_edge(int ax, int ay, int bx, int by,
            (int64_t)(py2 - 2 * ay) * (2 * bx - 2 * ax);
 }
 
+static bool triangle_edge_is_top_left(int ax, int ay, int bx, int by,
+                                      bool reverse)
+{
+    const int dx = reverse ? ax - bx : bx - ax;
+    const int dy = reverse ? ay - by : by - ay;
+    return dy < 0 || (dy == 0 && dx > 0);
+}
+
 static void execute_flat_triangle(PsxGpu *gpu)
 {
     const uint32_t xy0 = gpu->parameters[0];
@@ -98,9 +106,21 @@ static void execute_flat_triangle(PsxGpu *gpu)
             const int64_t e0 = triangle_edge(x0, y0, x1, y1, px2, py2);
             const int64_t e1 = triangle_edge(x1, y1, x2, y2, px2, py2);
             const int64_t e2 = triangle_edge(x2, y2, x0, y0, px2, py2);
-            const bool inside = area < 0 ?
-                (e0 <= 0 && e1 <= 0 && e2 <= 0) :
-                (e0 >= 0 && e1 >= 0 && e2 >= 0);
+            const bool reverse = area > 0;
+            const bool inside =
+                (area < 0 ?
+                    ((e0 < 0 || (e0 == 0 &&
+                       triangle_edge_is_top_left(x0, y0, x1, y1, reverse))) &&
+                     (e1 < 0 || (e1 == 0 &&
+                       triangle_edge_is_top_left(x1, y1, x2, y2, reverse))) &&
+                     (e2 < 0 || (e2 == 0 &&
+                       triangle_edge_is_top_left(x2, y2, x0, y0, reverse)))) :
+                    ((e0 > 0 || (e0 == 0 &&
+                       triangle_edge_is_top_left(x0, y0, x1, y1, reverse))) &&
+                     (e1 > 0 || (e1 == 0 &&
+                       triangle_edge_is_top_left(x1, y1, x2, y2, reverse))) &&
+                     (e2 > 0 || (e2 == 0 &&
+                       triangle_edge_is_top_left(x2, y2, x0, y0, reverse))));
             if (inside)
                 gpu->vram[(unsigned)y * PSX_GPU_VRAM_WIDTH +
                           (unsigned)x] = color;
