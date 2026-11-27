@@ -290,7 +290,7 @@ bool psx_spu_voice_envelope_tick(PsxSpu *spu, unsigned voice_index,
                          &step_value, &exponential, &decreasing);
     step = (int32_t)(7u - step_value);
     if (decreasing) step = ~step;
-    step <<= (shift < 11u) ? (11u - shift) : 0u;
+    step *= (int32_t)(1u << ((shift < 11u) ? (11u - shift) : 0u));
     counter_increment = 0x8000u >> ((shift > 11u) ? (shift - 11u) : 0u);
 
     if (exponential && !decreasing &&
