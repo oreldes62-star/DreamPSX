@@ -195,3 +195,5 @@ CPU stepping is now connected to the shared system-cycle domain: milestone 3.79 
 
 
 Milestone 3.80 adds the R3000A multiply/divide unit's operand-dependent MULT/MULTU latency, fixed DIV/DIVU latency, deferred HI/LO results and instruction interlocks; independent instructions continue while the unit is busy and interlock waits feed the machine system clock. Full pipeline, cancellation, GTE and memory wait-state timing remain future work. See [R3000A HI/LO interlock milestone 3.80](docs/R3000A-HILO-INTERLOCK-MILESTONE-3.80.md).
+
+SPU milestone 4.50 adds regression coverage for both ADPCM loop-start address capture and a software-programmed repeat address used without a loop-start marker. These host tests pass; cycle-accurate SPU timing and Flycast/physical Dreamcast validation remain outstanding. See [SPU ADPCM loop-address milestone 4.50](docs/SPU-ADPCM-LOOP-ADDRESS-MILESTONE-4.50.md).
