@@ -17,4 +17,4 @@ This is the controller foundation, not a playable disc subsystem yet. There is n
 
 ## Validation
 
-GitHub Actions host build and CTest validation pending for this commit series.
+GitHub Actions run `46046567577`: host configure and build succeeded; CTest passed all 34/34 tests. The validation covers the controller unit tests and machine-bus/IRQ2 integration; it does not validate disc-sector playback.
