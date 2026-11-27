@@ -64,6 +64,7 @@ int main(void)
         PsxDreamcastAudioStream stream;
         int received = 0;
         int16_t *pcm;
+        size_t queued = 0u;
         PsxSpuVoice *voice = &machine.spu.voices[0];
 
         psx_machine_reset(&machine);
