@@ -86,6 +86,7 @@ int main(void)
         size_t frames = 0u;
         uint16_t rate = 0u;
         machine.cdrom.xa_audio_clock_rate_hz = 18900u;
+        machine.cdrom.xa_pcm_sample_rate = 18900u;
         machine.cdrom.xa_pcm_count = 2u;
         machine.cdrom.xa_pcm_left[0] = 123;
         machine.cdrom.xa_pcm_right[0] = -123;
