@@ -8,6 +8,8 @@
 #define PSX_CDROM_BASE_ADDR 0x1f801800u
 #define PSX_CDROM_FIFO_CAPACITY 16u
 #define PSX_CDROM_SECTOR_SIZE 2048u
+/* PS1 system cycles per sector at double speed (33,868,800 / 150). */
+#define PSX_CDROM_DOUBLE_SPEED_SECTOR_CYCLES 225792u
 
 typedef struct {
     uint8_t index;
