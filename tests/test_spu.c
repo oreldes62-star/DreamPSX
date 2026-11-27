@@ -111,6 +111,36 @@ int main(void)
                                PSX_SPU_KEY_OFF_LOW_OFFSET, 0x0001u));
     }
 
+    /* ADSR: fast linear attack reaches full scale; Key-Off enters
+     * linear release and eventually clears the active voice. */
+    {
+        uint16_t envelope = 0u;
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + 0x018u,
+                               0x000fu)); /* voice 1 ADSR1, max sustain */
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + 0x01au,
+                               0x0000u)); /* voice 1 linear, fastest release */
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                               PSX_SPU_KEY_ON_LOW_OFFSET, 0x0002u));
+        assert(spu.voices[1].envelope_phase == PSX_SPU_ADSR_ATTACK);
+        assert(psx_spu_voice_envelope_tick(&spu, 1u, &envelope));
+        assert(envelope == 14336u);
+        assert(psx_spu_voice_envelope_tick(&spu, 1u, &envelope));
+        assert(envelope == 28672u);
+        assert(psx_spu_voice_envelope_tick(&spu, 1u, &envelope));
+        assert(envelope == PSX_SPU_ENVELOPE_MAX);
+        assert(spu.voices[1].envelope_phase == PSX_SPU_ADSR_SUSTAIN);
+        assert(psx_spu_read16(&spu, PSX_SPU_BASE_ADDR + 0x01cu, &value));
+        assert(value == PSX_SPU_ENVELOPE_MAX);
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                               PSX_SPU_KEY_OFF_LOW_OFFSET, 0x0002u));
+        assert(spu.voices[1].envelope_phase == PSX_SPU_ADSR_RELEASE);
+        assert(psx_spu_voice_envelope_tick(&spu, 1u, &envelope));
+        assert(envelope == 16383u);
+        assert(!psx_spu_voice_envelope_tick(&spu, 1u, &envelope));
+        assert(envelope == 0u);
+        assert((psx_spu_active_voice_mask(&spu) & 0x0002u) == 0u);
+    }
+
     /* Typed voice registers expose 24 independent parameter banks. */
     assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + 0x000u, 0x1111u));
     assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + 0x002u, 0x2222u));
