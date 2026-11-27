@@ -26,6 +26,7 @@ int main(void)
     uint8_t form2_output[PSX_DISC_SECTOR_FORM2_DATA_SIZE];
     PsxDiscImage disc;
     PsxDiscXaSubheader xa_info;
+    PsxDiscXaAudioFormat xa_format;
     const char cue1[] =
         "FILE \"game.bin\" BINARY\r\n"
         "  TRACK 01 MODE1/2352\r\n"
@@ -79,6 +80,17 @@ int main(void)
     assert(psx_disc_read_sector_form2_ex(&disc, 0u, form2_output, &xa_info));
     assert(xa_info.file == 1u && xa_info.channel == 2u);
     assert(xa_info.submode == 0x20u && xa_info.coding == 4u);
+    assert(!psx_disc_xa_audio_format(&xa_info, &xa_format));
+    xa_info.submode |= 0x04u;
+    assert(psx_disc_xa_audio_format(&xa_info, &xa_format));
+    assert(xa_format.sample_rate_hz == 18900u);
+    assert(xa_format.channels == 1u && xa_format.bits_per_sample == 4u);
+    xa_info.coding = 0x15u; /* Stereo, 37.8 kHz, 8-bit. */
+    assert(psx_disc_xa_audio_format(&xa_info, &xa_format));
+    assert(xa_format.sample_rate_hz == 37800u);
+    assert(xa_format.channels == 2u && xa_format.bits_per_sample == 8u);
+    xa_info.coding = 0x08u; /* Reserved/unsupported rate encoding. */
+    assert(!psx_disc_xa_audio_format(&xa_info, &xa_format));
     assert(form2_output[0] == 0x80u);
     assert(form2_output[2323] == (uint8_t)(0x80u + 2323u));
     raw[20] ^= 1u; /* Duplicated XA subheader must match. */
