@@ -115,6 +115,11 @@ int main(void)
     assert(psx_dma_active_mask(&dma) == 0u);
     assert(psx_dma_queued_mask(&dma) == 0u);
     assert(psx_dma_pending_mask(&dma) == 0u);
+    /* Restore independent outstanding requests used by the completion
+     * bookkeeping checks below; the lifecycle test intentionally reset DMA. */
+    assert(psx_dma_write32(&dma, PSX_DMA_BASE_ADDR + 0x28u, 0x11000000u));
+    assert(psx_dma_write32(&dma, PSX_DMA_BASE_ADDR + 0x38u, 0x01000200u));
+    assert(psx_dma_write32(&dma, PSX_DMA_BASE_ADDR + 0x48u, 0x01000200u));
 
     /* Successful completion retires CHCR and latches the channel IRQ flag. */
     assert(psx_dma_write32(&dma, PSX_DMA_DICR_ADDR,
