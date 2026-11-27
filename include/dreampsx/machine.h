@@ -20,6 +20,7 @@ typedef struct {
     PsxGte gte;
     PsxGpu gpu;
     PsxTimers timers;
+    uint8_t timer2_div8_phase;
     uint32_t cop0_status;
     uint32_t cop0_cause;
     uint32_t cop0_epc;
@@ -37,6 +38,9 @@ bool psx_machine_interrupt_eligible(const PsxMachine *machine);
  * VBlank level transitions to IRQ0. */
 bool psx_machine_timer_advance_clock(PsxMachine *machine, unsigned timer,
                                      PsxTimerClock clock, uint32_t ticks);
+/* Advance the shared system-clock domain. Timer2's /8 source keeps a
+ * fractional phase across calls; CPU instruction timing must supply cycles. */
+bool psx_machine_advance_system_cycles(PsxMachine *machine, uint32_t cycles);
 bool psx_machine_video_advance_scanline(PsxMachine *machine,
                                         PsxGpuVideoState *state);
 bool psx_machine_step(PsxMachine *machine);
