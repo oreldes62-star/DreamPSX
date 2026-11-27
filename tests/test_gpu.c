@@ -146,13 +146,13 @@ int main(void)
     assert(pixel == 0x1234u);
 
     /* 4-bit indexed texture: packed nibble is resolved through CLUT. */
-    vram[1u * PSX_GPU_VRAM_WIDTH] = 0x0030u;
+    vram[257u * PSX_GPU_VRAM_WIDTH] = 0x0030u;
     vram[30u * PSX_GPU_VRAM_WIDTH + 3u] = 0x4210u;
     assert(psx_gpu_gp0_write(&gpu, 0x25000000u));
     assert(psx_gpu_gp0_write(&gpu, 650u | (450u << 16u)));
     assert(psx_gpu_gp0_write(&gpu, (30u << 22u) | 1u | (1u << 8u)));
     assert(psx_gpu_gp0_write(&gpu, 654u | (450u << 16u)));
-    assert(psx_gpu_gp0_write(&gpu, 1u | (1u << 8u)));
+    assert(psx_gpu_gp0_write(&gpu, 0x00100000u | 1u | (1u << 8u)));
     assert(psx_gpu_gp0_write(&gpu, 650u | (454u << 16u)));
     assert(psx_gpu_gp0_write(&gpu, 1u | (1u << 8u)));
     assert(psx_gpu_vram_read(&gpu, 651u, 451u, &pixel));
