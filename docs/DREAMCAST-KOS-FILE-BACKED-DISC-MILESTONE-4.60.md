@@ -26,4 +26,5 @@ The adapter deliberately serializes seek/read operations on one file handle. The
 
 ## Validation
 
-The host and pinned KallistiOS CI workflows were started for commit `674596df6b61c70ba54424db8b1680288c284d93`. Their final results are pending at the time this document was written.
+- Host build and CTest passed on commit `03dcafb3c76e721d16e7e93960d3b8f3444f1a9f`: workflow run 46079023720, 45/45 tests passed.
+- The pinned KallistiOS/Dreamcast build for the adapter was still running at documentation update time (workflow run 46079023677); its final result is not yet claimed.
