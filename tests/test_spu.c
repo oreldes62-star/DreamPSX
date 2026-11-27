@@ -107,6 +107,8 @@ int main(void)
     assert(spu.transfer_address == 0u);
     assert(psx_spu_active_voice_mask(&spu) == 0u);
     assert(spu.voices[0].volume_left == 0u);
+    assert(spu.voices[0].pitch == 0u);
+    assert(spu.voices[0].adsr1 == 0u);
     assert(spu.voices[23].volume_left == 0u);
     assert(psx_spu_read16(&spu, PSX_SPU_BASE_ADDR, &value));
     assert(value == 0u);
