@@ -78,7 +78,7 @@ bool psx_dma_write32(PsxDmaController *dma, uint32_t address,
         channel = offset / 0x10u;
         reg = (offset & 0x0fu) / 4u;
         if (channel >= PSX_DMA_CHANNEL_COUNT) return false;
-        if (reg == 0u) dma->channel[channel].madr = value & 0x00ffffffu;
+        if (reg == 0u) dma->channel[channel].madr = value & 0x00fffffcu;
         else if (reg == 1u) dma->channel[channel].bcr = value;
         else if (reg == 2u) dma->channel[channel].chcr = value;
         else return false;
