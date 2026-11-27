@@ -20,7 +20,7 @@ int main(void) {
  const char b[]="BOOT2=CDROM:\\GAME\\SCUS_999.99;1\n";
  const char bad[]="BOOT=host:game.exe\n", empty[]="BOOT=cdrom:\\";
  static uint8_t image[26u*PSX_ISO9660_SECTOR_SIZE];
- uint8_t ram_data[PSX_RAM_SIZE], bios_data[PSX_BIOS_SIZE];
+ static uint8_t ram_data[PSX_RAM_SIZE], bios_data[PSX_BIOS_SIZE];
  const uint8_t dot=0u,dotdot=1u,cnf_name[]="SYSTEM.CNF;1",dir_name[]="GAME",exe_name[]="SLUS_123.45;1";
  uint8_t *pvd=image+16u*PSX_ISO9660_SECTOR_SIZE,*root=image+20u*PSX_ISO9660_SECTOR_SIZE;
  uint8_t *game=image+21u*PSX_ISO9660_SECTOR_SIZE,*exe=image+23u*PSX_ISO9660_SECTOR_SIZE;
@@ -52,6 +52,6 @@ int main(void) {
  assert(strcmp(c.boot_path,"/GAME/SLUS_123.45;1")==0);
  assert(info.entry_pc==0x80010000u && info.file_size==16u);
  assert(memory.ram[0x10000u]==0x40u && memory.ram[0x1000fu]==0x4fu);
- psx_iso9660_unmount(&iso); psx_memory_destroy(&memory);
+ psx_iso9660_unmount(&iso);
  puts("boot config and ISO executable loading tests: OK"); return 0;
 }
