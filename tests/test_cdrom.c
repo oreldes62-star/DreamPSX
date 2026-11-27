@@ -148,6 +148,41 @@ int main(void)
         assert(!cdrom.disc.mounted && cdrom.iso_data == NULL);
     }
 
+    /* MODE2/XA Form2 sectors expose all 2324 payload bytes to the
+     * existing byte/word data FIFO, without truncating to 2048 bytes. */
+    {
+        static uint8_t xa_track[2352u];
+        static const char xa_cue[] =
+            "FILE \"xa.bin\" BINARY\n"
+            "TRACK 01 MODE2/2352\n"
+            "INDEX 01 00:00:00\n";
+        uint32_t word = 0u;
+        memset(xa_track, 0, sizeof(xa_track));
+        for (i = 1u; i <= 10u; ++i) xa_track[i] = 0xffu;
+        xa_track[15] = 2u;
+        xa_track[16] = 1u; xa_track[17] = 2u;
+        xa_track[18] = 0x20u; xa_track[19] = 4u;
+        memcpy(xa_track + 20u, xa_track + 16u, 4u);
+        for (i = 0u; i < PSX_DISC_SECTOR_FORM2_DATA_SIZE; ++i)
+            xa_track[24u + i] = (uint8_t)(0x60u + i);
+        assert(psx_cdrom_mount_cue(&cdrom, xa_cue, sizeof(xa_cue) - 1u,
+                                   xa_track, sizeof(xa_track)));
+        select_bank(&cdrom, 0u);
+        assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 2u, 0x00u));
+        assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 2u, 0x02u));
+        assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 2u, 0x00u));
+        assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 1u, 0x02u));
+        assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 1u, 0x06u));
+        assert(cdrom.data_count == PSX_DISC_SECTOR_FORM2_DATA_SIZE);
+        select_bank(&cdrom, 2u);
+        assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 2u, 0x80u));
+        assert(psx_cdrom_read_data32(&cdrom, &word));
+        assert(word == 0x63626160u);
+        assert(cdrom.data_count ==
+               PSX_DISC_SECTOR_FORM2_DATA_SIZE - 4u);
+        psx_cdrom_unmount(&cdrom);
+    }
+
     assert(psx_cdrom_mount_iso(&cdrom, iso, sizeof(iso)));
     psx_cdrom_reset(&cdrom);
     assert(cdrom.iso_data == iso); /* reset does not eject mounted media */
