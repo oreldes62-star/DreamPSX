@@ -203,6 +203,70 @@ int main(void)
         psx_cdrom_unmount(&cdrom);
     }
 
+    /* XA audio+realtime sectors are filtered and decoded into the PCM queue. */
+    {
+        static uint8_t xa_stream[2u * 2352u];
+        static const char xa_stream_cue[] =
+            "FILE \"stream.bin\" BINARY\n"
+            "TRACK 01 MODE2/2352\n"
+            "INDEX 01 00:00:00\n";
+        int16_t left[PSX_XA_ADPCM_MAX_SECTOR_SAMPLES];
+        int16_t right[PSX_XA_ADPCM_MAX_SECTOR_SAMPLES];
+        size_t frames = 0u;
+        uint16_t rate = 0u;
+
+        for (unsigned sector = 0u; sector < 2u; ++sector) {
+            uint8_t *raw = xa_stream + sector * 2352u;
+            for (i = 1u; i <= 10u; ++i) raw[i] = 0xffu;
+            raw[15] = 2u;
+            raw[16] = 1u;
+            raw[17] = (uint8_t)(sector == 0u ? 2u : 3u);
+            raw[18] = 0x64u; /* Form2 + audio + realtime. */
+            raw[19] = 0x04u; /* 4-bit, mono, 18.9 kHz. */
+            memcpy(raw + 20u, raw + 16u, 4u);
+        }
+        xa_stream[24u + 16u] = 0x71u;
+        xa_stream[2352u + 24u + 16u] = 0x71u;
+        assert(psx_cdrom_mount_cue(&cdrom, xa_stream_cue,
+                                   sizeof(xa_stream_cue) - 1u,
+                                   xa_stream, sizeof(xa_stream)));
+
+        select_bank(&cdrom, 0u);
+        assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 2u, 1u));
+        assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 2u, 2u));
+        assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 1u, 0x0du));
+        assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 2u, 0x48u));
+        assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 1u, 0x0eu));
+
+        assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 2u, 0x00u));
+        assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 2u, 0x02u));
+        assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 2u, 0x00u));
+        assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 1u, 0x02u));
+        assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 1u, 0x06u));
+        assert(cdrom.data_count == 0u); /* Routed to XA, not CPU data FIFO. */
+        assert(cdrom.xa_pcm_count == 4032u);
+        assert(psx_cdrom_read_xa_audio(&cdrom, left, right, 64u,
+                                       &frames, &rate));
+        assert(frames == 64u && rate == 18900u);
+        assert(left[0] == 4096 && left[28] == 28672);
+        assert(right[0] == left[0] && right[28] == left[28]);
+
+        assert(psx_cdrom_read_xa_audio(&cdrom, left, right,
+                                       PSX_XA_ADPCM_MAX_SECTOR_SAMPLES,
+                                       &frames, &rate));
+        assert(frames == 4032u - 64u);
+        assert(rate == 0u && cdrom.xa_pcm_count == 0u);
+
+        /* The next sector has a different channel and is suppressed by the
+           active file/channel filter instead of leaking into the CPU FIFO. */
+        assert(psx_cdrom_advance_sector(&cdrom));
+        assert(cdrom.data_count == 0u && cdrom.xa_pcm_count == 0u);
+        assert(psx_cdrom_read_xa_audio(&cdrom, left, right, 8u,
+                                       &frames, &rate));
+        assert(frames == 0u && rate == 0u);
+        psx_cdrom_unmount(&cdrom);
+    }
+
     assert(psx_cdrom_mount_iso(&cdrom, iso, sizeof(iso)));
     psx_cdrom_reset(&cdrom);
     assert(cdrom.iso_data == iso); /* reset does not eject mounted media */
