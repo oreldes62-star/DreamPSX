@@ -174,12 +174,13 @@ bool psx_iso9660_lookup(const PsxIso9660 *iso, const char *path,
 bool psx_iso9660_read(const PsxIso9660 *iso, const PsxIso9660File *file,
                       uint32_t offset, void *destination, size_t length)
 {
-    const uint64_t absolute =
-        (uint64_t)file->lba * PSX_ISO9660_SECTOR_SIZE + offset;
+    uint64_t absolute;
     if (!iso || !iso->mounted || !file || (!destination && length != 0u) ||
         file->directory || offset > file->size ||
-        length > (size_t)(file->size - offset) ||
-        absolute > iso->image_size ||
+        length > (size_t)(file->size - offset))
+        return false;
+    absolute = (uint64_t)file->lba * PSX_ISO9660_SECTOR_SIZE + offset;
+    if (absolute > iso->image_size ||
         length > iso->image_size - (size_t)absolute)
         return false;
     if (length != 0u)
