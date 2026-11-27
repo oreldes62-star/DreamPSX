@@ -4,10 +4,14 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include "dreampsx/disc_image.h"
 
 #define PSX_XA_ADPCM_SAMPLES_PER_UNIT 28u
 #define PSX_XA_ADPCM_GROUP_SIZE 128u
 #define PSX_XA_ADPCM_MAX_GROUP_SAMPLES 224u
+#define PSX_XA_ADPCM_SECTOR_GROUPS 18u
+#define PSX_XA_ADPCM_SECTOR_PAYLOAD_SIZE 2324u
+#define PSX_XA_ADPCM_MAX_SECTOR_SAMPLES 4032u
 
 typedef struct {
     int32_t history_1;
@@ -31,6 +35,15 @@ bool psx_xa_adpcm_decode_sound_group(
     unsigned bits_per_sample, bool stereo, PsxXaAdpcmState states[2],
     int16_t left[PSX_XA_ADPCM_MAX_GROUP_SAMPLES],
     int16_t right[PSX_XA_ADPCM_MAX_GROUP_SAMPLES],
+    size_t *samples_per_channel);
+
+/* Decode all 18 sound groups from one XA Form 2 user-data payload.
+ * Output is planar PCM. output_capacity is measured per channel. Predictor
+ * state is committed only when the complete sector decodes successfully. */
+bool psx_xa_adpcm_decode_sector(
+    const uint8_t *payload, size_t payload_size,
+    const PsxDiscXaAudioFormat *format, PsxXaAdpcmState states[2],
+    int16_t *left, int16_t *right, size_t output_capacity,
     size_t *samples_per_channel);
 
 #endif
