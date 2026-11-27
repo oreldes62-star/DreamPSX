@@ -122,7 +122,7 @@ int main(void)
 
     /* GP0 25h samples a direct 15-bit texture page. */
     vram[2u * PSX_GPU_VRAM_WIDTH + 2u] = 0x7c00u;
-    assert(psx_gpu_gp0_write(&gpu, 0x25000000u));
+    assert(psx_gpu_gp0_write(&gpu, 0x27000000u));
     assert(psx_gpu_gp0_write(&gpu, 500u | (500u << 16u)));
     assert(psx_gpu_gp0_write(&gpu, 1u | (1u << 8u)));
     assert(psx_gpu_gp0_write(&gpu, 504u | (500u << 16u)));
@@ -135,7 +135,7 @@ int main(void)
     /* Transparent zero texels leave the destination pixel untouched. */
     vram[10u * PSX_GPU_VRAM_WIDTH + 10u] = 0u;
     vram[451u * PSX_GPU_VRAM_WIDTH + 601u] = 0x1234u;
-    assert(psx_gpu_gp0_write(&gpu, 0x25000000u));
+    assert(psx_gpu_gp0_write(&gpu, 0x27000000u));
     assert(psx_gpu_gp0_write(&gpu, 600u | (450u << 16u)));
     assert(psx_gpu_gp0_write(&gpu, 10u | (10u << 8u)));
     assert(psx_gpu_gp0_write(&gpu, 604u | (450u << 16u)));
@@ -161,7 +161,7 @@ int main(void)
     vram[1u * PSX_GPU_VRAM_WIDTH + 1u] = 0xffffu;
     vram[461u * PSX_GPU_VRAM_WIDTH + 461u] = 0u;
     assert(psx_gpu_gp0_write(&gpu, 0xe1000000u));
-    assert(psx_gpu_gp0_write(&gpu, 0x25000000u));
+    assert(psx_gpu_gp0_write(&gpu, 0x27000000u));
     assert(psx_gpu_gp0_write(&gpu, 460u | (460u << 16u)));
     assert(psx_gpu_gp0_write(&gpu, 1u | (1u << 8u)));
     assert(psx_gpu_gp0_write(&gpu, 804u | (460u << 16u)));
@@ -174,7 +174,7 @@ int main(void)
     /* Semi-transparency mode 1: saturated addition. */
     vram[471u * PSX_GPU_VRAM_WIDTH + 461u] = 0u;
     assert(psx_gpu_gp0_write(&gpu, 0xe1000020u));
-    assert(psx_gpu_gp0_write(&gpu, 0x25000000u));
+    assert(psx_gpu_gp0_write(&gpu, 0x27000000u));
     assert(psx_gpu_gp0_write(&gpu, 460u | (470u << 16u)));
     assert(psx_gpu_gp0_write(&gpu, 1u | (1u << 8u)));
     assert(psx_gpu_gp0_write(&gpu, 804u | (470u << 16u)));
@@ -187,7 +187,7 @@ int main(void)
     /* Semi-transparency mode 2: background minus foreground. */
     vram[481u * PSX_GPU_VRAM_WIDTH + 461u] = 0x7fffu;
     assert(psx_gpu_gp0_write(&gpu, 0xe1000040u));
-    assert(psx_gpu_gp0_write(&gpu, 0x25000000u));
+    assert(psx_gpu_gp0_write(&gpu, 0x27000000u));
     assert(psx_gpu_gp0_write(&gpu, 460u | (480u << 16u)));
     assert(psx_gpu_gp0_write(&gpu, 1u | (1u << 8u)));
     assert(psx_gpu_gp0_write(&gpu, 804u | (480u << 16u)));
@@ -200,7 +200,7 @@ int main(void)
     /* Semi-transparency mode 3: quarter foreground plus background. */
     vram[491u * PSX_GPU_VRAM_WIDTH + 461u] = 0u;
     assert(psx_gpu_gp0_write(&gpu, 0xe1000060u));
-    assert(psx_gpu_gp0_write(&gpu, 0x25000000u));
+    assert(psx_gpu_gp0_write(&gpu, 0x27000000u));
     assert(psx_gpu_gp0_write(&gpu, 460u | (490u << 16u)));
     assert(psx_gpu_gp0_write(&gpu, 1u | (1u << 8u)));
     assert(psx_gpu_gp0_write(&gpu, 804u | (490u << 16u)));
@@ -213,7 +213,7 @@ int main(void)
     /* 4-bit indexed texture: packed nibble is resolved through CLUT. */
     vram[257u * PSX_GPU_VRAM_WIDTH] = 0x0030u;
     vram[30u * PSX_GPU_VRAM_WIDTH + 3u] = 0x4210u;
-    assert(psx_gpu_gp0_write(&gpu, 0x25000000u));
+    assert(psx_gpu_gp0_write(&gpu, 0x27000000u));
     assert(psx_gpu_gp0_write(&gpu, 650u | (450u << 16u)));
     assert(psx_gpu_gp0_write(&gpu, (30u << 22u) | 1u | (1u << 8u)));
     assert(psx_gpu_gp0_write(&gpu, 654u | (450u << 16u)));
@@ -226,7 +226,7 @@ int main(void)
     /* 8-bit indexed texture: byte index is resolved through CLUT. */
     vram[1u * PSX_GPU_VRAM_WIDTH] = 0x0500u;
     vram[50u * PSX_GPU_VRAM_WIDTH + 5u] = 0x6318u;
-    assert(psx_gpu_gp0_write(&gpu, 0x25000000u));
+    assert(psx_gpu_gp0_write(&gpu, 0x27000000u));
     assert(psx_gpu_gp0_write(&gpu, 700u | (450u << 16u)));
     assert(psx_gpu_gp0_write(&gpu, (50u << 22u) | 1u | (1u << 8u)));
     assert(psx_gpu_gp0_write(&gpu, 704u | (450u << 16u)));
@@ -241,7 +241,7 @@ int main(void)
     vram[9u * PSX_GPU_VRAM_WIDTH + 9u] = 0x4210u;
     assert(psx_gpu_gp0_write(&gpu, 0xe2000000u | 1u | (1u << 5u) |
                              (1u << 10u) | (1u << 15u)));
-    assert(psx_gpu_gp0_write(&gpu, 0x25000000u));
+    assert(psx_gpu_gp0_write(&gpu, 0x27000000u));
     assert(psx_gpu_gp0_write(&gpu, 800u | (100u << 16u)));
     assert(psx_gpu_gp0_write(&gpu, 1u | (1u << 8u)));
     assert(psx_gpu_gp0_write(&gpu, 804u | (100u << 16u)));
@@ -256,7 +256,7 @@ int main(void)
     vram[30u * PSX_GPU_VRAM_WIDTH + 3u] = 0x4210u;
     assert(psx_gpu_gp0_write(&gpu, 0xe2000000u | 1u | (1u << 5u) |
                              (1u << 10u) | (1u << 15u)));
-    assert(psx_gpu_gp0_write(&gpu, 0x25000000u));
+    assert(psx_gpu_gp0_write(&gpu, 0x27000000u));
     assert(psx_gpu_gp0_write(&gpu, 820u | (100u << 16u)));
     assert(psx_gpu_gp0_write(&gpu, (30u << 22u) | 1u | (1u << 8u)));
     assert(psx_gpu_gp0_write(&gpu, 824u | (100u << 16u)));
@@ -271,7 +271,7 @@ int main(void)
     vram[50u * PSX_GPU_VRAM_WIDTH + 5u] = 0x6318u;
     assert(psx_gpu_gp0_write(&gpu, 0xe2000000u | 1u | (1u << 5u) |
                              (1u << 10u) | (1u << 15u)));
-    assert(psx_gpu_gp0_write(&gpu, 0x25000000u));
+    assert(psx_gpu_gp0_write(&gpu, 0x27000000u));
     assert(psx_gpu_gp0_write(&gpu, 840u | (100u << 16u)));
     assert(psx_gpu_gp0_write(&gpu, (50u << 22u) | 1u | (1u << 8u)));
     assert(psx_gpu_gp0_write(&gpu, 844u | (100u << 16u)));
