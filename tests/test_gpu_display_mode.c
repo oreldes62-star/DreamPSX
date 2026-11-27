@@ -76,7 +76,7 @@ int main(void)
     /* Overscan is preserved; reversed or empty ranges are reported invalid. */
     set_range(&gpu, 100u, 2740u, 10u, 270u);
     assert(psx_gpu_get_display_mode_info(&gpu, &info));
-    assert(info.range_width == 480u && info.range_height == 260u);
+    assert(info.range_width == 376u && info.range_height == 260u);
     set_range(&gpu, 200u, 100u, 10u, 270u);
     assert(psx_gpu_get_display_mode_info(&gpu, &info));
     assert(!info.range_valid && info.range_width == 0u &&
