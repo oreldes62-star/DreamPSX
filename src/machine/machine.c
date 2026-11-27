@@ -11,11 +11,13 @@ bool psx_machine_init(PsxMachine *machine,
                                      bios, bios_size)) return false;
     if (!psx_gpu_init(&machine->gpu, gpu_vram, gpu_vram_pixels)) return false;
     if (!psx_dma_init(&machine->dma)) return false;
+    if (!psx_cdrom_init(&machine->cdrom)) return false;
     psx_machine_reset(machine);
     if (!psx_bus_init(&machine->bus, &machine->memory, &machine->irq,
                      &machine->gpu, &machine->timers))
         return false;
     psx_bus_attach_dma(&machine->bus, &machine->dma);
+    psx_bus_attach_cdrom(&machine->bus, &machine->cdrom);
     return true;
 }
 
@@ -28,6 +30,7 @@ void psx_machine_reset(PsxMachine *machine)
     psx_gpu_reset(&machine->gpu);
     psx_timers_reset(&machine->timers);
     psx_dma_reset(&machine->dma);
+    psx_cdrom_reset(&machine->cdrom);
     machine->timer2_div8_phase = 0u;
     machine->cop0_status = 0u;
     machine->cop0_cause = 0u;
