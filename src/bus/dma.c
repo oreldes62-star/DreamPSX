@@ -66,9 +66,10 @@ uint32_t psx_dma_pending_mask(const PsxDmaController *dma)
         const uint32_t control = dma->channel[channel].chcr;
         const unsigned sync_mode = (unsigned)((control >> 9u) & 3u);
 
-        if (!psx_dma_channel_enabled(dma, channel) ||
-            (control & (1u << 24u)) == 0u ||
-            sync_mode == 3u)
+        /* A pending request is a CHCR device request, independent of
+         * DPCR arbitration enable. Keeping disabled requests visible lets
+         * the scheduler select them as soon as software enables the channel. */
+        if ((control & (1u << 24u)) == 0u || sync_mode == 3u)
             continue;
 
         /* Manual mode needs both START and TRIGGER; other modes need START. */
