@@ -17,6 +17,9 @@ typedef struct {
  */
 bool psx_kos_disc_file_open(PsxKosDiscFile *file, PsxDiscImage *disc,
                             const char *path, PsxDiscTrackMode mode);
+/* Loads a bounded single-track CUE sheet and opens its relative BIN/ISO file. */
+bool psx_kos_disc_file_open_cue(PsxKosDiscFile *file, PsxDiscImage *disc,
+                                const char *cue_path);
 void psx_kos_disc_file_close(PsxKosDiscFile *file, PsxDiscImage *disc);
 
 /* Exposed for the generic disc reader callback contract and host tests. */
