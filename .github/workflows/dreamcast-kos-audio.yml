@@ -62,7 +62,7 @@ jobs:
             -v "$GITHUB_WORKSPACE:/project" \
             -w /project/platform/dreamcast/audio-smoke \
             pcercuei/dreamcast-toolchain:stable \
-            sh -lc '. /workspace/environ.sh && sh-elf-readelf -h dreampsx-audio-smoke.elf && test "$(sh-elf-ar t libdreampsx_core.a | wc -l)" -eq 24'
+            sh -lc '. /workspace/environ.sh && sh-elf-readelf -h dreampsx-audio-smoke.elf && sh-elf-readelf -h dreampsx-boot-smoke.elf && test "$(sh-elf-ar t libdreampsx_core.a | wc -l)" -eq 24'
 
       - name: Upload Dreamcast ELF
         uses: actions/upload-artifact@v4
@@ -70,5 +70,6 @@ jobs:
           name: dreampsx-dreamcast-build
           path: |
             platform/dreamcast/audio-smoke/dreampsx-audio-smoke.elf
+            platform/dreamcast/audio-smoke/dreampsx-boot-smoke.elf
             platform/dreamcast/audio-smoke/libdreampsx_core.a
           if-no-files-found: error
