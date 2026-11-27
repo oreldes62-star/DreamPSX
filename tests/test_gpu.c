@@ -318,6 +318,7 @@ int main(void)
             assert(psx_gpu_gp0_write(&gpu, 960u | (464u << 16u)));
             assert(psx_gpu_gp0_write(&gpu, 1u | (1u << 8u)));
             assert(psx_gpu_vram_read(&gpu, 961u, 461u, &pixel));
+            fprintf(stderr, "GP0(36h) mode %u: pixel=0x%04x expected=0x%04x\\n", mode, pixel, expected_blends[mode]);
             assert(pixel == expected_blends[mode]);
         }
 
