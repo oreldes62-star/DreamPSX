@@ -11,6 +11,10 @@ int main(void)
     int8_t codes[PSX_XA_ADPCM_SAMPLES_PER_UNIT];
     int16_t samples[PSX_XA_ADPCM_SAMPLES_PER_UNIT];
     uint8_t group[PSX_XA_ADPCM_GROUP_SIZE];
+    uint8_t sector[PSX_XA_ADPCM_SECTOR_PAYLOAD_SIZE];
+    int16_t sector_left[PSX_XA_ADPCM_MAX_SECTOR_SAMPLES];
+    int16_t sector_right[PSX_XA_ADPCM_MAX_SECTOR_SAMPLES];
+    PsxDiscXaAudioFormat format;
     int16_t left[PSX_XA_ADPCM_MAX_GROUP_SAMPLES];
     int16_t right[PSX_XA_ADPCM_MAX_GROUP_SAMPLES];
     size_t count = 0u;
@@ -64,6 +68,65 @@ int main(void)
     group[4] = 0x0du;
     assert(!psx_xa_adpcm_decode_sound_group(group, 4u, false, states,
                                              left, right, &count));
+    /* Decode all 18 groups of a 2324-byte sector, preserving channel state. */
+    memset(sector, 0, sizeof(sector));
+    sector[16] = 0x71u;
+    format.sample_rate_hz = 37800u;
+    format.channels = 1u;
+    format.bits_per_sample = 4u;
+    format.emphasis = false;
+    psx_xa_adpcm_reset(&states[0]); psx_xa_adpcm_reset(&states[1]);
+    assert(psx_xa_adpcm_decode_sector(
+        sector, sizeof(sector), &format, states, sector_left, sector_right,
+        PSX_XA_ADPCM_MAX_SECTOR_SAMPLES, &count));
+    assert(count == 4032u);
+    assert(sector_left[0] == 4096);
+    assert(sector_left[28] == 28672);
+    assert(sector_right[28] == sector_left[28]);
+
+    /* Stereo 4-bit sectors produce 2016 samples per channel. */
+    format.channels = 2u;
+    psx_xa_adpcm_reset(&states[0]); psx_xa_adpcm_reset(&states[1]);
+    assert(psx_xa_adpcm_decode_sector(
+        sector, sizeof(sector), &format, states, sector_left, sector_right,
+        PSX_XA_ADPCM_MAX_SECTOR_SAMPLES, &count));
+    assert(count == 2016u);
+    assert(sector_left[0] == 4096 && sector_right[0] == 28672);
+
+    /* 8-bit sectors produce 2016 mono samples. */
+    memset(sector, 0, sizeof(sector));
+    sector[16] = 0x7fu;
+    format.channels = 1u;
+    format.bits_per_sample = 8u;
+    psx_xa_adpcm_reset(&states[0]); psx_xa_adpcm_reset(&states[1]);
+    assert(psx_xa_adpcm_decode_sector(
+        sector, sizeof(sector), &format, states, sector_left, sector_right,
+        PSX_XA_ADPCM_MAX_SECTOR_SAMPLES, &count));
+    assert(count == 2016u && sector_left[0] == 32512);
+
+    /* Short input, insufficient output capacity and bad late headers fail
+       without advancing predictor history or publishing a sample count. */
+    {
+        PsxXaAdpcmState before[2];
+        size_t unchanged_count = 123u;
+        before[0] = states[0]; before[1] = states[1];
+        assert(!psx_xa_adpcm_decode_sector(
+            sector, sizeof(sector) - 1u, &format, states, sector_left,
+            sector_right, PSX_XA_ADPCM_MAX_SECTOR_SAMPLES, &unchanged_count));
+        assert(!psx_xa_adpcm_decode_sector(
+            sector, sizeof(sector), &format, states, sector_left,
+            sector_right, 10u, &unchanged_count));
+        sector[17u * PSX_XA_ADPCM_GROUP_SIZE + 4u] = 0x0du;
+        assert(!psx_xa_adpcm_decode_sector(
+            sector, sizeof(sector), &format, states, sector_left,
+            sector_right, PSX_XA_ADPCM_MAX_SECTOR_SAMPLES, &unchanged_count));
+        assert(states[0].history_1 == before[0].history_1);
+        assert(states[0].history_2 == before[0].history_2);
+        assert(states[1].history_1 == before[1].history_1);
+        assert(states[1].history_2 == before[1].history_2);
+        assert(unchanged_count == 123u);
+    }
+
     puts("XA ADPCM tests passed");
     return 0;
 }
