@@ -40,9 +40,10 @@ int main(void)
     assert(psx_audio_buffer_write(&buffer, input, 4u) == 0u);
     assert(buffer.dropped_frames == 4u);
     /* A rejected write must not overwrite already queued samples. */
-    assert(buffer.samples[0] == input[0]);
-    assert(buffer.samples[1] == input[1]);
-    assert(buffer.samples[(PSX_AUDIO_BUFFER_CAPACITY_FRAMES - 1u) * 2u] ==
+    /* The previous two-frame read left the ring cursor at physical slot 2. */
+    assert(buffer.samples[2u * 2u] == input[0]);
+    assert(buffer.samples[2u * 2u + 1u] == input[1]);
+    assert(buffer.samples[1u * 2u] ==
            input[(PSX_AUDIO_BUFFER_CAPACITY_FRAMES - 1u) * 2u]);
 
     /* Consume most frames, then write across the physical end of the ring. */
