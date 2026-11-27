@@ -85,6 +85,8 @@ typedef struct {
     int16_t volume_right_level;
     uint32_t volume_left_counter;
     uint32_t volume_right_counter;
+    bool volume_left_sweep_active;
+    bool volume_right_sweep_active;
     uint16_t pitch;
     uint16_t start_address;
     uint16_t adsr1;
