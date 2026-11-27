@@ -1111,6 +1111,30 @@ int main(void)
     assert(psx_cpu_last_step_cycles(&machine.cpu) == 36u);
     assert(psx_cpu_read_gpr(&machine.cpu, 12u) == 14u);
 
+    /* A COP2 register read waits for a timed GTE command to retire. */
+    psx_cpu_reset(&machine.cpu);
+    psx_gte_reset(&machine.gte);
+    machine.cop0_status = 0x40000000u; /* Status.CU2 */
+    machine.cop0_cause = 0u;
+    assert(psx_gte_write_data(&machine.gte, 12u, 0x00000000u));
+    assert(psx_gte_write_data(&machine.gte, 13u, 0x00000064u));
+    assert(psx_gte_write_data(&machine.gte, 14u, 0x00640000u));
+    put_word(ram, 0x660u, 0x4b400006u); /* NCLIP, 8 cycles */
+    put_word(ram, 0x664u, (0x12u << 26) | (8u << 16) | (24u << 11)); /* MFC2 t0,MAC0 */
+    put_word(ram, 0x668u, 0x24090001u); /* ADDIU t1,zero,1 */
+    machine.cpu.pc = 0x660u;
+    machine.cpu.next_pc = 0x664u;
+    assert(psx_machine_step(&machine));
+    assert(psx_gte_busy_cycles(&machine.gte) == 7u);
+    assert(psx_gte_read_data(&machine.gte, 24u, &mac0) && mac0 == 0u);
+    assert(psx_machine_step(&machine));
+    assert(psx_cpu_last_step_cycles(&machine.cpu) == 8u);
+    assert(psx_gte_busy_cycles(&machine.gte) == 0u);
+    assert(psx_cpu_read_gpr(&machine.cpu, 8u) == 0u); /* MFC2 load delay */
+    assert(psx_machine_step(&machine));
+    assert(psx_cpu_read_gpr(&machine.cpu, 8u) == 10000u);
+    assert(psx_cpu_read_gpr(&machine.cpu, 9u) == 1u);
+
     free(bios); free(ram);
     puts("DreamPSX R3000A execution tests: OK");
     return 0;
