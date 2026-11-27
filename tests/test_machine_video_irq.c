@@ -79,6 +79,24 @@ int main(void)
     assert(!psx_machine_video_advance_scanline(NULL, &video));
     assert(!psx_machine_video_advance_scanline(&machine, NULL));
 
+    /* GPU command IRQ1 reaches COP0 IP2 and is accepted at an instruction
+     * boundary. Device acknowledge drops the source; I_STAT is separate. */
+    psx_irq_write_mask(&machine.irq, (uint16_t)(1u << 1u));
+    machine.cop0_status = (1u << 0u) | (1u << 10u); /* IEc + IM2 */
+    machine.cpu.pc = 0x100u;
+    machine.cpu.next_pc = 0x104u;
+    assert(psx_bus_write32(&machine.bus, 0x1f801810u, 0x1f000000u));
+    psx_machine_refresh_interrupts(&machine);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) != 0u);
+    assert(psx_machine_interrupt_eligible(&machine));
+    assert(psx_machine_step(&machine));
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_EXCCODE) == 0u);
+    assert(machine.cop0_epc == 0x100u);
+    assert(psx_bus_write32(&machine.bus, 0x1f801814u, 0x02000000u));
+    psx_irq_write_stat(&machine.irq, (uint16_t)~(1u << 1u));
+    psx_machine_refresh_interrupts(&machine);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) == 0u);
+
     free(vram);
     free(bios);
     free(ram);
