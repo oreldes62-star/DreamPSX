@@ -82,6 +82,7 @@ Experimental project. The host-side CMake build and all 14 CTest targets passed 
 - [GPU textured triangle clipping milestone 3.57](docs/GPU-TEXTURED-CLIPPING-MILESTONE-3.57.md)
 - [GPU texture and VRAM boundary validation milestone 3.58](docs/GPU-TEXTURE-VRAM-WRAP-MILESTONE-3.58.md)
 - [GPU raw textured triangle correction milestone 3.59](docs/GPU-RAW-TEXTURE-MILESTONE-3.59.md)
+- [GPU textured triangle opcode matrix milestone 3.60](docs/GPU-TEXTURED-OPCODE-MATRIX-MILESTONE-3.60.md)
 
 ## Target
 Sega Dreamcast with 16 MiB RAM. Long-term target: CDI test build for Flycast, then GDEMU.
