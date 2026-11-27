@@ -20,6 +20,26 @@ int main(void)
     assert(psx_spu_read16(&spu, PSX_SPU_BASE_ADDR + 0x0e0u, &value));
     assert(value == 0x7fffu);
 
+    /* Key-on/off registers update the 24-voice active mask and read as zero. */
+    assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                           PSX_SPU_KEY_ON_LOW_OFFSET, 0x8001u));
+    assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                           PSX_SPU_KEY_ON_HIGH_OFFSET, 0x0081u));
+    assert(psx_spu_active_voice_mask(&spu) == 0x00818001u);
+    assert(psx_spu_read16(&spu, PSX_SPU_BASE_ADDR +
+                          PSX_SPU_KEY_ON_LOW_OFFSET, &value));
+    assert(value == 0u);
+    assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                           PSX_SPU_KEY_OFF_LOW_OFFSET, 0x0001u));
+    assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                           PSX_SPU_KEY_OFF_HIGH_OFFSET, 0x0080u));
+    assert(psx_spu_active_voice_mask(&spu) == 0x00018000u);
+    assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                           PSX_SPU_CONTROL_OFFSET, 0x1234u));
+    assert(psx_spu_read16(&spu, PSX_SPU_BASE_ADDR +
+                          PSX_SPU_CONTROL_OFFSET, &value));
+    assert(value == 0x1234u);
+
     /* Transfer address is expressed in 8-byte units; data port advances
      * by one 16-bit word for each access. */
     assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
@@ -64,6 +84,7 @@ int main(void)
     /* Reset clears registers, RAM and transfer position. */
     psx_spu_reset(&spu);
     assert(spu.transfer_address == 0u);
+    assert(psx_spu_active_voice_mask(&spu) == 0u);
     assert(psx_spu_read16(&spu, PSX_SPU_BASE_ADDR, &value));
     assert(value == 0u);
     assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
