@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include "dreampsx/disc_image.h"
 
 #define PSX_ISO9660_SECTOR_SIZE 2048u
 #define PSX_ISO9660_PATH_MAX 256u
@@ -14,6 +15,7 @@ typedef struct {
     uint32_t volume_sectors;
     uint32_t root_lba;
     uint32_t root_size;
+    PsxDiscImage disc;
     bool mounted;
 } PsxIso9660;
 
@@ -26,6 +28,8 @@ typedef struct {
 /* Mounts an in-memory ISO-9660 image by validating its primary volume
  * descriptor and root directory record. The image remains caller-owned. */
 bool psx_iso9660_mount(PsxIso9660 *iso, const uint8_t *image, size_t size);
+/* Mounts ISO-9660 through a CUE/BIN sector reader without expanding the image. */
+bool psx_iso9660_mount_disc(PsxIso9660 *iso, const PsxDiscImage *disc);
 void psx_iso9660_unmount(PsxIso9660 *iso);
 /* Resolves an absolute ISO path such as /SYSTEM.CNF; ;version suffixes
  * are optional. Only single-extent files and directories are supported. */
