@@ -95,6 +95,13 @@ uint32_t psx_dma_queued_mask(const PsxDmaController *dma)
     return dma->queued_mask & ((1u << PSX_DMA_CHANNEL_COUNT) - 1u);
 }
 
+void psx_dma_refresh_queue(PsxDmaController *dma)
+{
+    if (!dma || !dma->initialized) return;
+    /* CHCR is authoritative: refresh both additions and cancellations. */
+    dma->queued_mask = psx_dma_pending_mask(dma);
+}
+
 int psx_dma_take_channel(PsxDmaController *dma)
 {
     const int selected = psx_dma_select_channel(dma, psx_dma_queued_mask(dma));
