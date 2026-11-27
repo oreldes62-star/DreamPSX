@@ -403,6 +403,86 @@ static void execute_textured_triangle(PsxGpu *gpu, bool modulate,
     }
 }
 
+static void execute_textured_rectangle(PsxGpu *gpu, unsigned width,
+                                         unsigned height, bool modulate,
+                                         bool semi_transparent)
+{
+    const uint32_t xy = gpu->parameters[0];
+    const uint32_t uv = gpu->parameters[1];
+    const unsigned clut = uv >> 16u;
+    const unsigned depth = (gpu->draw_mode >> 7u) & 3u;
+    const unsigned page_x = (gpu->draw_mode & 0x0fu) * 64u;
+    const unsigned page_y = ((gpu->draw_mode >> 4u) & 1u) * 256u;
+    const int x = sign_extend_11(xy) + gpu->draw_offset_x;
+    const int y = sign_extend_11(xy >> 16u) + gpu->draw_offset_y;
+    const int64_t right = (int64_t)x + (int64_t)width - 1;
+    const int64_t bottom = (int64_t)y + (int64_t)height - 1;
+    const int start_x = x < (int)gpu->draw_area_left ?
+                        (int)gpu->draw_area_left : x;
+    const int start_y = y < (int)gpu->draw_area_top ?
+                        (int)gpu->draw_area_top : y;
+    const int end_x = right > (int64_t)gpu->draw_area_right ?
+                      (int)gpu->draw_area_right : (int)right;
+    const int end_y = bottom > (int64_t)gpu->draw_area_bottom ?
+                      (int)gpu->draw_area_bottom : (int)bottom;
+    const unsigned base_u = uv & 0xffu;
+    const unsigned base_v = (uv >> 8u) & 0xffu;
+
+    if (depth == 3u || width == 0u || height == 0u ||
+        end_x < start_x || end_y < start_y)
+        return;
+
+    for (int py = start_y; py <= end_y; ++py) {
+        for (int px = start_x; px <= end_x; ++px) {
+            const unsigned u = (base_u + (unsigned)(px - x)) & 0xffu;
+            const unsigned v = (base_v + (unsigned)(py - y)) & 0xffu;
+            const unsigned window_u = apply_texture_window(
+                u, gpu->texture_window_mask_x,
+                gpu->texture_window_offset_x);
+            const unsigned window_v = apply_texture_window(
+                v, gpu->texture_window_mask_y,
+                gpu->texture_window_offset_y);
+            const uint16_t texel = sample_texture(
+                gpu, page_x, page_y, depth, window_u, window_v, clut);
+            if (texel != 0u) {
+                uint16_t output = texel;
+                if (modulate) {
+                    const unsigned red = ((texel & 0x1fu) *
+                                          (gpu->command & 0xffu)) >> 7u;
+                    const unsigned green = (((texel >> 5u) & 0x1fu) *
+                                            ((gpu->command >> 8u) & 0xffu)) >> 7u;
+                    const unsigned blue = (((texel >> 10u) & 0x1fu) *
+                                           ((gpu->command >> 16u) & 0xffu)) >> 7u;
+                    const unsigned r = red > 31u ? 31u : red;
+                    const unsigned g = green > 31u ? 31u : green;
+                    const unsigned b = blue > 31u ? 31u : blue;
+                    output = (uint16_t)(r | (g << 5u) | (b << 10u) |
+                                        (texel & 0x8000u));
+                }
+                if (semi_transparent && (texel & 0x8000u) != 0u) {
+                    const size_t destination =
+                        (size_t)(unsigned)py * PSX_GPU_VRAM_WIDTH +
+                        (unsigned)px;
+                    output = blend_semitransparent(
+                        gpu->vram[destination], output,
+                        (gpu->draw_mode >> 5u) & 3u);
+                }
+                gpu->vram[(unsigned)py * PSX_GPU_VRAM_WIDTH +
+                          (unsigned)px] = output;
+            }
+        }
+    }
+}
+
+static void execute_variable_textured_rectangle(PsxGpu *gpu, bool modulate,
+                                                bool semi_transparent)
+{
+    const uint32_t wh = gpu->parameters[2];
+    execute_textured_rectangle(gpu, wh & 0x3ffu,
+                               (wh >> 16u) & 0x1ffu,
+                               modulate, semi_transparent);
+}
+
 static void execute_flat_triangle(PsxGpu *gpu)
 {
     const uint32_t xy0 = gpu->parameters[0];
@@ -565,6 +645,17 @@ bool psx_gpu_gp0_write(PsxGpu *gpu, uint32_t value)
                 execute_rectangle(gpu, 8u, 8u);
             else if (opcode == 0x78u)
                 execute_rectangle(gpu, 16u, 16u);
+            else if (opcode >= 0x64u && opcode <= 0x67u)
+                execute_variable_textured_rectangle(
+                    gpu, (opcode & 1u) == 0u, (opcode & 2u) != 0u);
+            else if (opcode >= 0x74u && opcode <= 0x77u)
+                execute_textured_rectangle(
+                    gpu, 8u, 8u, (opcode & 1u) == 0u,
+                    (opcode & 2u) != 0u);
+            else if (opcode >= 0x7cu && opcode <= 0x7fu)
+                execute_textured_rectangle(
+                    gpu, 16u, 16u, (opcode & 1u) == 0u,
+                    (opcode & 2u) != 0u);
             else if (opcode == 0xa0u)
                 begin_image_transfer(gpu, PSX_GPU_TRANSFER_CPU_TO_VRAM);
             else if (opcode == 0xc0u)
@@ -598,7 +689,7 @@ bool psx_gpu_gp0_write(PsxGpu *gpu, uint32_t value)
     gpu->command = value;
     switch (value >> 24u) {
     case 0xe1u: /* Draw mode / texture page state. */
-        gpu->draw_mode = (value >> 5u) & 3u;
+        gpu->draw_mode = value & 0x7ffu;
         break;
     case 0xe2u: /* Texture window mask and offset. */
         gpu->texture_window_mask_x = value & 0x1fu;
@@ -617,6 +708,24 @@ bool psx_gpu_gp0_write(PsxGpu *gpu, uint32_t value)
     case 0xe5u: /* Drawing offset, signed 11-bit coordinates. */
         gpu->draw_offset_x = sign_extend_11(value);
         gpu->draw_offset_y = sign_extend_11(value >> 11u);
+        break;
+    case 0x64u: /* Variable-size textured rectangle family */
+    case 0x65u:
+    case 0x66u:
+    case 0x67u:
+        gpu->parameter_expected = 3u;
+        gpu->parameter_count = 0u;
+        break;
+    case 0x74u: /* Fixed-size 8x8 textured rectangle family */
+    case 0x75u:
+    case 0x76u:
+    case 0x77u:
+    case 0x7cu: /* Fixed-size 16x16 textured rectangle family */
+    case 0x7du:
+    case 0x7eu:
+    case 0x7fu:
+        gpu->parameter_expected = 2u;
+        gpu->parameter_count = 0u;
         break;
     case 0x60u: /* Variable-size monochrome rectangle */
         gpu->parameter_expected = 2u;
