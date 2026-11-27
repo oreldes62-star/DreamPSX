@@ -35,7 +35,7 @@ bool psx_dma_channel_enabled(const PsxDmaController *dma, unsigned channel);
 unsigned psx_dma_channel_priority(const PsxDmaController *dma, unsigned channel);
 /* Select the enabled pending channel with best priority (0 is highest); -1 if none. */
 int psx_dma_select_channel(const PsxDmaController *dma, uint32_t pending_mask);
-/* Build a pending mask from enabled channels whose CHCR start conditions are met. */
+/* Build a request mask from CHCR start conditions, even if DPCR disables a channel. */
 uint32_t psx_dma_pending_mask(const PsxDmaController *dma);
 /* Retire a successfully completed channel and latch its DICR completion flag. */
 bool psx_dma_complete_channel(PsxDmaController *dma, unsigned channel);
