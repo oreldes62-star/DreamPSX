@@ -911,3 +911,33 @@ bool psx_gpu_get_display(const PsxGpu *gpu, PsxGpuDisplay *display)
     *display = gpu->display;
     return true;
 }
+
+
+bool psx_gpu_scanout_rgb565(const PsxGpu *gpu, unsigned width,
+                            unsigned height, uint16_t *dst,
+                            size_t dst_stride)
+{
+    if (!gpu || !gpu->initialized || !gpu->vram || !dst ||
+        width == 0u || height == 0u || dst_stride < width ||
+        gpu->display.disabled || (gpu->display.mode & (1u << 4u)) != 0u)
+        return false;
+
+    for (unsigned row = 0u; row < height; ++row) {
+        const unsigned source_y = (gpu->display.start_y + row) %
+                                  PSX_GPU_VRAM_HEIGHT;
+        uint16_t *destination = dst + (size_t)row * dst_stride;
+        for (unsigned column = 0u; column < width; ++column) {
+            const unsigned source_x = (gpu->display.start_x + column) %
+                                      PSX_GPU_VRAM_WIDTH;
+            const uint16_t pixel =
+                gpu->vram[source_y * PSX_GPU_VRAM_WIDTH + source_x];
+            const unsigned red = pixel & 0x1fu;
+            const unsigned green = (pixel >> 5u) & 0x1fu;
+            const unsigned blue = (pixel >> 10u) & 0x1fu;
+            const unsigned green6 = (green << 1u) | (green >> 4u);
+            destination[column] = (uint16_t)(red | (green6 << 5u) |
+                                              (blue << 11u));
+        }
+    }
+    return true;
+}
