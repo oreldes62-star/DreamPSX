@@ -15,4 +15,5 @@ These counters measure completed transfer work, not elapsed PS1 clock cycles. No
 
 ## Validation
 
-Pending GitHub Actions host build and CTest for this commit.
+- GitHub Actions run `46045165267`: host configure and build succeeded; CTest passed all 33/33 tests.
+- The integration fixture now avoids arming an unintended request-mode DMA while checking register visibility. The linked-list scenario correctly counts three payload words across its two packet headers (2 + 1), with headers counted separately.
