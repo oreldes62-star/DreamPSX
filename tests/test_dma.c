@@ -49,6 +49,21 @@ int main(void)
     assert(psx_dma_select_channel(&dma, psx_dma_pending_mask(&dma)) == 1);
     assert(psx_dma_pending_mask(NULL) == 0u);
 
+    /* Successful completion retires CHCR and latches the channel IRQ flag. */
+    assert(psx_dma_write32(&dma, PSX_DMA_DICR_ADDR,
+                           (1u << 23u) | (1u << 17u)));
+    assert(psx_dma_complete_channel(&dma, 1u));
+    assert(!psx_dma_complete_channel(&dma, PSX_DMA_CHANNEL_COUNT));
+    assert(psx_dma_pending_mask(&dma) == (1u << 3u));
+    assert(psx_dma_read32(&dma, PSX_DMA_BASE_ADDR + 0x18u, &value));
+    assert((value & (1u << 24u)) == 0u);
+    assert(psx_dma_read32(&dma, PSX_DMA_DICR_ADDR, &value));
+    assert((value & (1u << 25u)) != 0u);
+    assert((value & (1u << 31u)) != 0u);
+    assert(psx_dma_write32(&dma, PSX_DMA_DICR_ADDR, 1u << 25u));
+    assert(psx_dma_read32(&dma, PSX_DMA_DICR_ADDR, &value));
+    assert((value & (1u << 31u)) == 0u);
+
     assert(psx_dma_write32(&dma, PSX_DMA_DPCR_ADDR, 0x07654321u));
     assert(psx_dma_read32(&dma, PSX_DMA_DICR_ADDR, &value));
     assert(value == 0u);
