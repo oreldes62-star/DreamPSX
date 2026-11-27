@@ -13,6 +13,8 @@ int main(void)
     uint16_t *gpu_vram = (uint16_t *)calloc(PSX_GPU_VRAM_WIDTH * PSX_GPU_VRAM_HEIGHT, sizeof(uint16_t));
     uint32_t word = 0u;
     uint16_t half = 0u;
+    static uint8_t cdrom_iso[PSX_CDROM_SECTOR_SIZE * 2u];
+    unsigned cdrom_i;
 
     assert(ram && bios && gpu_vram);
     assert(psx_machine_init(&machine, ram, PSX_RAM_SIZE, bios, PSX_BIOS_SIZE,
@@ -77,6 +79,45 @@ int main(void)
     assert(psx_bus_write16(&machine.bus, PSX_IRQ_STAT_ADDR,
                            (uint16_t)~(1u << 2u)));
     assert((psx_irq_read_stat(&machine.irq) & (1u << 2u)) == 0u);
+
+    /* Machine-level timed CD-ROM sector delivery and IRQ2 propagation. */
+    for (cdrom_i = 0u; cdrom_i < sizeof(cdrom_iso); ++cdrom_i)
+        cdrom_iso[cdrom_i] = (uint8_t)(
+            ((cdrom_i / PSX_CDROM_SECTOR_SIZE) * 0x40u) +
+            (cdrom_i & 0xffu));
+    assert(psx_cdrom_mount_iso(&machine.cdrom, cdrom_iso,
+                               sizeof(cdrom_iso)));
+    assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR, 1u));
+    assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR + 2u, 0x15u));
+    assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR, 0u));
+    assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR + 2u, 0x00u));
+    assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR + 2u, 0x02u));
+    assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR + 2u, 0x00u));
+    assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR + 1u, 0x02u));
+    assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR + 1u, 0x06u));
+    assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR, 2u));
+    assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR + 2u, 0x80u));
+    assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR, 0u));
+    for (cdrom_i = 0u; cdrom_i < PSX_CDROM_SECTOR_SIZE; ++cdrom_i)
+        assert(psx_bus_read8(&machine.bus, PSX_CDROM_BASE_ADDR + 2u,
+                             (uint8_t *)&half));
+    assert(machine.cdrom.data_count == 0u);
+    assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR + 3u, 0x05u));
+    assert((machine.irq.source_level & (1u << 2u)) == 0u);
+    assert(psx_machine_cdrom_advance_sector(&machine));
+    assert(machine.cdrom.data_count == PSX_CDROM_SECTOR_SIZE);
+    assert((machine.irq.source_level & (1u << 2u)) != 0u);
+    assert(psx_bus_read8(&machine.bus, PSX_CDROM_BASE_ADDR + 2u,
+                         (uint8_t *)&word));
+    assert((word & 0xffu) == 0x40u);
+    assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR + 3u, 0x01u));
+    for (cdrom_i = 1u; cdrom_i < PSX_CDROM_SECTOR_SIZE; ++cdrom_i)
+        assert(psx_bus_read8(&machine.bus, PSX_CDROM_BASE_ADDR + 2u,
+                             (uint8_t *)&half));
+    assert(!psx_machine_cdrom_advance_sector(&machine));
+    assert((machine.irq.source_level & (1u << 2u)) != 0u);
+    assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR + 3u, 0x10u));
+    assert((machine.irq.source_level & (1u << 2u)) == 0u);
 
     /* GPU registers share the machine bus and update its VRAM state. */
     assert(psx_bus_write32(&machine.bus, 0x1f801810u, 0x0200ff00u));
