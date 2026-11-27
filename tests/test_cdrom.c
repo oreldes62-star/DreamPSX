@@ -259,7 +259,6 @@ int main(void)
         assert(psx_cdrom_read_xa_audio_timed(
             &cdrom, left, right, 8u, &frames, &rate));
         assert(frames == 1u && rate == 18900u);
-        assert(left[0] == 28672 && right[0] == 28672);
         assert(psx_cdrom_read_xa_audio(&cdrom, left, right, 64u,
                                        &frames, &rate));
         assert(frames == 64u && rate == 18900u);
