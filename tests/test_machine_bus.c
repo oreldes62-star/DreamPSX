@@ -19,6 +19,20 @@ int main(void)
                             gpu_vram, PSX_GPU_VRAM_WIDTH * PSX_GPU_VRAM_HEIGHT));
     assert(machine.bus.initialized);
 
+    /* DMA channel registers are visible through physical and KSEG1 bus
+     * addresses; channel 2 is reserved for the GPU transfer path. */
+    assert(psx_bus_write32(&machine.bus, 0x1f8010a0u, 0x00102003u));
+    assert(psx_bus_write32(&machine.bus, 0xbf8010a4u, 0x00020008u));
+    assert(psx_bus_write32(&machine.bus, 0xbf8010a8u, 0x01000201u));
+    assert(psx_bus_read32(&machine.bus, 0x1f8010a0u, &word));
+    assert(word == 0x00102000u);
+    assert(psx_bus_read32(&machine.bus, 0xbf8010a4u, &word));
+    assert(word == 0x00020008u);
+    assert(psx_bus_read32(&machine.bus, 0x1f8010a8u, &word));
+    assert(word == 0x01000201u);
+    assert(psx_bus_read32(&machine.bus, 0x1f8010f0u, &word));
+    assert(word == 0x07654321u);
+
     /* CPU-facing bus reaches RAM and its KSEG aliases. */
     assert(psx_bus_write32(&machine.bus, 0x00000100u, 0x1234abcdu));
     assert(psx_bus_read32(&machine.bus, 0x80000100u, &word));
