@@ -83,9 +83,15 @@ bool psx_bus_write32(PsxBus *bus, uint32_t address, uint32_t value)
     if (!bus || !bus->initialized) return false;
     address = physical_address(address);
     if (bus->dma && psx_dma_write32(bus->dma, address, value)) {
-        if (address == PSX_DMA_BASE_ADDR + 0x28u)
-            return psx_dma_execute_gpu_manual(bus->dma, bus->memory,
-                                              bus->gpu);
+        if (address == PSX_DMA_BASE_ADDR + 0x28u) {
+            const uint32_t sync_mode = (value >> 9u) & 3u;
+            if (sync_mode == 0u)
+                return psx_dma_execute_gpu_manual(bus->dma, bus->memory,
+                                                  bus->gpu);
+            if (sync_mode == 2u)
+                return psx_dma_execute_gpu_linked_list(bus->dma, bus->memory,
+                                                       bus->gpu);
+        }
         return true;
     }
     if (address == PSX_GPU_GP0_ADDR)
