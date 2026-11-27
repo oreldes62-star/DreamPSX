@@ -4,6 +4,7 @@
 #include <stdlib.h>
 
 #include "dreampsx/cop0.h"
+#include "dreampsx/cop0_irq.h"
 #include "dreampsx/machine.h"
 
 int main(void)
