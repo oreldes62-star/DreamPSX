@@ -11,7 +11,7 @@ Implement the GP1(04h) DMA direction register and derive the related GPUSTAT fie
 - GPUSTAT bits 29–30 mirror the selected direction.
 - GPUSTAT bit 25 is derived from that direction:
   - 0 (Off): always clear.
-  - 1 (FIFO/WFNF): follows the currently modeled GP0 input-ready state.
+  - 1 (FIFO/WFNF): is asserted because no bounded GP0 FIFO/full state exists yet.
   - 2 (CPU-to-GP0/WFEP): follows the currently modeled write-ready state.
   - 3 (GPUREAD-to-CPU/RFFL): follows VRAM readback data availability.
 - Software GP0 writes and GPUREAD reads remain available regardless of the selected DMA direction.
@@ -22,6 +22,6 @@ Implement the GP1(04h) DMA direction register and derive the related GPUSTAT fie
 
 ## Accuracy limits
 
-The project does not yet contain a real GP0 command FIFO. Consequently, FIFO mode (1) is approximated using the existing parser's input-ready state; mode 2 uses the current modeled write-ready state. GPU command execution is still synchronous, and the write FIFO empty/full transitions are not cycle-accurate. No DMA channel 2 registers, linked-list traversal, block transfer, chopping, or bus arbitration are implemented by this milestone. Those must be separate steps before DMA game compatibility is claimed.
+The project does not yet contain a real GP0 command FIFO. Consequently, FIFO mode (1) currently reports available (not full) because there is no FIFO capacity model; mode 2 uses the current modeled write-ready state. GPU command execution is still synchronous, and the write FIFO empty/full transitions are not cycle-accurate. No DMA channel 2 registers, linked-list traversal, block transfer, chopping, or bus arbitration are implemented by this milestone. Those must be separate steps before DMA game compatibility is claimed.
 
 Tests have been added but have not been compiled or run in this environment.
