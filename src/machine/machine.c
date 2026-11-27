@@ -56,12 +56,14 @@ bool psx_machine_interrupt_eligible(const PsxMachine *machine)
 
 bool psx_machine_cdrom_advance_sector(PsxMachine *machine)
 {
-    if (!machine || !psx_cdrom_advance_sector(&machine->cdrom))
-        return false;
+    bool advanced;
+    if (!machine) return false;
+    advanced = psx_cdrom_advance_sector(&machine->cdrom);
+    /* Even an end-of-image event can raise INT5, so always refresh IRQ2. */
     psx_irq_set_line(&machine->irq, 2u,
                      psx_cdrom_irq_output(&machine->cdrom));
     psx_machine_refresh_interrupts(machine);
-    return true;
+    return advanced;
 }
 
 /* Timer IRQs map to interrupt controller sources 4, 5 and 6. */
