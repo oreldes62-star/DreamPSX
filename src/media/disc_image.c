@@ -156,10 +156,41 @@ bool psx_disc_read_sector(const PsxDiscImage *disc, size_t lba,
 {
     size_t source_sector, offset;
     const uint8_t *sector;
-    if (!disc || !disc->mounted || !destination ||
+    if (!disc || !disc->mounted || !destination || !disc->source ||
         lba >= disc->sector_count ||
         disc->first_sector > SIZE_MAX - lba)
         return false;
+
+    /* Validate the public descriptor before doing any pointer arithmetic.
+     * Mounted images are caller-owned, so reject corrupted/inconsistent
+     * metadata rather than trusting offsets copied into the descriptor. */
+    switch (disc->mode) {
+    case PSX_DISC_MODE1_2048:
+        if (disc->source_sector_size != 2048u ||
+            disc->user_data_offset != 0u)
+            return false;
+        break;
+    case PSX_DISC_MODE1_2352:
+        if (disc->source_sector_size != 2352u ||
+            disc->user_data_offset != 16u)
+            return false;
+        break;
+    case PSX_DISC_MODE2_2352:
+        if (disc->source_sector_size != 2352u ||
+            disc->user_data_offset != 24u)
+            return false;
+        break;
+    default:
+        return false;
+    }
+    if (disc->source_size % disc->source_sector_size != 0u ||
+        disc->first_sector >=
+            disc->source_size / disc->source_sector_size ||
+        disc->sector_count >
+            disc->source_size / disc->source_sector_size -
+                disc->first_sector)
+        return false;
+
     source_sector = disc->first_sector + lba;
     if (source_sector > SIZE_MAX / disc->source_sector_size)
         return false;
