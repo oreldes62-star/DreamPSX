@@ -22,7 +22,7 @@ int main(void) {
  static uint8_t image[26u*PSX_ISO9660_SECTOR_SIZE];
  static uint8_t ram_data[PSX_RAM_SIZE], bios_data[PSX_BIOS_SIZE];
  const uint8_t dot=0u,dotdot=1u,cnf_name[]="SYSTEM.CNF;1",dir_name[]="GAME",exe_name[]="SLUS_123.45;1";
- uint8_t *pvd=image+16u*PSX_ISO9660_SECTOR_SIZE,*root=image+20u*PSX_ISO9660_SECTOR_SIZE;
+ uint8_t *pvd=image+16u*PSX_ISO9660_SECTOR_SIZE,*root=image+20u*PSX_ISO9660_SECTOR_SIZE,*p;
  uint8_t *game=image+21u*PSX_ISO9660_SECTOR_SIZE,*exe=image+23u*PSX_ISO9660_SECTOR_SIZE;
  const char cnf[]="BOOT = cdrom:\\GAME\\SLUS_123.45;1\r\n";
  assert(psx_boot_config_parse(a,sizeof(a)-1,&c));
