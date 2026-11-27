@@ -20,9 +20,9 @@ int main(void)
 
     /* Program INT3 enable in bank 1, register 2. */
     select_bank(&cdrom, 1u);
-    assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 2u, 0x04u));
+    assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 2u, 0x14u));
     assert(psx_cdrom_read8(&cdrom, PSX_CDROM_BASE_ADDR + 2u, &value));
-    assert(value == 0x04u);
+    assert(value == 0x14u);
 
     /* Setloc consumes three parameter bytes in FIFO order. */
     select_bank(&cdrom, 0u);
