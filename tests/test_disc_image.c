@@ -23,6 +23,7 @@ int main(void)
     static uint8_t raw[4u * 2352u];
     static uint8_t plain[3u * 2048u];
     uint8_t output[2048];
+    uint8_t form2_output[PSX_DISC_SECTOR_FORM2_DATA_SIZE];
     PsxDiscImage disc;
     const char cue1[] =
         "FILE \"game.bin\" BINARY\r\n"
@@ -70,7 +71,20 @@ int main(void)
     assert(psx_disc_read_sector(&disc, 0u, output));
     assert(output[0] == 0x50u);
     raw[18] = 0x20u; /* XA Form 2 is not a 2048-byte Form 1 sector. */
+    for (unsigned i = 0u; i < PSX_DISC_SECTOR_FORM2_DATA_SIZE; ++i)
+        raw[24u + i] = (uint8_t)(0x80u + i);
+    memcpy(raw + 20u, raw + 16u, 4u);
     assert(!psx_disc_read_sector(&disc, 0u, output));
+    assert(psx_disc_read_sector_form2(&disc, 0u, form2_output));
+    assert(form2_output[0] == 0x80u);
+    assert(form2_output[2323] == (uint8_t)(0x80u + 2323u));
+    raw[20] ^= 1u; /* Duplicated XA subheader must match. */
+    assert(!psx_disc_read_sector_form2(&disc, 0u, form2_output));
+    raw[20] ^= 1u;
+    raw[18] = 0u; /* Form 1 must not pass the Form 2 reader. */
+    assert(!psx_disc_read_sector_form2(&disc, 0u, form2_output));
+    assert(!psx_disc_read_sector_form2(NULL, 0u, form2_output));
+    assert(!psx_disc_read_sector_form2(&disc, 1u, form2_output));
 
     memset(plain, 0xa5, sizeof(plain));
     assert(psx_disc_mount_cue(&disc, cue3, sizeof(cue3) - 1u,
