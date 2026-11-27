@@ -38,7 +38,24 @@ int main(void)
     assert(value == 0x00ff0000u);
     assert(psx_dma_write32(&dma, PSX_DMA_DICR_ADDR, 0x81000000u));
     assert(psx_dma_read32(&dma, PSX_DMA_DICR_ADDR, &value));
-    assert(value == 0x00ff0000u);
+    assert(value == 0x00ff0000u); /* bit 31 is derived, not writable */
+
+    /* Master IRQ is derived from force-IRQ or enabled channel flags. */
+    assert(psx_dma_write32(&dma, PSX_DMA_DICR_ADDR, 1u << 15u));
+    assert(psx_dma_read32(&dma, PSX_DMA_DICR_ADDR, &value));
+    assert((value & (1u << 31u)) != 0u);
+    assert(psx_dma_write32(&dma, PSX_DMA_DICR_ADDR, 0u));
+    assert(psx_dma_read32(&dma, PSX_DMA_DICR_ADDR, &value));
+    assert((value & (1u << 31u)) == 0u);
+
+    /* A channel flag only raises master IRQ when its channel and master
+     * enables are both set. */
+    dma.dicr = (1u << 23u) | (1u << 16u) | (1u << 24u);
+    assert(psx_dma_read32(&dma, PSX_DMA_DICR_ADDR, &value));
+    assert((value & (1u << 31u)) != 0u);
+    dma.dicr = (1u << 23u) | (1u << 24u);
+    assert(psx_dma_read32(&dma, PSX_DMA_DICR_ADDR, &value));
+    assert((value & (1u << 31u)) == 0u);
 
     assert(!psx_dma_read32(&dma, PSX_DMA_BASE_ADDR + 0x0cu, &value));
     assert(!psx_dma_read32(&dma, PSX_DMA_BASE_ADDR + 0x70u, &value));
