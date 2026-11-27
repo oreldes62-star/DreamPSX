@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 #include "dreampsx/cdrom.h"
 
 static void select_bank(PsxCdrom *cdrom, uint8_t bank)
