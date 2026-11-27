@@ -101,6 +101,27 @@ int main(void)
     assert(psx_bus_read32(&machine.bus, 0x1f8010f4u, &word));
     assert((word & (1u << 26u)) != 0u);
 
+    /* Linked-list DMA: a GP0 fill command is deliberately split across
+     * two packets; packet headers are metadata, not GP0 command words. */
+    assert(psx_bus_write32(&machine.bus, 0x1f8010f4u, 1u << 26u));
+    assert(psx_bus_write32(&machine.bus, 0x1f801814u, 0x04000002u));
+    assert(psx_bus_write32(&machine.bus, 0x00000600u, 0x02000604u));
+    assert(psx_bus_write32(&machine.bus, 0x00000604u, 0x0200ff00u));
+    assert(psx_bus_write32(&machine.bus, 0x00000608u, 0x0000001eu));
+    assert(psx_bus_write32(&machine.bus, 0x0000060cu, 0x00ffffffu));
+    assert(psx_bus_write32(&machine.bus, 0x00000610u, 0x00010002u));
+    assert(psx_bus_write32(&machine.bus, 0x1f8010a0u, 0x00000600u));
+    assert(psx_bus_write32(&machine.bus, 0x1f8010a4u, 0u)); /* ignored in linked-list mode */
+    assert(psx_bus_write32(&machine.bus, 0x1f8010a8u, 0x01000401u));
+    assert(psx_gpu_vram_read(&machine.gpu, 30u, 0u, &half));
+    assert(half == 0x03e0u);
+    assert(psx_bus_read32(&machine.bus, 0x1f8010a0u, &word));
+    assert(word == 0x00ffffffu);
+    assert(psx_bus_read32(&machine.bus, 0x1f8010a8u, &word));
+    assert((word & (1u << 24u)) == 0u);
+    assert(psx_bus_read32(&machine.bus, 0x1f8010f4u, &word));
+    assert((word & (1u << 26u)) != 0u);
+
     /* BIOS is readable; unmapped hardware and misaligned words are rejected. */
     assert(psx_bus_read32(&machine.bus, PSX_BIOS_BASE, &word));
     assert(!psx_bus_read32(&machine.bus, 0x1f801078u, &word));
