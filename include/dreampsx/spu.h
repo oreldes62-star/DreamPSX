@@ -15,9 +15,24 @@
 #define PSX_SPU_KEY_OFF_LOW_OFFSET 0x18cu
 #define PSX_SPU_KEY_OFF_HIGH_OFFSET 0x18eu
 #define PSX_SPU_CONTROL_OFFSET 0x1aau
+#define PSX_SPU_VOICE_COUNT 24u
+#define PSX_SPU_VOICE_REGISTER_BYTES 0x10u
+#define PSX_SPU_VOICE_CURRENT_VOLUME_OFFSET 0x0cu
 #define PSX_SPU_STATUS_OFFSET 0x1aeu
 
 typedef struct {
+    uint16_t volume_left;
+    uint16_t volume_right;
+    uint16_t pitch;
+    uint16_t start_address;
+    uint16_t adsr1;
+    uint16_t adsr2;
+    uint16_t current_volume;
+    uint16_t repeat_address;
+} PsxSpuVoice;
+
+typedef struct {
+    PsxSpuVoice voices[PSX_SPU_VOICE_COUNT];
     uint8_t registers[PSX_SPU_REGISTER_BYTES];
     uint8_t ram[PSX_SPU_RAM_BYTES];
     uint32_t transfer_address;
