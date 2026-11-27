@@ -534,10 +534,18 @@ bool psx_gpu_gp0_write(PsxGpu *gpu, uint32_t value)
                 execute_textured_triangle(gpu, true, false, false);
             else if (opcode == 0x25u)
                 execute_textured_triangle(gpu, false, false, false);
+            else if (opcode == 0x26u)
+                execute_textured_triangle(gpu, true, true, false);
+            else if (opcode == 0x27u)
+                execute_textured_triangle(gpu, false, true, false);
             else if (opcode == 0x34u)
                 execute_textured_triangle(gpu, true, false, true);
+            else if (opcode == 0x35u)
+                execute_textured_triangle(gpu, false, false, true);
             else if (opcode == 0x36u)
                 execute_textured_triangle(gpu, true, true, true);
+            else if (opcode == 0x37u)
+                execute_textured_triangle(gpu, false, true, true);
             gpu->parameter_count = 0u;
             gpu->parameter_expected = 0u;
         }
@@ -577,11 +585,15 @@ bool psx_gpu_gp0_write(PsxGpu *gpu, uint32_t value)
         break;
     case 0x24u: /* Modulated textured triangle */
     case 0x25u: /* Raw textured triangle */
+    case 0x26u: /* Modulated semi-transparent textured triangle */
+    case 0x27u: /* Raw semi-transparent textured triangle */
         gpu->parameter_expected = 6u;
         gpu->parameter_count = 0u;
         break;
     case 0x34u: /* Gouraud-shaded modulated textured triangle */
+    case 0x35u: /* Gouraud-shaded raw textured triangle */
     case 0x36u: /* Gouraud-shaded modulated semi-transparent textured triangle */
+    case 0x37u: /* Gouraud-shaded raw semi-transparent textured triangle */
         gpu->parameter_expected = 8u;
         gpu->parameter_count = 0u;
         break;
