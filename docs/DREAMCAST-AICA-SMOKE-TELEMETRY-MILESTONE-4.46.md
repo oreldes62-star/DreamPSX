@@ -18,4 +18,4 @@ A successful stream start alone does not prove stable audio. These counters help
 
 ## Validation status
 
-The source change is committed. It still requires the Dreamcast KallistiOS CI build, followed by execution in Flycast and physical-hardware listening tests. The diagnostic 440 Hz tone is not yet evidence that PlayStation SPU audio is fully integrated or that games are playable.
+The source change is committed. The updated telemetry application has now compiled successfully with the KallistiOS SH-4 toolchain and passed ELF32/SuperH verification. The resulting build artifact is available here: https://github.com/oreldes62-star/DreamPSX/actions/runs/46069491488/artifacts/15232895515. Execution in Flycast and physical-hardware listening tests are still required. The diagnostic 440 Hz tone is not yet evidence that PlayStation SPU audio is fully integrated or that games are playable.
