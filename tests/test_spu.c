@@ -419,6 +419,26 @@ int main(void)
         assert(spu.main_volume_right_level == 0);
         assert(!spu.main_volume_right_sweep_active);
         reset_spu_for_audio_tests(&spu);
+
+        /* The master gain is applied independently after the voice bus. */
+        spu.active_voices = 1u;
+        spu.voices[0].volume_left = 0x3fffu;
+        spu.voices[0].volume_right = 0x3fffu;
+        spu.voices[0].volume_left_level = 32766;
+        spu.voices[0].volume_right_level = 32766;
+        spu.voices[0].envelope_level = PSX_SPU_ENVELOPE_MAX;
+        spu.voices[0].envelope_phase = PSX_SPU_ADSR_SUSTAIN;
+        spu.voices[0].block_valid = true;
+        spu.voices[0].decoded_samples[0] = 16000;
+        spu.voices[0].sample_index = 0u;
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                               PSX_SPU_MAIN_VOLUME_LEFT_OFFSET, 0x2000u));
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                               PSX_SPU_MAIN_VOLUME_RIGHT_OFFSET, 0x3fffu));
+        assert(psx_spu_mix_sample(&spu, &mixed_left, &mixed_right));
+        assert(mixed_left > 7900 && mixed_left < 8100);
+        assert(mixed_right > 15800 && mixed_right < 16200);
+        reset_spu_for_audio_tests(&spu);
     }
 
     /* Fixed-size interleaved stereo PCM blocks: active voice samples are
