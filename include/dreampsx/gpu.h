@@ -18,6 +18,8 @@ typedef struct {
     unsigned range_width;
     unsigned range_height;
     bool range_valid;
+    bool field_odd;
+    bool field_valid;
 } PsxGpuDisplayModeInfo;
 
 typedef struct {
@@ -29,6 +31,7 @@ typedef struct {
     unsigned vertical_end;
     unsigned mode;
     bool disabled;
+    bool field_odd;
 } PsxGpuDisplay;
 
 typedef enum {
@@ -79,6 +82,10 @@ bool psx_gpu_read_status(const PsxGpu *gpu, uint32_t *value);
 bool psx_gpu_get_display(const PsxGpu *gpu, PsxGpuDisplay *display);
 bool psx_gpu_get_display_mode_info(const PsxGpu *gpu,
                                   PsxGpuDisplayModeInfo *info);
+/* Set the externally clocked odd/even field for 480-line interlace.
+ * Returns false unless 480-line interlace is selected.
+ */
+bool psx_gpu_set_display_field(PsxGpu *gpu, bool odd_field);
 bool psx_gpu_vram_read(const PsxGpu *gpu, unsigned x, unsigned y,
                        uint16_t *value);
 /* Convert a rectangular RGB555 VRAM region to packed RGB565 output.
