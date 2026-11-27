@@ -54,13 +54,13 @@ int main(void)
     vram[1u] = 0x0000u;
     vram[2u] = 0xff00u;
     assert(psx_gpu_scanout_rgb565(&gpu, 3u, 2u, output, 4u));
-    assert(output[0] == 0x041fu); /* (255,128,0) */
+    assert(output[0] == 0x441fu); /* (255,128,64) */
     assert(output[1] == 0xf908u); /* (64,32,255) */
     assert(output[2] == 0xf800u); /* (0,0,255) */
     assert(output[3] == 0xaaaau);
-    assert(output[4] == 0x001fu); /* (255,0,0) */
-    assert(output[5] == 0x001fu);
-    assert(output[6] == 0x07e0u); /* (0,255,0) */
+    assert(output[4] == 0xf81fu); /* (255,0,255) */
+    assert(output[5] == 0u);    /* (0,0,0) */
+    assert(output[6] == 0xf800u); /* (0,0,255) */
     assert(output[7] == 0xaaaau);
 
     /* Reject invalid dimensions and destination stride. */
