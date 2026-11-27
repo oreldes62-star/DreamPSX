@@ -35,6 +35,7 @@ static void generate_tone(int16_t *samples, size_t frames, uint32_t *phase)
 int main(int argc, char **argv)
 {
     uint32_t phase = 0u;
+    uint32_t ticks_since_report = 0u;
     int16_t samples[TONE_FRAMES_PER_TICK * PSX_AUDIO_CHANNEL_COUNT];
     size_t prefill_remaining = PSX_AUDIO_BUFFER_CAPACITY_FRAMES;
 
@@ -93,5 +94,17 @@ int main(int argc, char **argv)
 
         /* 441 frames at 44.1 kHz correspond to a 10 ms production interval. */
         thd_sleep(10);
+
+        /* Keep diagnostics coarse: frequent framebuffer output can disturb pacing. */
+        if (++ticks_since_report >= 500u) {
+            printf("AUDIO: callbacks=%llu silence=%llu underrun=%llu "
+                   "dropped=%llu queued=%lu\n",
+                   (unsigned long long)audio_stream.callback_count,
+                   (unsigned long long)audio_stream.silence_frames,
+                   (unsigned long long)audio_queue.underrun_frames,
+                   (unsigned long long)audio_queue.dropped_frames,
+                   (unsigned long)audio_queue.frame_count);
+            ticks_since_report = 0u;
+        }
     }
 }
