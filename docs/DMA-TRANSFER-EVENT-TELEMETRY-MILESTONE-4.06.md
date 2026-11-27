@@ -15,4 +15,5 @@ Events describe completed work and dispatch outcomes. They do not assign cycles,
 
 ## Validation
 
-Pending GitHub Actions host build and CTest.
+- GitHub Actions run `46045743670`: host configure and build succeeded; CTest passed all 33/33 tests.
+- The failure-path fixture uses `0x00800000`, just beyond the PS1 RAM mirror window; the earlier `0x00200000` address was valid through RAM mirroring and therefore did not exercise an invalid read.
