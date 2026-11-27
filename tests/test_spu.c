@@ -408,12 +408,16 @@ int main(void)
     {
         psx_spu_reset(&spu);
         assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                               PSX_SPU_MAIN_VOLUME_LEFT_OFFSET, 0x2000u));
+        assert(spu.main_volume_left_level == 16384);
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
                                PSX_SPU_MAIN_VOLUME_LEFT_OFFSET,
                                0x8000u | (11u << 2u)));
-        assert(spu.main_volume_left_level == 88);
+        /* Entering sweep mode preserves the previously programmed level. */
+        assert(spu.main_volume_left_level == 16384);
         assert(spu.main_volume_left_sweep_active);
         assert(!psx_spu_mix_sample(&spu, &mixed_left, &mixed_right));
-        assert(spu.main_volume_left_level == 95);
+        assert(spu.main_volume_left_level == 16391);
         assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
                                PSX_SPU_MAIN_VOLUME_RIGHT_OFFSET, 0u));
         assert(spu.main_volume_right_level == 0);
