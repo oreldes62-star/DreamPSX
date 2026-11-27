@@ -79,6 +79,30 @@ int main(void)
     /* Start the synchronous-fault suite from a clean CPU/COP0/IRQ state. */
     psx_machine_reset(&machine);
 
+    /* XA PCM sample deadlines advance through the machine's shared clock. */
+    {
+        int16_t left[2] = {0, 0};
+        int16_t right[2] = {0, 0};
+        size_t frames = 0u;
+        uint16_t rate = 0u;
+        machine.cdrom.xa_audio_clock_rate_hz = 18900u;
+        machine.cdrom.xa_pcm_count = 2u;
+        machine.cdrom.xa_pcm_left[0] = 123;
+        machine.cdrom.xa_pcm_right[0] = -123;
+        machine.cdrom.xa_pcm_left[1] = 456;
+        machine.cdrom.xa_pcm_right[1] = -456;
+        assert(psx_machine_advance_system_cycles(&machine, 1791u));
+        assert(machine.cdrom.xa_audio_due_frames == 0u);
+        assert(psx_machine_advance_system_cycles(&machine, 1u));
+        assert(machine.cdrom.xa_audio_due_frames == 1u);
+        assert(psx_cdrom_read_xa_audio_timed(
+            &machine.cdrom, left, right, 2u, &frames, &rate));
+        assert(frames == 1u && rate == 18900u);
+        assert(left[0] == 123 && right[0] == -123);
+        assert(machine.cdrom.xa_pcm_count == 1u);
+    }
+    psx_machine_reset(&machine);
+
     /* Synchronous CPU faults are translated into architectural exceptions. */
     assert(psx_memory_write32(&machine.memory, 0x100u, 0x21280001u)); /* ADDI t0,t1,1 */
     machine.cpu.pc = 0x100u;
