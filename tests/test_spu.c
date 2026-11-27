@@ -476,6 +476,27 @@ int main(void)
         assert(!psx_spu_reverb_resolve_address(NULL, 0u));
     }
 
+
+    /* Reverb sample accesses are signed little-endian halfwords and remain
+     * inside the ESA..7FFFEh work area, including at the final RAM word. */
+    {
+        int16_t sample = 0;
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+                               PSX_SPU_REVERB_WORK_AREA_START_OFFSET,
+                               0xfffeu));
+        assert(psx_spu_reverb_write16(&spu, 0u, (int16_t)-12345));
+        assert(spu.ram[PSX_SPU_REVERB_BUFFER_END_ADDRESS - 1u] == 0xc7u);
+        assert(spu.ram[PSX_SPU_REVERB_BUFFER_END_ADDRESS] == 0xcfu);
+        assert(psx_spu_reverb_read16(&spu, 0u, &sample));
+        assert(sample == -12345);
+        assert(psx_spu_reverb_write16(&spu, 0xffffu, (int16_t)23456));
+        assert(psx_spu_reverb_read16(&spu, 0xffffu, &sample));
+        assert(sample == 23456);
+        assert(!psx_spu_reverb_read16(&spu, 0u, NULL));
+        assert(!psx_spu_reverb_write16(NULL, 0u, 1));
+        psx_spu_reset(&spu);
+    }
+
     /* Typed voice registers expose 24 independent parameter banks. */
     assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + 0x000u, 0x1111u));
     assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + 0x002u, 0x2222u));
