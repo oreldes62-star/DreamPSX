@@ -618,6 +618,14 @@ void psx_gpu_reset(PsxGpu *gpu)
     gpu->transfer_height = 0u;
     gpu->transfer_pixel_index = 0u;
     gpu->transfer_pixel_count = 0u;
+    gpu->display.start_x = 0u;
+    gpu->display.start_y = 0u;
+    gpu->display.horizontal_start = 0x200u;
+    gpu->display.horizontal_end = 0xc00u;
+    gpu->display.vertical_start = 0x10u;
+    gpu->display.vertical_end = 0x100u;
+    gpu->display.mode = 0u;
+    gpu->display.disabled = true;
 }
 
 bool psx_gpu_gp0_write(PsxGpu *gpu, uint32_t value)
@@ -781,6 +789,26 @@ bool psx_gpu_gp1_write(PsxGpu *gpu, uint32_t value)
     case 0x00u: /* GP1(00h): GPU reset. */
         psx_gpu_reset(gpu);
         break;
+    case 0x03u: /* GP1(03h): display enable / disable. */
+        gpu->display.disabled = (value & 1u) != 0u;
+        if (gpu->display.disabled) gpu->status |= 1u << 23u;
+        else gpu->status &= ~(1u << 23u);
+        break;
+    case 0x05u: /* GP1(05h): display VRAM start. */
+        gpu->display.start_x = value & 0x3feu;
+        gpu->display.start_y = (value >> 10u) & 0x1ffu;
+        break;
+    case 0x06u: /* GP1(06h): horizontal display range. */
+        gpu->display.horizontal_start = value & 0xfffu;
+        gpu->display.horizontal_end = (value >> 12u) & 0xfffu;
+        break;
+    case 0x07u: /* GP1(07h): vertical display range. */
+        gpu->display.vertical_start = value & 0x3ffu;
+        gpu->display.vertical_end = (value >> 10u) & 0x3ffu;
+        break;
+    case 0x08u: /* GP1(08h): display mode. */
+        gpu->display.mode = value & 0xffu;
+        break;
     case 0x01u: /* GP1(01h): reset command buffer and pending transfer. */
         gpu->command = 0u;
         gpu->parameter_count = 0u;
@@ -873,5 +901,13 @@ bool psx_gpu_copy_rgb565(const PsxGpu *gpu, unsigned x, unsigned y,
                                               (blue << 11u));
         }
     }
+    return true;
+}
+
+bool psx_gpu_get_display(const PsxGpu *gpu, PsxGpuDisplay *display)
+{
+    if (!gpu || !gpu->initialized || !display)
+        return false;
+    *display = gpu->display;
     return true;
 }
