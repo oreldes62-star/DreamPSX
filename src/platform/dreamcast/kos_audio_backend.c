@@ -3,13 +3,13 @@
 #include <dc/sound/stream.h>
 
 static void *dreampsx_stream_callback(snd_stream_hnd_t handle,
-                                      int samples_requested,
-                                      int *samples_received)
+                                      int bytes_requested,
+                                      int *bytes_received)
 {
     PsxDreamcastAudioStream *stream =
         (PsxDreamcastAudioStream *)snd_stream_get_userdata(handle);
-    return psx_dreamcast_audio_stream_callback(stream, samples_requested,
-                                                samples_received);
+    return psx_dreamcast_audio_stream_callback(stream, bytes_requested,
+                                                bytes_received);
 }
 
 bool psx_kos_audio_backend_start(PsxKosAudioBackend *backend,
@@ -29,7 +29,7 @@ bool psx_kos_audio_backend_start(PsxKosAudioBackend *backend,
     backend->stream_system_initialized = true;
 
     handle = snd_stream_alloc(dreampsx_stream_callback,
-        (int)(PSX_DREAMCAST_AUDIO_CALLBACK_MAX_FRAMES * sizeof(int16_t)));
+                              (int)PSX_KOS_AUDIO_STREAM_BUFFER_BYTES);
     if (handle == SND_STREAM_INVALID) {
         snd_stream_shutdown();
         backend->stream_system_initialized = false;
