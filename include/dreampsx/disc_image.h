@@ -29,8 +29,12 @@ typedef struct {
     uint8_t coding;
 } PsxDiscXaSubheader;
 
+typedef bool (*PsxDiscReadAt)(void *context, size_t offset, uint8_t *destination, size_t size);
+
 typedef struct {
     const uint8_t *source;
+    PsxDiscReadAt read_at;
+    void *read_context;
     size_t source_size;
     size_t first_sector;
     size_t sector_count;
@@ -46,6 +50,7 @@ typedef struct {
 bool psx_disc_mount_cue(PsxDiscImage *disc, const char *cue_text,
                         size_t cue_size, const uint8_t *bin_data,
                         size_t bin_size);
+bool psx_disc_mount_reader(PsxDiscImage *disc, size_t source_size, PsxDiscTrackMode mode, PsxDiscReadAt read_at, void *read_context);
 void psx_disc_unmount(PsxDiscImage *disc);
 /* Reads one 2048-byte user-data sector relative to INDEX 01. */
 bool psx_disc_read_sector(const PsxDiscImage *disc, size_t lba,
