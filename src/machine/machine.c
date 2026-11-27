@@ -74,6 +74,15 @@ bool psx_machine_video_advance_scanline(PsxMachine *machine,
         !psx_gpu_video_advance_scanline(&machine->gpu, state))
         return false;
 
+    /* The current raster API advances one complete scanline at a time.
+     * Emit one abstract HBlank clock tick for Timer1 on each line. Exact
+     * horizontal phase/dot timing will be supplied by a finer scheduler.
+     */
+    if (state->hblank_pulse &&
+        !psx_machine_timer_advance_clock(machine, 1u,
+                                         PSX_TIMER_CLOCK_HBLANK, 1u))
+        return false;
+
     psx_irq_set_line(&machine->irq, 0u, state->vblank);
     psx_machine_refresh_interrupts(machine);
     return true;
