@@ -275,7 +275,7 @@ int main(void)
     assert(psx_gpu_gp0_write(&gpu, 840u | (100u << 16u)));
     assert(psx_gpu_gp0_write(&gpu, (50u << 22u) | 1u | (1u << 8u)));
     assert(psx_gpu_gp0_write(&gpu, 844u | (100u << 16u)));
-    assert(psx_gpu_gp0_write(&gpu, 0x00800000u | 1u | (1u << 8u)));
+    assert(psx_gpu_gp0_write(&gpu, 0x00900000u | 1u | (1u << 8u)));
     assert(psx_gpu_gp0_write(&gpu, 840u | (104u << 16u)));
     assert(psx_gpu_gp0_write(&gpu, 1u | (1u << 8u)));
     assert(psx_gpu_vram_read(&gpu, 841u, 101u, &pixel));
