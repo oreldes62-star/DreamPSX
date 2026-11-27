@@ -38,7 +38,7 @@ int main(void)
     assert(value == 0x00ff0000u);
     assert(psx_dma_write32(&dma, PSX_DMA_DICR_ADDR, 0x81000000u));
     assert(psx_dma_read32(&dma, PSX_DMA_DICR_ADDR, &value));
-    assert(value == 0x00ff0000u); /* bit 31 is derived, not writable */
+    assert(value == 0u); /* DICR control bits are replaced by the write. */
 
     /* Master IRQ is derived from force-IRQ or enabled channel flags. */
     assert(psx_dma_write32(&dma, PSX_DMA_DICR_ADDR, 1u << 15u));
