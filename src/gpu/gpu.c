@@ -812,6 +812,11 @@ bool psx_gpu_gp1_write(PsxGpu *gpu, uint32_t value)
         gpu->status |= ((gpu->display.mode & 0x40u) << 10u) |
                        ((gpu->display.mode & 0x3fu) << 17u) |
                        ((gpu->display.mode & 0x80u) >> 1u);
+        /* A mode change starts a deterministic even field. The frontend
+         * advances it when its video timing reaches the next field.
+         */
+        gpu->display.field_odd = false;
+        gpu->status &= ~(1u << 31u);
         break;
     case 0x01u: /* GP1(01h): reset command buffer and pending transfer. */
         gpu->command = 0u;
@@ -971,6 +976,23 @@ bool psx_gpu_scanout_rgb565(const PsxGpu *gpu, unsigned width,
             }
         }
     }
+    info->field_valid = info->interlaced && info->height == 480u;
+    info->field_odd = info->field_valid && gpu->display.field_odd;
+    return true;
+}
+
+bool psx_gpu_set_display_field(PsxGpu *gpu, bool odd_field)
+{
+    if (!gpu || !gpu->initialized ||
+        (gpu->display.mode & (1u << 5u)) == 0u ||
+        (gpu->display.mode & (1u << 2u)) == 0u)
+        return false;
+
+    gpu->display.field_odd = odd_field;
+    if (odd_field)
+        gpu->status |= 1u << 31u;
+    else
+        gpu->status &= ~(1u << 31u);
     return true;
 }
 
