@@ -186,6 +186,16 @@ static void execute_command(PsxCdrom *cdrom, uint8_t command)
         (void)push_response(cdrom, cdrom->drive_status);
         command_complete(cdrom, 3u);
         break;
+    case 0x0du: /* Setfilter: XA file and channel selection. */
+        if (cdrom->parameter_count < 2u ||
+            !pop_parameter(cdrom, &cdrom->xa_filter_file) ||
+            !pop_parameter(cdrom, &cdrom->xa_filter_channel)) {
+            command_error(cdrom);
+            break;
+        }
+        (void)push_response(cdrom, cdrom->drive_status);
+        command_complete(cdrom, 3u);
+        break;
     case 0x0eu: /* Setmode */
         if (cdrom->parameter_count < 1u ||
             !pop_parameter(cdrom, &cdrom->mode)) {
@@ -227,6 +237,8 @@ void psx_cdrom_reset(PsxCdrom *cdrom)
     cdrom->data_count = 0u;
     cdrom->read_active = false;
     cdrom->mode = 0u;
+    cdrom->xa_filter_file = 0u;
+    cdrom->xa_filter_channel = 0u;
     cdrom->pending_command = 0u;
     cdrom->command_cycles_remaining = 0u;
     cdrom->location[0] = 0u;
@@ -459,4 +471,14 @@ bool psx_cdrom_get_xa_audio_format(const PsxCdrom *cdrom,
     if (!cdrom || !cdrom->initialized || !cdrom->xa_subheader_valid)
         return false;
     return psx_disc_xa_audio_format(&cdrom->xa_subheader, format);
+}
+
+
+bool psx_cdrom_xa_sector_matches_filter(const PsxCdrom *cdrom)
+{
+    PsxDiscXaAudioFormat format;
+    return cdrom && cdrom->initialized && cdrom->xa_subheader_valid &&
+           psx_disc_xa_audio_format(&cdrom->xa_subheader, &format) &&
+           cdrom->xa_subheader.file == cdrom->xa_filter_file &&
+           cdrom->xa_subheader.channel == cdrom->xa_filter_channel;
 }
