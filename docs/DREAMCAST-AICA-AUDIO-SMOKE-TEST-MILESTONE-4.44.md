@@ -38,7 +38,7 @@ The resulting executable was inspected by the SH-ELF readelf tool and reported:
 - Renesas / SuperH SH machine
 
 The ELF was uploaded with the core archive as the `dreampsx-dreamcast-build` workflow artifact:
-https://github.com/oreldes62-star/DreamPSX/actions/runs/46069249655/artifacts/15232755420
+https://github.com/oreldes62-star/DreamPSX/actions/runs/46069353152/artifacts/15232755420
 
 The host test suite also remains green at 44/44 tests:
 https://github.com/oreldes62-star/DreamPSX/actions/runs/46069001718
