@@ -85,6 +85,7 @@ Experimental project. The latest GPU work adds regression coverage for textured-
 - [GPU textured triangle opcode matrix milestone 3.60](docs/GPU-TEXTURED-OPCODE-MATRIX-MILESTONE-3.60.md)
 - [GPU texture rasterization validation milestone 3.61](docs/GPU-TEXTURE-RASTERIZATION-MILESTONE-3.61.md)
 - [GPU textured shared-edge validation milestone 3.62](docs/GPU-TEXTURE-SHARED-EDGES-MILESTONE-3.62.md)
+- [GPU indexed texture boundary milestone 3.63](docs/GPU-INDEXED-TEXTURE-BOUNDARIES-MILESTONE-3.63.md)
 
 ## Target
 Sega Dreamcast with 16 MiB RAM. Long-term target: CDI test build for Flycast, then GDEMU.
