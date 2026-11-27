@@ -117,15 +117,19 @@ bool psx_spu_write16(PsxSpu *spu, uint32_t address, uint16_t value)
         offset == PSX_SPU_KEY_OFF_HIGH_OFFSET) {
         const uint32_t mask = offset == PSX_SPU_KEY_OFF_LOW_OFFSET ?
             (uint32_t)value : ((uint32_t)(value & 0x00ffu) << 16u);
-        spu->active_voices &= ~mask;
-        for (unsigned i = 0u; i < PSX_SPU_VOICE_COUNT; ++i)
-            if ((mask & (1u << i)) != 0u)
-            {
-                spu->voices[i].block_valid = false;
-                spu->voices[i].current_sample_valid = false;
-                spu->voices[i].envelope_counter = 0u;
-                spu->voices[i].envelope_phase = PSX_SPU_ADSR_RELEASE;
+        for (unsigned i = 0u; i < PSX_SPU_VOICE_COUNT; ++i) {
+            if ((mask & (1u << i)) == 0u) continue;
+            PsxSpuVoice *voice = &spu->voices[i];
+            voice->block_valid = false;
+            voice->current_sample_valid = false;
+            voice->envelope_counter = 0u;
+            if (voice->envelope_level == 0u) {
+                voice->envelope_phase = PSX_SPU_ADSR_OFF;
+                spu->active_voices &= ~(1u << i);
+            } else {
+                voice->envelope_phase = PSX_SPU_ADSR_RELEASE;
             }
+        }
         return true;
     }
     if (offset == PSX_SPU_CONTROL_OFFSET) {
