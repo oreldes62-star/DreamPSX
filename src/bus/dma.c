@@ -13,6 +13,9 @@ void psx_dma_reset(PsxDmaController *dma)
     dma->queued_mask = 0u;
     dma->active_mask = 0u;
     dma->data_words_transferred = 0u;
+    dma->manual_words_transferred = 0u;
+    dma->request_words_transferred = 0u;
+    dma->linked_list_words_transferred = 0u;
     dma->linked_list_headers_read = 0u;
 }
 
@@ -147,6 +150,24 @@ uint64_t psx_dma_data_words_transferred(const PsxDmaController *dma)
 {
     if (!dma || !dma->initialized) return 0u;
     return dma->data_words_transferred;
+}
+
+uint64_t psx_dma_manual_words_transferred(const PsxDmaController *dma)
+{
+    if (!dma || !dma->initialized) return 0u;
+    return dma->manual_words_transferred;
+}
+
+uint64_t psx_dma_request_words_transferred(const PsxDmaController *dma)
+{
+    if (!dma || !dma->initialized) return 0u;
+    return dma->request_words_transferred;
+}
+
+uint64_t psx_dma_linked_list_words_transferred(const PsxDmaController *dma)
+{
+    if (!dma || !dma->initialized) return 0u;
+    return dma->linked_list_words_transferred;
 }
 
 uint64_t psx_dma_linked_list_headers_read(const PsxDmaController *dma)
@@ -305,6 +326,7 @@ bool psx_dma_execute_gpu_manual(PsxDmaController *dma,
                 return false;
         }
         ++dma->data_words_transferred;
+        ++dma->manual_words_transferred;
         address = (uint32_t)(address + step) & 0x00fffffcu;
     }
 
@@ -367,6 +389,7 @@ bool psx_dma_execute_gpu_linked_list(PsxDmaController *dma,
             payload_address = (payload_address + 4u) & 0x00fffffcu;
             ++total_words;
             ++dma->data_words_transferred;
+            ++dma->linked_list_words_transferred;
         }
 
         if (next == 0x00ffffffu) {
@@ -437,6 +460,7 @@ bool psx_dma_execute_gpu_request(PsxDmaController *dma,
                 return false;
         }
         ++dma->data_words_transferred;
+        ++dma->request_words_transferred;
         address = (uint32_t)(address + step) & 0x00fffffcu;
     }
 
