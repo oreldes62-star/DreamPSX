@@ -142,10 +142,18 @@ bool psx_bus_write32(PsxBus *bus, uint32_t address, uint32_t value)
         psx_irq_set_line(bus->irq, 3u, psx_dma_irq_output(bus->dma));
         return transfer_ok;
     }
-    if (address == PSX_GPU_GP0_ADDR)
-        return psx_gpu_gp0_write(bus->gpu, value);
-    if (address == PSX_GPU_GP1_ADDR)
-        return psx_gpu_gp1_write(bus->gpu, value);
+    if (address == PSX_GPU_GP0_ADDR) {
+        const bool ok = psx_gpu_gp0_write(bus->gpu, value);
+        if (ok) psx_irq_set_line(bus->irq, 1u,
+                                 psx_gpu_irq_output(bus->gpu));
+        return ok;
+    }
+    if (address == PSX_GPU_GP1_ADDR) {
+        const bool ok = psx_gpu_gp1_write(bus->gpu, value);
+        if (ok) psx_irq_set_line(bus->irq, 1u,
+                                 psx_gpu_irq_output(bus->gpu));
+        return ok;
+    }
     if (psx_irq_mmio_write32(bus->irq, address, value)) return true;
     if (psx_timers_write32(bus->timers, address, value)) return true;
     return psx_memory_write32(bus->memory, address, value);
