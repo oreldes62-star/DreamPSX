@@ -613,6 +613,10 @@ bool psx_cdrom_read_xa_audio(PsxCdrom *cdrom, int16_t *left, int16_t *right,
         ((size_t)cdrom->xa_pcm_head + count) %
         PSX_CDROM_XA_PCM_QUEUE_FRAMES);
     cdrom->xa_pcm_count = (uint16_t)(cdrom->xa_pcm_count - count);
+    if (cdrom->xa_audio_due_frames > count)
+        cdrom->xa_audio_due_frames -= (uint32_t)count;
+    else
+        cdrom->xa_audio_due_frames = 0u;
     *frames_read = count;
     *sample_rate_hz = cdrom->xa_pcm_count == 0u
         ? 0u : cdrom->xa_pcm_sample_rate;
@@ -668,6 +672,5 @@ bool psx_cdrom_read_xa_audio_timed(PsxCdrom *cdrom, int16_t *left,
     if (!psx_cdrom_read_xa_audio(cdrom, left, right, allowed,
                                  frames_read, sample_rate_hz))
         return false;
-    cdrom->xa_audio_due_frames -= (uint32_t)*frames_read;
     return true;
 }
