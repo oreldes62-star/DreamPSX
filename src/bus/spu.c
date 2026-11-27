@@ -248,15 +248,17 @@ bool psx_spu_write16(PsxSpu *spu, uint32_t address, uint16_t value)
         const bool is_left = offset == PSX_SPU_MAIN_VOLUME_LEFT_OFFSET;
         store_le16(&spu->registers[offset], value);
         if (is_left) {
-            spu->main_volume_left_level = psx_spu_decode_direct_volume(value);
             spu->main_volume_left_counter = 0u;
             spu->main_volume_left_sweep_active =
                 (value & 0x8000u) != 0u && (value & 0x007fu) != 0x007fu;
+            if ((value & 0x8000u) == 0u)
+                spu->main_volume_left_level = psx_spu_decode_direct_volume(value);
         } else {
-            spu->main_volume_right_level = psx_spu_decode_direct_volume(value);
             spu->main_volume_right_counter = 0u;
             spu->main_volume_right_sweep_active =
                 (value & 0x8000u) != 0u && (value & 0x007fu) != 0x007fu;
+            if ((value & 0x8000u) == 0u)
+                spu->main_volume_right_level = psx_spu_decode_direct_volume(value);
         }
         return true;
     }
