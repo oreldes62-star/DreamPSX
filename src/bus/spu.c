@@ -63,7 +63,7 @@ bool psx_spu_read16(PsxSpu *spu, uint32_t address, uint16_t *value)
     if (offset < PSX_SPU_VOICE_COUNT * PSX_SPU_VOICE_REGISTER_BYTES &&
         (offset % PSX_SPU_VOICE_REGISTER_BYTES) ==
             PSX_SPU_VOICE_CURRENT_VOLUME_OFFSET) {
-        *value = spu->voices[offset / PSX_SPU_VOICE_REGISTER_BYTES].current_volume;
+        *value = spu->voices[offset / PSX_SPU_VOICE_REGISTER_BYTES].envelope_level;
         return true;
     }
     if (offset == PSX_SPU_TRANSFER_DATA_OFFSET) {
@@ -104,6 +104,10 @@ bool psx_spu_write16(PsxSpu *spu, uint32_t address, uint16_t value)
             voice->pitch_phase = 0u;
             voice->current_sample = 0;
             voice->current_sample_valid = false;
+            voice->envelope_level = 0u;
+            voice->envelope_counter = 0u;
+            voice->envelope_phase = PSX_SPU_ADSR_ATTACK;
+            voice->current_volume = 0u;
             voice->block_valid = false;
         }
         spu->active_voices |= mask;
@@ -119,6 +123,8 @@ bool psx_spu_write16(PsxSpu *spu, uint32_t address, uint16_t value)
             {
                 spu->voices[i].block_valid = false;
                 spu->voices[i].current_sample_valid = false;
+                spu->voices[i].envelope_counter = 0u;
+                spu->voices[i].envelope_phase = PSX_SPU_ADSR_RELEASE;
             }
         return true;
     }
@@ -201,6 +207,135 @@ bool psx_spu_voice_next_sample(PsxSpu *spu, unsigned voice_index,
         voice->block_valid = false;
     }
     return true;
+}
+
+static void adsr_rate_parameters(const PsxSpuVoice *voice,
+                                  PsxSpuAdsrPhase phase,
+                                  unsigned *shift, unsigned *step,
+                                  bool *exponential, bool *decreasing)
+{
+    switch (phase) {
+    case PSX_SPU_ADSR_ATTACK: {
+        const unsigned rate = (voice->adsr1 >> 8u) & 0x7fu;
+        *shift = rate >> 2u;
+        *step = rate & 3u;
+        *exponential = (voice->adsr1 & 0x8000u) != 0u;
+        *decreasing = false;
+        break;
+    }
+    case PSX_SPU_ADSR_DECAY:
+        *shift = (voice->adsr1 >> 4u) & 0x0fu;
+        *step = 0u; /* Fixed -8 decrement. */
+        *exponential = true;
+        *decreasing = true;
+        break;
+    case PSX_SPU_ADSR_SUSTAIN: {
+        const unsigned rate = (voice->adsr2 >> 6u) & 0x7fu;
+        *shift = rate >> 2u;
+        *step = rate & 3u;
+        *exponential = (voice->adsr2 & 0x8000u) != 0u;
+        *decreasing = (voice->adsr2 & 0x4000u) != 0u;
+        break;
+    }
+    case PSX_SPU_ADSR_RELEASE:
+        *shift = voice->adsr2 & 0x1fu;
+        *step = 0u; /* Fixed -8 decrement. */
+        *exponential = (voice->adsr2 & 0x0020u) != 0u;
+        *decreasing = true;
+        break;
+    default:
+        *shift = 31u;
+        *step = 3u;
+        *exponential = false;
+        *decreasing = true;
+        break;
+    }
+}
+
+bool psx_spu_voice_envelope_tick(PsxSpu *spu, unsigned voice_index,
+                                 uint16_t *level)
+{
+    PsxSpuVoice *voice;
+    unsigned shift, step_value;
+    bool exponential, decreasing;
+    int32_t step;
+    uint32_t counter_increment;
+    uint32_t counter;
+
+    if (!spu || !spu->initialized || voice_index >= PSX_SPU_VOICE_COUNT)
+        return false;
+    voice = &spu->voices[voice_index];
+    if ((spu->active_voices & (1u << voice_index)) == 0u ||
+        voice->envelope_phase == PSX_SPU_ADSR_OFF) {
+        if (level) *level = voice->envelope_level;
+        return false;
+    }
+
+    if (voice->envelope_phase == PSX_SPU_ADSR_ATTACK &&
+        voice->envelope_level >= PSX_SPU_ENVELOPE_MAX)
+        voice->envelope_phase = PSX_SPU_ADSR_DECAY;
+    if (voice->envelope_phase == PSX_SPU_ADSR_DECAY &&
+        voice->envelope_level <=
+            (uint16_t)(((voice->adsr1 & 0x0fu) + 1u) << 11u))
+        voice->envelope_phase = PSX_SPU_ADSR_SUSTAIN;
+    if (voice->envelope_phase == PSX_SPU_ADSR_RELEASE &&
+        voice->envelope_level == 0u) {
+        voice->envelope_phase = PSX_SPU_ADSR_OFF;
+        spu->active_voices &= ~(1u << voice_index);
+        if (level) *level = 0u;
+        return false;
+    }
+
+    adsr_rate_parameters(voice, voice->envelope_phase, &shift,
+                         &step_value, &exponential, &decreasing);
+    step = (int32_t)(7u - step_value);
+    if (decreasing) step = ~step;
+    step <<= (shift < 11u) ? (11u - shift) : 0u;
+    counter_increment = 0x8000u >> ((shift > 11u) ? (shift - 11u) : 0u);
+
+    if (exponential && !decreasing &&
+        voice->envelope_level > 0x6000u) {
+        if (shift < 10u) step >>= 2;
+        else if (shift >= 11u) counter_increment >>= 2u;
+        else {
+            step >>= 1;
+            counter_increment >>= 1u;
+        }
+    } else if (exponential && decreasing) {
+        step = (step * (int32_t)voice->envelope_level) / 0x8000;
+    }
+
+    if ((step_value | (shift << 2u)) != 0x7fu &&
+        counter_increment == 0u)
+        counter_increment = 1u;
+    counter = ((uint32_t)voice->envelope_counter +
+               counter_increment) & 0xffffu;
+    voice->envelope_counter = (uint16_t)counter;
+
+    if ((counter & 0x8000u) != 0u) {
+        int32_t next = (int32_t)voice->envelope_level + step;
+        if (!decreasing && next > (int32_t)PSX_SPU_ENVELOPE_MAX)
+            next = (int32_t)PSX_SPU_ENVELOPE_MAX;
+        if (decreasing && next < 0) next = 0;
+        voice->envelope_level = (uint16_t)next;
+    }
+
+    if (voice->envelope_phase == PSX_SPU_ADSR_ATTACK &&
+        voice->envelope_level == PSX_SPU_ENVELOPE_MAX)
+        voice->envelope_phase = PSX_SPU_ADSR_DECAY;
+    if (voice->envelope_phase == PSX_SPU_ADSR_DECAY &&
+        voice->envelope_level <=
+            (uint16_t)(((voice->adsr1 & 0x0fu) + 1u) << 11u))
+        voice->envelope_phase = PSX_SPU_ADSR_SUSTAIN;
+    if (voice->envelope_phase == PSX_SPU_ADSR_RELEASE &&
+        voice->envelope_level == 0u) {
+        voice->envelope_phase = PSX_SPU_ADSR_OFF;
+        spu->active_voices &= ~(1u << voice_index);
+    }
+
+    voice->current_volume = voice->envelope_level;
+    if (level) *level = voice->envelope_level;
+    return voice->envelope_phase != PSX_SPU_ADSR_OFF;
 }
 
 bool psx_spu_voice_render_sample(PsxSpu *spu, unsigned voice_index,
