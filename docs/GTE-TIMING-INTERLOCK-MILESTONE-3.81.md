@@ -51,6 +51,6 @@ References:
 
 These tests have been added to the repository but have not been compiled or run in this environment. No claim of passing CI or Dreamcast runtime compatibility is made.
 
-## Follow-up correction\n\nThe initial CPU interlock covered COP2 opcodes but not the dedicated LWC2/SWC2 opcodes. Milestone follow-up commit now includes both memory-transfer forms and adds CPU/machine regression tests for them.\n\n## Remaining timing work
+## Follow-up correction\n\nThe initial CPU interlock covered COP2 opcodes but not the dedicated LWC2/SWC2 opcodes. Milestone follow-up commit now includes both memory-transfer forms and adds CPU/machine regression tests for them.\n\n## Shared CPU clock correction (milestone 3.82)\n\nGTE and HI/LO waits now advance against the same CPU elapsed-cycle count. If both units are busy, their waits overlap and the instruction waits for the longer remaining latency instead of adding both waits. The CPU/machine regression test creates a seven-cycle GTE wait alongside a four-cycle HI/LO wait and checks that both complete during the same eight-cycle instruction window.\n\n## Remaining timing work
 
 This is a first occupancy/interlock model, not a cycle-accurate GTE pipeline. Per-register read/write hazards, internal pipeline overlap, the exact RTPS/RTPT Sony-versus-PSX-SPX cycle convention, and interactions with interrupts/DMA still need dedicated validation. The CPU's general instruction cost remains a one-cycle baseline except for modeled HI/LO and GTE waits.
