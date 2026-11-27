@@ -16,6 +16,7 @@ static void put_word(uint8_t *ram, unsigned address, uint32_t value)
 int main(void)
 {
     PsxMachine machine;
+    uint32_t mac0 = 0u;
     static uint16_t gpu_vram[PSX_GPU_VRAM_WIDTH * PSX_GPU_VRAM_HEIGHT];
     uint8_t *ram = (uint8_t *)calloc(1u, PSX_RAM_SIZE);
     uint8_t *bios = (uint8_t *)calloc(1u, PSX_BIOS_SIZE);
