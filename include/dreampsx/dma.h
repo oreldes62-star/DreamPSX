@@ -24,6 +24,9 @@ typedef struct {
     uint32_t queued_mask;
     uint32_t active_mask;
     uint64_t data_words_transferred;
+    uint64_t manual_words_transferred;
+    uint64_t request_words_transferred;
+    uint64_t linked_list_words_transferred;
     uint64_t linked_list_headers_read;
     bool initialized;
 } PsxDmaController;
@@ -54,6 +57,9 @@ void psx_dma_abort_channel(PsxDmaController *dma, unsigned channel);
 uint32_t psx_dma_active_mask(const PsxDmaController *dma);
 /* Successful DMA payload words and linked-list packet headers observed. */
 uint64_t psx_dma_data_words_transferred(const PsxDmaController *dma);
+uint64_t psx_dma_manual_words_transferred(const PsxDmaController *dma);
+uint64_t psx_dma_request_words_transferred(const PsxDmaController *dma);
+uint64_t psx_dma_linked_list_words_transferred(const PsxDmaController *dma);
 uint64_t psx_dma_linked_list_headers_read(const PsxDmaController *dma);
 /* Retire a successfully completed channel and latch its DICR completion flag. */
 bool psx_dma_complete_channel(PsxDmaController *dma, unsigned channel);
