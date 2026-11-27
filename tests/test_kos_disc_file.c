@@ -9,6 +9,7 @@
 static uint8_t backing[4096];
 static size_t cursor;
 static int opened, closed, fail_seek, fail_open;
+static ssize_t reported_size = (ssize_t)sizeof(backing);
 file_t fs_open(const char *path, int mode)
 {
     assert(path != NULL);
@@ -27,7 +28,7 @@ int fs_close(file_t handle)
 ssize_t fs_total(file_t handle)
 {
     assert(handle == 3);
-    return (ssize_t)sizeof(backing);
+    return reported_size;
 }
 off_t fs_seek(file_t handle, off_t offset, int whence)
 {
@@ -93,8 +94,11 @@ int main(void)
     fail_open = 0;
 
     /* A non-sector-aligned file is closed and rejected during mount. */
-    /* The test VFS reports the fixed 4096-byte aligned file above. */
-    assert(opened == 1);
+    reported_size = (ssize_t)sizeof(backing) - 1;
+    assert(!psx_kos_disc_file_open(&file, &disc, "/cd/bad.bin",
+                                   PSX_DISC_MODE1_2048));
+    assert(!file.opened && !disc.mounted && closed == 2);
+    assert(opened == 2);
     puts("KOS disc file tests passed");
     return 0;
 }
