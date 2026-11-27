@@ -626,6 +626,9 @@ void psx_gpu_reset(PsxGpu *gpu)
     gpu->display.vertical_end = 0x100u;
     gpu->display.mode = 0u;
     gpu->display.disabled = true;
+    gpu->display.video_scanline = 0u;
+    gpu->display.video_frame_counter = 0u;
+    gpu->display.video_vblank = false;
 }
 
 bool psx_gpu_gp0_write(PsxGpu *gpu, uint32_t value)
@@ -817,6 +820,10 @@ bool psx_gpu_gp1_write(PsxGpu *gpu, uint32_t value)
          */
         gpu->display.field_odd = false;
         gpu->status &= ~(1u << 31u);
+        gpu->display.video_scanline = 0u;
+        gpu->display.video_frame_counter = 0u;
+        gpu->display.video_vblank = false;
+        gpu->status &= ~(1u << 10u);
         break;
     case 0x01u: /* GP1(01h): reset command buffer and pending transfer. */
         gpu->command = 0u;
@@ -991,6 +998,75 @@ bool psx_gpu_set_display_field(PsxGpu *gpu, bool odd_field)
         gpu->status |= 1u << 31u;
     else
         gpu->status &= ~(1u << 31u);
+    return true;
+}
+
+bool psx_gpu_video_advance_scanline(PsxGpu *gpu,
+                                    PsxGpuVideoState *state)
+{
+    if (!gpu || !gpu->initialized || !state)
+        return false;
+
+    const unsigned mode = gpu->display.mode;
+    const bool pal = (mode & (1u << 3u)) != 0u;
+    const bool interlaced = (mode & (1u << 5u)) != 0u &&
+                            (mode & (1u << 2u)) != 0u;
+    const unsigned base_lines = pal ? 312u : 262u;
+    const unsigned lines_per_field = interlaced ?
+        base_lines + (gpu->display.field_odd ? 1u : 0u) :
+        (pal ? 314u : 263u);
+    bool field_started = false;
+    bool frame_started = false;
+
+    ++gpu->display.video_scanline;
+    if (gpu->display.video_scanline >= lines_per_field) {
+        gpu->display.video_scanline = 0u;
+        field_started = true;
+        if (interlaced) {
+            const bool was_odd = gpu->display.field_odd;
+            gpu->display.field_odd = !gpu->display.field_odd;
+            if (was_odd) {
+                ++gpu->display.video_frame_counter;
+                frame_started = true;
+            }
+            if (gpu->display.field_odd)
+                gpu->status |= 1u << 31u;
+            else
+                gpu->status &= ~(1u << 31u);
+        } else {
+            gpu->display.field_odd = false;
+            ++gpu->display.video_frame_counter;
+            frame_started = true;
+            gpu->status &= ~(1u << 31u);
+        }
+    }
+
+    const unsigned y1 = gpu->display.vertical_start;
+    const unsigned y2 = gpu->display.vertical_end;
+    const unsigned line = gpu->display.video_scanline;
+    const bool visible = y2 > y1 && line >= y1 && line < y2;
+    const bool vblank = !visible;
+    const bool vblank_started = !gpu->display.video_vblank && vblank;
+    const bool vblank_ended = gpu->display.video_vblank && !vblank;
+    gpu->display.video_vblank = vblank;
+    if (vblank)
+        gpu->status |= 1u << 10u;
+    else
+        gpu->status &= ~(1u << 10u);
+
+    state->scanline = line;
+    state->lines_per_field = interlaced ?
+        base_lines + (gpu->display.field_odd ? 1u : 0u) :
+        (pal ? 314u : 263u);
+    state->frame_counter = gpu->display.video_frame_counter;
+    state->pal = pal;
+    state->interlaced = interlaced;
+    state->field_odd = interlaced && gpu->display.field_odd;
+    state->vblank = vblank;
+    state->field_started = field_started;
+    state->frame_started = frame_started;
+    state->vblank_started = vblank_started;
+    state->vblank_ended = vblank_ended;
     return true;
 }
 
