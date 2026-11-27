@@ -209,7 +209,7 @@ static uint16_t sample_texture(PsxGpu *gpu, unsigned page_x,
                       ((clut_x + index) % PSX_GPU_VRAM_WIDTH))];
 }
 
-static void execute_raw_textured_triangle(PsxGpu *gpu)
+static void execute_textured_triangle(PsxGpu *gpu, bool modulate)
 {
     const uint32_t xy0 = gpu->parameters[0];
     const uint32_t uv0 = gpu->parameters[1];
@@ -279,9 +279,24 @@ static void execute_raw_textured_triangle(PsxGpu *gpu)
                                                    e0, e1, e2, area, 8u);
                 const uint16_t texel = sample_texture(
                     gpu, page_x, page_y, depth, u, v, clut);
-                if (texel != 0u)
+                if (texel != 0u) {
+                    uint16_t output = texel;
+                    if (modulate) {
+                        const unsigned red = ((texel & 0x1fu) *
+                                              (gpu->command & 0xffu)) >> 7u;
+                        const unsigned green = (((texel >> 5u) & 0x1fu) *
+                                                ((gpu->command >> 8u) & 0xffu)) >> 7u;
+                        const unsigned blue = (((texel >> 10u) & 0x1fu) *
+                                               ((gpu->command >> 16u) & 0xffu)) >> 7u;
+                        const unsigned r = red > 31u ? 31u : red;
+                        const unsigned g = green > 31u ? 31u : green;
+                        const unsigned b = blue > 31u ? 31u : blue;
+                        output = (uint16_t)(r | (g << 5u) | (b << 10u) |
+                                            (texel & 0x8000u));
+                    }
                     gpu->vram[(unsigned)y * PSX_GPU_VRAM_WIDTH +
-                              (unsigned)x] = texel;
+                              (unsigned)x] = output;
+                }
             }
         }
     }
@@ -444,8 +459,10 @@ bool psx_gpu_gp0_write(PsxGpu *gpu, uint32_t value)
                 execute_flat_triangle(gpu);
             else if (opcode == 0x30u)
                 execute_gouraud_triangle(gpu);
+            else if (opcode == 0x24u)
+                execute_textured_triangle(gpu, true);
             else if (opcode == 0x25u)
-                execute_raw_textured_triangle(gpu);
+                execute_textured_triangle(gpu, false);
             gpu->parameter_count = 0u;
             gpu->parameter_expected = 0u;
         }
@@ -474,6 +491,7 @@ bool psx_gpu_gp0_write(PsxGpu *gpu, uint32_t value)
         gpu->parameter_expected = 5u;
         gpu->parameter_count = 0u;
         break;
+    case 0x24u: /* Modulated textured triangle */
     case 0x25u: /* Raw textured triangle */
         gpu->parameter_expected = 6u;
         gpu->parameter_count = 0u;
