@@ -30,6 +30,7 @@ typedef struct {
     bool interlaced;
     bool field_odd;
     bool vblank;
+    bool hblank_pulse;
     bool field_started;
     bool frame_started;
     bool vblank_started;
@@ -103,7 +104,9 @@ bool psx_gpu_get_display_mode_info(const PsxGpu *gpu,
  * Returns false unless 480-line interlace is selected.
  */
 bool psx_gpu_set_display_field(PsxGpu *gpu, bool odd_field);
-/* Advance the raster by one scanline. Interlaced 480-line output alternates
+/* Advance the raster by one scanline and report one abstract HBlank pulse.
+ * This pulse is line-based; horizontal phase and exact dot timing are not
+ * modeled yet. Interlaced 480-line output alternates
  * integer field lengths (262/263 NTSC, 312/313 PAL); half-line phase is
  * intentionally outside this first scheduler API.
  */
