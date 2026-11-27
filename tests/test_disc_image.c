@@ -89,6 +89,9 @@ int main(void)
     assert(psx_disc_xa_audio_format(&xa_info, &xa_format));
     assert(xa_format.sample_rate_hz == 37800u);
     assert(xa_format.channels == 2u && xa_format.bits_per_sample == 8u);
+    xa_info.coding = 0x51u; /* Emphasis is defined, not a reserved bit. */
+    assert(psx_disc_xa_audio_format(&xa_info, &xa_format));
+    assert(xa_format.emphasis);
     xa_info.coding = 0x08u; /* Reserved/unsupported rate encoding. */
     assert(!psx_disc_xa_audio_format(&xa_info, &xa_format));
     assert(form2_output[0] == 0x80u);
