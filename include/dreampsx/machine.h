@@ -45,6 +45,11 @@ bool psx_machine_boot_from_iso(PsxMachine *machine, const PsxIso9660 *iso,
  * image as CD-ROM media for subsequent guest reads. */
 bool psx_machine_boot_from_disc(PsxMachine *machine, const uint8_t *image,
                                 size_t image_size, PsxBootConfig *config);
+/* Boots from an already-mounted sector reader (memory-backed or file-backed).
+ * The reader context must remain valid until the CD-ROM is unmounted. */
+bool psx_machine_boot_from_disc_image(PsxMachine *machine,
+                                      const PsxDiscImage *disc,
+                                      PsxBootConfig *config);
 /* Boots directly from caller-owned CUE text and BIN bytes without expanding
  * raw sectors into a separate ISO buffer. Both inputs must remain alive. */
 bool psx_machine_boot_from_cue(PsxMachine *machine, const char *cue_text,
