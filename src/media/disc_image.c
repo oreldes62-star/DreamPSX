@@ -290,9 +290,9 @@ bool psx_disc_xa_audio_format(const PsxDiscXaSubheader *subheader,
         (subheader->submode & 0x20u) == 0u)
         return false;
 
-    /* XA coding byte: bit 0 selects stereo; bits 2-3 rate;
-     * bits 4-5 sample depth. Only the two defined encodings are accepted. */
-    if ((subheader->coding & 0xcau) != 0u)
+    /* XA coding byte: bit 0 stereo, bit 2 rate, bit 4 depth,
+     * bit 6 emphasis. Bits 1, 3, 5 and 7 are reserved. */
+    if ((subheader->coding & 0xaau) != 0u)
         return false;
     rate_code = (unsigned)((subheader->coding >> 2u) & 0x03u);
     depth_code = (unsigned)((subheader->coding >> 4u) & 0x03u);
@@ -302,5 +302,6 @@ bool psx_disc_xa_audio_format(const PsxDiscXaSubheader *subheader,
     format->sample_rate_hz = rate_code == 0u ? 37800u : 18900u;
     format->channels = (subheader->coding & 0x01u) != 0u ? 2u : 1u;
     format->bits_per_sample = depth_code == 0u ? 4u : 8u;
+    format->emphasis = (subheader->coding & 0x40u) != 0u;
     return true;
 }
