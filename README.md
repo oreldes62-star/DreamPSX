@@ -7,7 +7,9 @@ Experimental PlayStation emulator research project targeting Sega Dreamcast. Cur
 
 ## Current milestones
 - [CD-ROM Setmode, Pause and Stop milestone 4.13](docs/CDROM-SETMODE-PAUSE-STOP-MILESTONE-4.13.md)
-- [CD-ROM DMA channel 3 milestone 4.11](docs/CDROM-DMA-CHANNEL3-MILESTONE-4.11.md)\n- [CD-ROM continuous ReadN streaming milestone 4.10](docs/CDROM-READN-STREAM-MILESTONE-4.10.md)
+- [CD-ROM cycle-driven sector scheduler milestone 4.12](docs/CDROM-CYCLE-SCHEDULER-MILESTONE-4.12.md)
+- [CD-ROM DMA channel 3 milestone 4.11](docs/CDROM-DMA-CHANNEL3-MILESTONE-4.11.md)
+- [CD-ROM continuous ReadN streaming milestone 4.10](docs/CDROM-READN-STREAM-MILESTONE-4.10.md)
 - [CD-ROM ISO ReadN sector delivery milestone 4.09](docs/CDROM-ISO-READN-SECTOR-MILESTONE-4.09.md)
 - [GPU IRQ1 request and CPU routing milestone 4.07](docs/GPU-IRQ1-CPU-ROUTING-MILESTONE-4.07.md)
 - [DMA transfer event telemetry milestone 4.06](docs/DMA-TRANSFER-EVENT-TELEMETRY-MILESTONE-4.06.md)
@@ -118,7 +120,10 @@ Experimental PlayStation emulator research project targeting Sega Dreamcast. Cur
 - [GPU monochrome rectangle milestone 3.64](docs/GPU-MONOCHROME-RECTANGLES-MILESTONE-3.64.md)
 - [GPU textured rectangle milestone 3.65](docs/GPU-TEXTURED-RECTANGLES-MILESTONE-3.65.md)
 
-- [GTE command latency and result interlock milestone 3.81](docs/GTE-TIMING-INTERLOCK-MILESTONE-3.81.md)\n- [Shared CPU clock synchronization milestone 3.82](docs/GTE-TIMING-INTERLOCK-MILESTONE-3.81.md)\n\n## Target
+- [GTE command latency and result interlock milestone 3.81](docs/GTE-TIMING-INTERLOCK-MILESTONE-3.81.md)
+- [Shared CPU clock synchronization milestone 3.82](docs/GTE-TIMING-INTERLOCK-MILESTONE-3.81.md)
+
+## Target
 Sega Dreamcast with 16 MiB RAM. Long-term target: CDI test build for Flycast, then GDEMU.
 
 ## Limitations
