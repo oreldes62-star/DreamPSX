@@ -6,6 +6,7 @@
 - Implemented DMA channel 3 as a CD-ROM-to-RAM burst endpoint.
 - Enforced the currently modeled hardware conditions: device-to-RAM direction, SyncMode 0, CHCR start and forced-start bits, and DPCR channel enable.
 - Routed channel 3 through the shared DMA priority selector and single-active-channel ownership model.
+- Added a dedicated CD-ROM DMA word counter so aggregate DMA telemetry remains reconcilable with GPU manual, request/block, linked-list, and CD-ROM workloads.
 - Reused common completion bookkeeping so CHCR start clears, DICR channel-3 completion latches, and the DMA master IRQ path can observe the completion.
 - Added a machine-bus integration test that transfers a complete 2048-byte ISO sector (512 words) into RAM and checks byte order, FIFO drain, CHCR completion, DICR flag, and transfer telemetry.
 
