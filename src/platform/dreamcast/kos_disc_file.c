@@ -2,6 +2,7 @@
 
 #include <fcntl.h>
 #include <limits.h>
+#include <stdio.h>
 #include <kos/fs.h>
 
 bool psx_kos_disc_file_read_at(void *context, size_t offset,
