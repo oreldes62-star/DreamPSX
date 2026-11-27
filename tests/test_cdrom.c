@@ -268,6 +268,8 @@ int main(void)
                                        &frames, &rate));
         assert(frames == 4032u - 66u);
         assert(rate == 0u && cdrom.xa_pcm_count == 0u);
+        psx_cdrom_advance_xa_audio_cycles(&cdrom, 1792u);
+        assert(cdrom.xa_audio_underrun_frames == 1u);
 
         /* The next sector has a different channel and is suppressed by the
            active file/channel filter instead of leaking into the CPU FIFO. */
