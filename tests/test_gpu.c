@@ -151,7 +151,7 @@ int main(void)
     assert(psx_gpu_gp0_write(&gpu, 750u | (450u << 16u)));
     assert(psx_gpu_gp0_write(&gpu, 1u | (1u << 8u)));
     assert(psx_gpu_gp0_write(&gpu, 754u | (450u << 16u)));
-    assert(psx_gpu_gp0_write(&gpu, 0x01000000u | 1u | (1u << 8u)));
+    assert(psx_gpu_gp0_write(&gpu, 0x01200000u | 1u | (1u << 8u)));
     assert(psx_gpu_gp0_write(&gpu, 750u | (454u << 16u)));
     assert(psx_gpu_gp0_write(&gpu, 1u | (1u << 8u)));
     assert(psx_gpu_vram_read(&gpu, 751u, 451u, &pixel));
@@ -165,7 +165,7 @@ int main(void)
     assert(psx_gpu_gp0_write(&gpu, 460u | (460u << 16u)));
     assert(psx_gpu_gp0_write(&gpu, 1u | (1u << 8u)));
     assert(psx_gpu_gp0_write(&gpu, 804u | (460u << 16u)));
-    assert(psx_gpu_gp0_write(&gpu, 0x01000000u | 1u | (1u << 8u)));
+    assert(psx_gpu_gp0_write(&gpu, 0x01400000u | 1u | (1u << 8u)));
     assert(psx_gpu_gp0_write(&gpu, 460u | (804u << 16u)));
     assert(psx_gpu_gp0_write(&gpu, 1u | (1u << 8u)));
     assert(psx_gpu_vram_read(&gpu, 461u, 461u, &pixel));
