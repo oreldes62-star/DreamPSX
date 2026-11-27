@@ -65,10 +65,14 @@ int main(void)
     assert(output[0] == 0xa5u);
     assert(!psx_disc_mount_cue(&disc, cue1, sizeof(cue1) - 1u,
                                raw, 2353u));
-    assert(!psx_disc_mount_cue(&disc,
-        "FILE \"a.bin\" BINARY\nFILE \"b.bin\" BINARY\n"
-        "TRACK 01 MODE1/2048\nINDEX 01 00:00:00\n", 92u,
-        plain, sizeof(plain)));
+    {
+        static const char multi_file_cue[] =
+            "FILE \"a.bin\" BINARY\nFILE \"b.bin\" BINARY\n"
+            "TRACK 01 MODE1/2048\nINDEX 01 00:00:00\n";
+        assert(!psx_disc_mount_cue(&disc, multi_file_cue,
+                                   sizeof(multi_file_cue) - 1u,
+                                   plain, sizeof(plain)));
+    }
     puts("disc image tests passed");
     return 0;
 }
