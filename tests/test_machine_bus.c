@@ -83,6 +83,9 @@ int main(void)
     assert(psx_bus_read32(&machine.bus, 0x1f8010f4u, &word));
     assert((word & (1u << 26u)) != 0u);
     assert(psx_dma_data_words_transferred(&machine.dma) == 3u);
+    assert(psx_dma_manual_words_transferred(&machine.dma) == 3u);
+    assert(psx_dma_request_words_transferred(&machine.dma) == 0u);
+    assert(psx_dma_linked_list_words_transferred(&machine.dma) == 0u);
     assert(psx_dma_linked_list_headers_read(&machine.dma) == 0u);
 
     /* A channel armed while DPCR disables GPU DMA remains pending. Enabling
@@ -105,6 +108,7 @@ int main(void)
     assert(psx_bus_read32(&machine.bus, 0x1f8010a8u, &word));
     assert((word & (1u << 24u)) == 0u);
     assert(psx_dma_data_words_transferred(&machine.dma) == 6u);
+    assert(psx_dma_manual_words_transferred(&machine.dma) == 6u);
 
     /* GPU readback through channel 2: two VRAM pixels become one RAM word. */
     assert(psx_bus_write32(&machine.bus, 0x1f8010f4u, 1u << 26u));
@@ -124,6 +128,7 @@ int main(void)
     assert(psx_bus_read32(&machine.bus, 0x1f8010f4u, &word));
     assert((word & (1u << 26u)) != 0u);
     assert(psx_dma_data_words_transferred(&machine.dma) == 7u);
+    assert(psx_dma_manual_words_transferred(&machine.dma) == 7u);
 
     /* Linked-list DMA: a GP0 fill command is deliberately split across
      * two packets; packet headers are metadata, not GP0 command words. */
@@ -146,6 +151,7 @@ int main(void)
     assert(psx_bus_read32(&machine.bus, 0x1f8010f4u, &word));
     assert((word & (1u << 26u)) != 0u);
     assert(psx_dma_data_words_transferred(&machine.dma) == 10u);
+    assert(psx_dma_linked_list_words_transferred(&machine.dma) == 3u);
     assert(psx_dma_linked_list_headers_read(&machine.dma) == 2u);
 
     /* Request/block DMA: two three-word blocks carry two GP0 fills. */
@@ -173,6 +179,7 @@ int main(void)
     assert(psx_bus_read32(&machine.bus, 0x1f8010f4u, &word));
     assert((word & (1u << 26u)) != 0u);
     assert(psx_dma_data_words_transferred(&machine.dma) == 16u);
+    assert(psx_dma_request_words_transferred(&machine.dma) == 6u);
 
     /* Request/block DMA also supports GPUREAD-to-RAM image transfers. */
     assert(psx_bus_write32(&machine.bus, 0x1f8010f4u, 1u << 26u));
@@ -190,6 +197,7 @@ int main(void)
     assert(psx_bus_read32(&machine.bus, 0x1f8010a8u, &word));
     assert((word & (1u << 24u)) == 0u);
     assert(psx_dma_data_words_transferred(&machine.dma) == 17u);
+    assert(psx_dma_request_words_transferred(&machine.dma) == 7u);
 
     /* DMA master interrupt: DICR channel-2 enable plus master enable
      * must raise PS1 interrupt-controller source 3 on transfer completion. */
