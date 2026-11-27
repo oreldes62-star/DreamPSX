@@ -53,10 +53,10 @@ int main(void)
     assert(psx_dma_write32(&dma, PSX_DMA_BASE_ADDR + 0x38u, 0x01000400u));
     assert(psx_dma_write32(&dma, PSX_DMA_BASE_ADDR + 0x48u, 0x01000200u));
     assert(psx_dma_write32(&dma, PSX_DMA_BASE_ADDR + 0x08u, 0x01000600u));
-    assert(psx_dma_pending_mask(&dma) == ((1u << 1u) | (1u << 3u)));
+    assert(psx_dma_pending_mask(&dma) == ((1u << 1u) | (1u << 3u) | (1u << 4u)));
     assert(psx_dma_write32(&dma, PSX_DMA_BASE_ADDR + 0x28u, 0x11000000u));
     assert(psx_dma_pending_mask(&dma) ==
-           ((1u << 1u) | (1u << 2u) | (1u << 3u)));
+           ((1u << 1u) | (1u << 2u) | (1u << 3u) | (1u << 4u)));
     assert(psx_dma_select_channel(&dma, psx_dma_pending_mask(&dma)) == 1);
     assert(psx_dma_pending_mask(NULL) == 0u);
 
@@ -65,7 +65,7 @@ int main(void)
                            (1u << 23u) | (1u << 17u)));
     assert(psx_dma_complete_channel(&dma, 1u));
     assert(!psx_dma_complete_channel(&dma, PSX_DMA_CHANNEL_COUNT));
-    assert(psx_dma_pending_mask(&dma) == ((1u << 2u) | (1u << 3u)));
+    assert(psx_dma_pending_mask(&dma) == ((1u << 2u) | (1u << 3u) | (1u << 4u)));
     assert(psx_dma_read32(&dma, PSX_DMA_BASE_ADDR + 0x18u, &value));
     assert((value & (1u << 24u)) == 0u);
     assert(psx_dma_read32(&dma, PSX_DMA_DICR_ADDR, &value));
