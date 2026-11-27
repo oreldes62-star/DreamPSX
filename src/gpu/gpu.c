@@ -815,7 +815,7 @@ bool psx_gpu_gp1_write(PsxGpu *gpu, uint32_t value)
         gpu->status &= ~((0x7fu << 16u) | (1u << 14u));
         gpu->status |= ((gpu->display.mode & 0x40u) << 10u) |
                        ((gpu->display.mode & 0x3fu) << 17u) |
-                       ((gpu->display.mode & 0x80u) >> 1u);
+                       ((gpu->display.mode & 0x80u) << 7u);
         /* A mode change starts a deterministic even field. The frontend
          * advances it when its video timing reaches the next field.
          */
