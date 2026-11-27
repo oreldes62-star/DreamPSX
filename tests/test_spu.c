@@ -925,7 +925,12 @@ int main(void)
         assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR,
                                0x8000u | 0x1000u | (11u << 2u)));
         assert(psx_spu_voice_volume_tick(&spu, 0u));
-        assert(spu.voices[0].volume_left_level == 16384);
+        assert(spu.voices[0].volume_left_level == 16383);
+        /* The all-ones rate encoding is frozen and must not step. */
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR,
+                               0xffffu));
+        assert(psx_spu_voice_volume_tick(&spu, 0u));
+        assert(spu.voices[0].volume_left_level == 16383);
         assert(!psx_spu_voice_volume_tick(NULL, 0u));
         assert(!psx_spu_voice_volume_tick(&spu, PSX_SPU_VOICE_COUNT));
         psx_spu_reset(&spu);
