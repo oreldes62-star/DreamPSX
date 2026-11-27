@@ -83,6 +83,24 @@ int main(void)
     assert(psx_bus_read32(&machine.bus, 0x1f8010f4u, &word));
     assert((word & (1u << 26u)) != 0u);
 
+    /* GPU readback through channel 2: two VRAM pixels become one RAM word. */
+    assert(psx_bus_write32(&machine.bus, 0x1f8010f4u, 1u << 26u));
+    assert(psx_bus_write32(&machine.bus, 0x1f801810u, 0xc0000000u));
+    assert(psx_bus_write32(&machine.bus, 0x1f801810u, 20u));
+    assert(psx_bus_write32(&machine.bus, 0x1f801810u, 2u | (1u << 16u)));
+    assert(psx_bus_write32(&machine.bus, 0x1f801814u, 0x04000003u));
+    assert(psx_bus_write32(&machine.bus, 0x1f8010a0u, 0x00000500u));
+    assert(psx_bus_write32(&machine.bus, 0x1f8010a4u, 1u));
+    assert(psx_bus_write32(&machine.bus, 0x1f8010a8u, 0x11000000u));
+    assert(psx_bus_read32(&machine.bus, 0x00000500u, &word));
+    assert(word == 0x03e003e0u);
+    assert(psx_bus_read32(&machine.bus, 0x1f8010a0u, &word));
+    assert(word == 0x00000504u);
+    assert(psx_bus_read32(&machine.bus, 0x1f8010a8u, &word));
+    assert((word & ((1u << 24u) | (1u << 28u))) == 0u);
+    assert(psx_bus_read32(&machine.bus, 0x1f8010f4u, &word));
+    assert((word & (1u << 26u)) != 0u);
+
     /* BIOS is readable; unmapped hardware and misaligned words are rejected. */
     assert(psx_bus_read32(&machine.bus, PSX_BIOS_BASE, &word));
     assert(!psx_bus_read32(&machine.bus, 0x1f801078u, &word));
