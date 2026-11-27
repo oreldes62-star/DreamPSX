@@ -46,7 +46,7 @@ int main(void)
 
     /* PAL progressive: 314 scanlines per frame. */
     assert(psx_gpu_gp1_write(&gpu, 0x08000008u));
-    advance(&gpu, &state, 313u);
+    advance(&gpu, &state, 314u);
     assert(state.scanline == 0u && state.pal);
     assert(state.lines_per_field == 314u);
     assert(state.frame_started && state.frame_counter == 1u);
