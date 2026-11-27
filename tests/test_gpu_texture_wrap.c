@@ -39,7 +39,7 @@ int main(void)
     vram[10u * PSX_GPU_VRAM_WIDTH + 63u] = 0x5a00u;
     vram[30u * PSX_GPU_VRAM_WIDTH + 74u] = 0x6318u;
     draw_textured_triangle(&gpu, 120u, 100u,
-                           255u | (10u << 8u) | (63u << 16u),
+                           255u | (10u << 8u) | ((30u << 6u | 63u) << 16u),
                            255u | (10u << 8u) | (0x008fu << 16u),
                            255u | (10u << 8u) | (63u << 16u));
     assert(psx_gpu_vram_read(&gpu, 121u, 101u, &pixel));
