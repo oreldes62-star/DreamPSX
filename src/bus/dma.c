@@ -113,7 +113,7 @@ int psx_dma_take_channel(PsxDmaController *dma)
 
 int psx_dma_begin_channel(PsxDmaController *dma)
 {
-    const int selected;
+    int selected;
     if (!dma || !dma->initialized) return -1;
     selected = psx_dma_select_channel(dma, dma->queued_mask);
     if (selected < 0) return -1;
@@ -292,9 +292,7 @@ bool psx_dma_execute_gpu_manual(PsxDmaController *dma,
 
     channel->madr = address;
     channel->bcr &= 0xffff0000u;
-    channel->chcr &= ~((1u << 24u) | (1u << 28u));
-    dma->dicr |= 1u << 26u; /* Channel 2 completion flag. */
-    return true;
+    return psx_dma_complete_channel(dma, 2u);
 }
 
 
@@ -353,9 +351,7 @@ bool psx_dma_execute_gpu_linked_list(PsxDmaController *dma,
 
         if (next == 0x00ffffffu) {
             channel->madr = 0x00ffffffu;
-            channel->chcr &= ~(1u << 24u);
-            dma->dicr |= 1u << 26u;
-            return true;
+            return psx_dma_complete_channel(dma, 2u);
         }
         if ((next & 3u) != 0u) return false;
         address = next;
@@ -425,9 +421,7 @@ bool psx_dma_execute_gpu_request(PsxDmaController *dma,
 
     channel->madr = address;
     channel->bcr = 0u;
-    channel->chcr &= ~(1u << 24u);
-    dma->dicr |= 1u << 26u;
-    return true;
+    return psx_dma_complete_channel(dma, 2u);
 }
 
 
