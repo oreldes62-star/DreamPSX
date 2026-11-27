@@ -20,7 +20,7 @@ The 440 Hz diagnostic application is then linked as a separate ELF against that 
 ## Validation
 
 The KallistiOS workflow completed successfully:
-https://github.com/oreldes62-star/DreamPSX/actions/runs/46069353152
+https://github.com/oreldes62-star/DreamPSX/actions/runs/46069491488
 
 It built the KallistiOS SDK, compiled all 23 DreamPSX objects into the static archive, linked the audio smoke-test ELF, verified the archive contains exactly 23 members, and inspected the executable header:
 - ELF32;
@@ -29,7 +29,7 @@ It built the KallistiOS SDK, compiled all 23 DreamPSX objects into the static ar
 - Renesas / SuperH SH.
 
 Build artifacts:
-https://github.com/oreldes62-star/DreamPSX/actions/runs/46069353152/artifacts/15232685721
+https://github.com/oreldes62-star/DreamPSX/actions/runs/46069491488/artifacts/15232895515
 
 The host CTest suite remains green at 44/44:
 https://github.com/oreldes62-star/DreamPSX/actions/runs/46069241574
