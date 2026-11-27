@@ -23,6 +23,20 @@ typedef struct {
 } PsxGpuDisplayModeInfo;
 
 typedef struct {
+    unsigned scanline;
+    unsigned lines_per_field;
+    uint64_t frame_counter;
+    bool pal;
+    bool interlaced;
+    bool field_odd;
+    bool vblank;
+    bool field_started;
+    bool frame_started;
+    bool vblank_started;
+    bool vblank_ended;
+} PsxGpuVideoState;
+
+typedef struct {
     unsigned start_x;
     unsigned start_y;
     unsigned horizontal_start;
@@ -32,6 +46,9 @@ typedef struct {
     unsigned mode;
     bool disabled;
     bool field_odd;
+    unsigned video_scanline;
+    uint64_t video_frame_counter;
+    bool video_vblank;
 } PsxGpuDisplay;
 
 typedef enum {
@@ -86,6 +103,12 @@ bool psx_gpu_get_display_mode_info(const PsxGpu *gpu,
  * Returns false unless 480-line interlace is selected.
  */
 bool psx_gpu_set_display_field(PsxGpu *gpu, bool odd_field);
+/* Advance the raster by one scanline. Interlaced 480-line output alternates
+ * integer field lengths (262/263 NTSC, 312/313 PAL); half-line phase is
+ * intentionally outside this first scheduler API.
+ */
+bool psx_gpu_video_advance_scanline(PsxGpu *gpu,
+                                    PsxGpuVideoState *state);
 bool psx_gpu_vram_read(const PsxGpu *gpu, unsigned x, unsigned y,
                        uint16_t *value);
 /* Convert a rectangular RGB555 VRAM region to packed RGB565 output.
