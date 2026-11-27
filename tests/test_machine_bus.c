@@ -129,14 +129,14 @@ int main(void)
     assert(psx_bus_write32(&machine.bus, 0x00000704u, 0x00000028u));
     assert(psx_bus_write32(&machine.bus, 0x00000708u, 0x00010002u));
     assert(psx_bus_write32(&machine.bus, 0x0000070cu, 0x020000ffu));
-    assert(psx_bus_write32(&machine.bus, 0x00000710u, 0x0000002au));
+    assert(psx_bus_write32(&machine.bus, 0x00000710u, 0x00000030u));
     assert(psx_bus_write32(&machine.bus, 0x00000714u, 0x00010002u));
     assert(psx_bus_write32(&machine.bus, 0x1f8010a0u, 0x00000700u));
     assert(psx_bus_write32(&machine.bus, 0x1f8010a4u, 0x00020003u));
     assert(psx_bus_write32(&machine.bus, 0x1f8010a8u, 0x01000201u));
     assert(psx_gpu_vram_read(&machine.gpu, 40u, 0u, &half));
     assert(half == 0x03e0u);
-    assert(psx_gpu_vram_read(&machine.gpu, 42u, 0u, &half));
+    assert(psx_gpu_vram_read(&machine.gpu, 48u, 0u, &half));
     assert(half == 0x001fu);
     assert(psx_bus_read32(&machine.bus, 0x1f8010a0u, &word));
     assert(word == 0x00000718u);
