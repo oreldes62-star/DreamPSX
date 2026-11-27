@@ -22,7 +22,7 @@ typedef struct {
     size_t vram_pixels;
     uint32_t status;
     uint32_t command;
-    uint32_t parameters[3];
+    uint32_t parameters[6];
     unsigned draw_area_left;
     unsigned draw_area_top;
     unsigned draw_area_right;
