@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include "dreampsx/disc_image.h"
 
 #define PSX_CDROM_BASE_ADDR 0x1f801800u
 #define PSX_CDROM_FIFO_CAPACITY 16u
@@ -36,6 +37,7 @@ typedef struct {
     uint8_t mode;
     uint8_t pending_command;
     uint32_t command_cycles_remaining;
+    PsxDiscImage disc;
     const uint8_t *iso_data;
     size_t iso_size;
     uint8_t location[3];
@@ -44,6 +46,10 @@ typedef struct {
 
 bool psx_cdrom_init(PsxCdrom *cdrom);
 bool psx_cdrom_mount_iso(PsxCdrom *cdrom, const uint8_t *image, size_t size);
+/* Mounts a CUE-described BIN track without copying the image. */
+bool psx_cdrom_mount_cue(PsxCdrom *cdrom, const char *cue_text,
+                         size_t cue_size, const uint8_t *bin_data,
+                         size_t bin_size);
 void psx_cdrom_unmount(PsxCdrom *cdrom);
 /* Deliver the next sector of an active ReadN stream once the previous
  * sector has been fully consumed. The caller supplies CD-sector timing. */
