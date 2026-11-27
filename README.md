@@ -97,3 +97,6 @@ No Dreamcast/KallistiOS build, CDI image or playable game exists yet. CPU regist
 
 
 GPU framebuffer output now includes a tested RGB555-to-RGB565 region conversion API; full GP1 display timing and mode emulation remain in progress. See [GPU framebuffer milestone 3.66](docs/GPU-FRAMEBUFFER-MILESTONE-3.66.md).
+
+
+GP1 display-control register decoding (display origin, horizontal/vertical ranges, mode and enable state) is now exposed through the GPU display-state API. See [GPU display milestone 3.67](docs/GPU-DISPLAY-MILESTONE-3.67.md).
