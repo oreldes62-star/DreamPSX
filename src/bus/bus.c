@@ -13,12 +13,13 @@ static uint32_t physical_address(uint32_t address)
 }
 
 bool psx_bus_init(PsxBus *bus, PsxMemory *memory, PsxIrqController *irq,
-                  PsxGpu *gpu)
+                  PsxGpu *gpu, PsxTimers *timers)
 {
-    if (!bus || !memory || !memory->initialized || !irq || !gpu || !gpu->initialized) return false;
+    if (!bus || !memory || !memory->initialized || !irq || !gpu || !gpu->initialized || !timers) return false;
     bus->memory = memory;
     bus->irq = irq;
     bus->gpu = gpu;
+    bus->timers = timers;
     bus->initialized = true;
     return true;
 }
@@ -36,6 +37,7 @@ bool psx_bus_read16(const PsxBus *bus, uint32_t address, uint16_t *value)
     if (!bus || !bus->initialized || !value) return false;
     address = physical_address(address);
     if (psx_irq_mmio_read16(bus->irq, address, value)) return true;
+    if (psx_timers_read16(bus->timers, address, value)) return true;
     return psx_memory_read16(bus->memory, address, value);
 }
 
@@ -48,6 +50,7 @@ bool psx_bus_read32(const PsxBus *bus, uint32_t address, uint32_t *value)
     if (address == PSX_GPU_GP1_ADDR)
         return psx_gpu_read_status(bus->gpu, value);
     if (psx_irq_mmio_read32(bus->irq, address, value)) return true;
+    if (psx_timers_read32(bus->timers, address, value)) return true;
     return psx_memory_read32(bus->memory, address, value);
 }
 
@@ -64,6 +67,7 @@ bool psx_bus_write16(PsxBus *bus, uint32_t address, uint16_t value)
     if (!bus || !bus->initialized) return false;
     address = physical_address(address);
     if (psx_irq_mmio_write16(bus->irq, address, value)) return true;
+    if (psx_timers_write16(bus->timers, address, value)) return true;
     return psx_memory_write16(bus->memory, address, value);
 }
 
@@ -76,5 +80,6 @@ bool psx_bus_write32(PsxBus *bus, uint32_t address, uint32_t value)
     if (address == PSX_GPU_GP1_ADDR)
         return psx_gpu_gp1_write(bus->gpu, value);
     if (psx_irq_mmio_write32(bus->irq, address, value)) return true;
+    if (psx_timers_write32(bus->timers, address, value)) return true;
     return psx_memory_write32(bus->memory, address, value);
 }
