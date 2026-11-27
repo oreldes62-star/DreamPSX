@@ -27,4 +27,4 @@ The adapter deliberately serializes seek/read operations on one file handle. The
 ## Validation
 
 - Host build and CTest passed on commit `03dcafb3c76e721d16e7e93960d3b8f3444f1a9f`: workflow run 46079023720, 45/45 tests passed.
-- The pinned KallistiOS/Dreamcast build for the adapter was still running at documentation update time (workflow run 46079023677); its final result is not yet claimed.
+- The pinned KallistiOS/Dreamcast build passed on the same commit: workflow run 46079023677. The build compiled and linked the file adapter, verified the SH-4 ELF and uploaded artifact ID 15236640046 (1,250,750 bytes).
