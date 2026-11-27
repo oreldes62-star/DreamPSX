@@ -485,8 +485,8 @@ int main(void)
                                PSX_SPU_REVERB_WORK_AREA_START_OFFSET,
                                0xfffeu));
         assert(psx_spu_reverb_write16(&spu, 0u, (int16_t)-12345));
-        assert(spu.ram[PSX_SPU_REVERB_BUFFER_END_ADDRESS - 1u] == 0xc7u);
-        assert(spu.ram[PSX_SPU_REVERB_BUFFER_END_ADDRESS] == 0xcfu);
+        assert(spu.ram[0x7fff0u] == 0xc7u);
+        assert(spu.ram[0x7fff1u] == 0xcfu);
         assert(psx_spu_reverb_read16(&spu, 0u, &sample));
         assert(sample == -12345);
         assert(psx_spu_reverb_write16(&spu, 0xffffu, (int16_t)23456));
