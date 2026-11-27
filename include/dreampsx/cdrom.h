@@ -12,6 +12,8 @@
 #define PSX_CDROM_SECTOR_SIZE 2048u
 #define PSX_CDROM_MAX_SECTOR_SIZE PSX_DISC_SECTOR_FORM2_DATA_SIZE
 #define PSX_CDROM_XA_PCM_QUEUE_FRAMES 8192u
+#define PSX_CDROM_XA_PCM_STORAGE_FRAMES \
+    (PSX_CDROM_XA_PCM_QUEUE_FRAMES + PSX_XA_ADPCM_MAX_SECTOR_SAMPLES)
 /* PS1 system cycles per sector at double speed (33,868,800 / 150). */
 #define PSX_CDROM_DOUBLE_SPEED_SECTOR_CYCLES 225792u
 #define PSX_CDROM_NORMAL_SPEED_SECTOR_CYCLES 451584u
@@ -46,8 +48,8 @@ typedef struct {
     uint8_t xa_filter_file;
     uint8_t xa_filter_channel;
     PsxXaAdpcmState xa_decoder_state[2];
-    int16_t xa_pcm_left[PSX_CDROM_XA_PCM_QUEUE_FRAMES];
-    int16_t xa_pcm_right[PSX_CDROM_XA_PCM_QUEUE_FRAMES];
+    int16_t xa_pcm_left[PSX_CDROM_XA_PCM_STORAGE_FRAMES];
+    int16_t xa_pcm_right[PSX_CDROM_XA_PCM_STORAGE_FRAMES];
     uint16_t xa_pcm_sample_rate;
     uint16_t xa_pcm_head;
     uint16_t xa_pcm_count;
