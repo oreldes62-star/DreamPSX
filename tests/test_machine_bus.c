@@ -87,6 +87,9 @@ int main(void)
             (cdrom_i & 0xffu));
     assert(psx_cdrom_mount_iso(&machine.cdrom, cdrom_iso,
                                sizeof(cdrom_iso)));
+    assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR, 0u));
+    assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR + 2u, 0x80u));
+    assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR + 1u, 0x0eu));
     assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR, 1u));
     assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR + 2u, 0x15u));
     assert(psx_bus_write8(&machine.bus, PSX_CDROM_BASE_ADDR, 0u));
