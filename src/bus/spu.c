@@ -715,6 +715,53 @@ bool psx_spu_reverb_process_allpass(PsxSpu *spu,
     return true;
 }
 
+bool psx_spu_reverb_process_sample(PsxSpu *spu,
+                                      int16_t input_left,
+                                      int16_t input_right,
+                                      int16_t *wet_left,
+                                      int16_t *wet_right)
+{
+    int16_t comb_left;
+    int16_t comb_right;
+    int16_t apf_left;
+    int16_t apf_right;
+    int16_t output_volume_left;
+    int16_t output_volume_right;
+    int32_t result_left;
+    int32_t result_right;
+
+    if (!spu || !spu->initialized || !wet_left || !wet_right)
+        return false;
+
+    *wet_left = 0;
+    *wet_right = 0;
+
+    /* SPUCNT bit 7 gates the reverb DSP. Keep the work-area cursor still
+     * while disabled, matching the hardware's stopped reverb path. */
+    if ((spu->control & 0x0080u) == 0u)
+        return true;
+
+    if (!psx_spu_reverb_process_reflections(spu, input_left, input_right) ||
+        !psx_spu_reverb_process_comb(spu, &comb_left, &comb_right) ||
+        !psx_spu_reverb_process_allpass(spu, comb_left, comb_right,
+                                        &apf_left, &apf_right))
+        return false;
+
+    output_volume_left = (int16_t)load_le16(&spu->registers[
+        PSX_SPU_REVERB_OUTPUT_VOLUME_LEFT_OFFSET]);
+    output_volume_right = (int16_t)load_le16(&spu->registers[
+        PSX_SPU_REVERB_OUTPUT_VOLUME_RIGHT_OFFSET]);
+    result_left = reverb_multiply_q15_wide(apf_left, output_volume_left);
+    result_right = reverb_multiply_q15_wide(apf_right, output_volume_right);
+    *wet_left = psx_spu_reverb_saturate(result_left);
+    *wet_right = psx_spu_reverb_saturate(result_right);
+
+    /* All DSP stages for one output frame share this cursor. Advance once,
+     * only after the complete wet sample has been evaluated. */
+    psx_spu_reverb_advance(spu);
+    return true;
+}
+
 bool psx_spu_reverb_read16(const PsxSpu *spu, uint16_t relative_address,
                            int16_t *value)
 {
