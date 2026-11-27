@@ -88,20 +88,32 @@ bool psx_spu_write16(PsxSpu *spu, uint32_t address, uint16_t value)
     if (offset == PSX_SPU_STATUS_OFFSET)
         return true; /* Read-only status register in this initial model. */
 
-    if (offset == PSX_SPU_KEY_ON_LOW_OFFSET) {
-        spu->active_voices |= value;
+    if (offset == PSX_SPU_KEY_ON_LOW_OFFSET ||
+        offset == PSX_SPU_KEY_ON_HIGH_OFFSET) {
+        const uint32_t mask = offset == PSX_SPU_KEY_ON_LOW_OFFSET ?
+            (uint32_t)value : ((uint32_t)(value & 0x00ffu) << 16u);
+        for (unsigned i = 0u; i < PSX_SPU_VOICE_COUNT; ++i) {
+            if ((mask & (1u << i)) == 0u) continue;
+            PsxSpuVoice *voice = &spu->voices[i];
+            psx_spu_adpcm_reset(&voice->adpcm_state);
+            voice->playback_address =
+                ((uint32_t)voice->start_address * 8u) &
+                (PSX_SPU_RAM_BYTES - 1u);
+            voice->sample_index = 0u;
+            voice->block_flags = 0u;
+            voice->block_valid = false;
+        }
+        spu->active_voices |= mask;
         return true;
     }
-    if (offset == PSX_SPU_KEY_ON_HIGH_OFFSET) {
-        spu->active_voices |= (uint32_t)(value & 0x00ffu) << 16u;
-        return true;
-    }
-    if (offset == PSX_SPU_KEY_OFF_LOW_OFFSET) {
-        spu->active_voices &= ~(uint32_t)value;
-        return true;
-    }
-    if (offset == PSX_SPU_KEY_OFF_HIGH_OFFSET) {
-        spu->active_voices &= ~((uint32_t)(value & 0x00ffu) << 16u);
+    if (offset == PSX_SPU_KEY_OFF_LOW_OFFSET ||
+        offset == PSX_SPU_KEY_OFF_HIGH_OFFSET) {
+        const uint32_t mask = offset == PSX_SPU_KEY_OFF_LOW_OFFSET ?
+            (uint32_t)value : ((uint32_t)(value & 0x00ffu) << 16u);
+        spu->active_voices &= ~mask;
+        for (unsigned i = 0u; i < PSX_SPU_VOICE_COUNT; ++i)
+            if ((mask & (1u << i)) != 0u)
+                spu->voices[i].block_valid = false;
         return true;
     }
     if (offset == PSX_SPU_CONTROL_OFFSET) {
@@ -144,6 +156,44 @@ bool psx_spu_write16(PsxSpu *spu, uint32_t address, uint16_t value)
     }
 
     store_le16(&spu->registers[offset], value);
+    return true;
+}
+
+bool psx_spu_voice_next_sample(PsxSpu *spu, unsigned voice_index,
+                               int16_t *sample)
+{
+    PsxSpuVoice *voice;
+    uint8_t block[PSX_SPU_ADPCM_BLOCK_BYTES];
+    if (!spu || !spu->initialized || !sample ||
+        voice_index >= PSX_SPU_VOICE_COUNT ||
+        (spu->active_voices & (1u << voice_index)) == 0u)
+        return false;
+
+    voice = &spu->voices[voice_index];
+    if (!voice->block_valid ||
+        voice->sample_index >= PSX_SPU_ADPCM_BLOCK_SAMPLES) {
+        for (unsigned i = 0u; i < PSX_SPU_ADPCM_BLOCK_BYTES; ++i)
+            block[i] = spu->ram[(voice->playback_address + i) &
+                                (PSX_SPU_RAM_BYTES - 1u)];
+        if (!psx_spu_adpcm_decode_block(&voice->adpcm_state, block,
+                                        voice->decoded_samples,
+                                        &voice->block_flags)) {
+            spu->active_voices &= ~(1u << voice_index);
+            voice->block_valid = false;
+            return false;
+        }
+        voice->playback_address = (voice->playback_address +
+            PSX_SPU_ADPCM_BLOCK_BYTES) & (PSX_SPU_RAM_BYTES - 1u);
+        voice->sample_index = 0u;
+        voice->block_valid = true;
+    }
+
+    *sample = voice->decoded_samples[voice->sample_index++];
+    if (voice->sample_index == PSX_SPU_ADPCM_BLOCK_SAMPLES &&
+        (voice->block_flags & 0x01u) != 0u) {
+        spu->active_voices &= ~(1u << voice_index);
+        voice->block_valid = false;
+    }
     return true;
 }
 
