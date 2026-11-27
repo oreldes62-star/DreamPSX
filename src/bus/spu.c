@@ -1,5 +1,6 @@
 #include "dreampsx/spu.h"
 
+#include <limits.h>
 #include <string.h>
 
 static bool register_offset(uint32_t address, uint32_t *offset)
