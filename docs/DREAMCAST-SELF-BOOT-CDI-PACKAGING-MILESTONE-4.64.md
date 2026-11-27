@@ -2,24 +2,22 @@
 
 ## Objective
 
-Turn the verified KallistiOS ELF build into a self-booting Dreamcast CDI artifact that can be opened by Flycast on Android. This milestone validates the Dreamcast disc-image packaging chain; it does not claim that a PS1 title is playable.
+Turn the verified KallistiOS ELF build into a self-booting Dreamcast CDI artifact that can be opened by Flycast on Android. This milestone validates the Dreamcast disc-image packaging pipeline; it does not claim that a PS1 title is playable.
 
 ## Packaging pipeline
 
-The new `platform/dreamcast/audio-smoke/package-cdi.sh` script:
+The new `platform/dreamcast/audio-smoke/package-cdi.sh` script uses the open-source `mkdcdisc` utility. It:
 
-1. Requires the KallistiOS/Dreamcast tools `sh-elf-objcopy`, `scramble`, `makeip`, `mkisofs` and `cdi4dc`.
-2. Converts `dreampsx-audio-smoke.elf` to a raw SH-4 binary, excluding the KOS stack section.
-3. Scrambles that binary into the Dreamcast boot filename `1ST_READ.BIN`.
-4. Generates an `IP.BIN` bootstrap with the KallistiOS `makeip` utility.
-5. Builds the ISO data session with the Dreamcast boot LBA parameters and converts it to CDI with `cdi4dc`.
-6. Keeps `dreampsx-boot-smoke.elf` as a separate file on the disc for the next PS1 file-backed boot integration stage.
+1. Checks that both DreamPSX ELF outputs exist.
+2. Stages the separate PS1 file-backed boot diagnostic ELF and a README on the data track.
+3. Invokes `mkdcdisc -e` with the AICA audio diagnostic ELF as the boot executable.
+4. Uses `mkdcdisc` to generate the Dreamcast self-boot bootstrap, scrambled executable, ISO data track and CDI container.
 
-GitHub Actions now attempts to produce and upload the artifact named `dreampsx-flycast-cdi`, containing `dreampsx-audio-smoke.cdi`.
+GitHub Actions builds `mkdcdisc` from its upstream source using Meson and libisofs, then attempts to publish the artifact named `dreampsx-flycast-cdi`, containing `dreampsx-audio-smoke.cdi`.
 
 ## What this CDI currently does
 
-The boot target is deliberately the existing AICA audio diagnostic. When launched, it should produce the 440 Hz stereo test tone. This is a useful first Flycast test of the self-boot image, SH-4 executable conversion, IP.BIN, ISO session and CDI packaging.
+The boot target is deliberately the existing AICA audio diagnostic. When launched, it should produce the 440 Hz stereo test tone. This is a useful first Flycast test of the self-boot image and Dreamcast executable startup path.
 
 The CDI is not yet a playable PS1 emulator. The separate `DREAMPSX_BOOT.ELF` is the current PS1 file-backed startup diagnostic, but it is not selected as the disc boot executable in this first package.
 
