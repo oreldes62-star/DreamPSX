@@ -77,6 +77,7 @@ set(DREAMPSX_TESTS
     test_gpu_scanout
     test_machine
     test_machine_bus
+    test_machine_boot
     test_memory
 )
 
