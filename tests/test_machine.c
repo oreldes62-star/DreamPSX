@@ -16,7 +16,7 @@ int main(void)
                             gpu_vram, PSX_GPU_VRAM_WIDTH * PSX_GPU_VRAM_HEIGHT));
     /* Machine-level SPU rendering feeds the bounded stereo output queue. */
     {
-        int16_t output[12] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+        int16_t output[PSX_AUDIO_BUFFER_CAPACITY_FRAMES * 2u] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
         size_t queued = 0u;
         assert(psx_machine_render_audio(&machine, 4u, &queued));
         assert(queued == 4u);
