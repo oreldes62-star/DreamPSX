@@ -18,6 +18,6 @@ The caller owns the `PsxDiscImage` reader context and any backing file handle. I
 ## Validation
 
 - Host build and CTest passed on commit `545470d6f86a57b269621b660d81df142dfd36ed`: workflow run 46080120480, 45/45 tests passed. The existing `test_machine_boot` now also exercises the file-backed callback boot path.
-- The pinned KallistiOS/Dreamcast build is still running as workflow 46080120557. Its SH-4 compilation and ELF verification are not yet confirmed.
+- The pinned KallistiOS/Dreamcast build passed: workflow run 46080120557. The core archive and AICA smoke-test ELF compiled, SH-4 ELF verification passed, and artifact `dreampsx-dreamcast-build` ID 15236616724 (1,258,829 bytes) was uploaded.
 
 The host test exercises the same callback-based path used by the KallistiOS file adapter. This does not yet prove that a retail PS1 title boots in Flycast or on hardware. BIOS startup sequencing, game-specific compatibility, CDI packaging and Flycast runtime remain separate validation steps.
