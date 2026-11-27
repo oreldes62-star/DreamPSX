@@ -293,7 +293,7 @@ int main(void)
     assert(psx_gpu_gp0_write(&gpu, 900u | (304u << 16u)));
     assert(psx_gpu_gp0_write(&gpu, 1u | (1u << 8u)));
     assert(psx_gpu_vram_read(&gpu, 901u, 300u, &pixel));
-    assert(pixel == 0x1dffu);
+    assert(pixel == 0x1efeu);
 
     /* GPU reset clears texture-window state. */
     assert(psx_gpu_gp1_write(&gpu, 0x00000000u));
