@@ -45,6 +45,28 @@ uint32_t psx_cpu_last_step_cycles(const PsxCpu *cpu)
     return cpu->last_step_cycles;
 }
 
+static void cpu_commit_hilo(PsxCpu *cpu)
+{
+    if (!cpu || !cpu->hilo_pending) return;
+    cpu->hi = cpu->hilo_pending_hi;
+    cpu->lo = cpu->hilo_pending_lo;
+    cpu->hilo_pending = false;
+    cpu->hilo_busy_cycles = 0u;
+}
+
+static uint8_t cpu_multiply_cycles(uint32_t value, bool is_signed)
+{
+    if (is_signed) {
+        if (value <= 0x000007ffu || value >= 0xfffff800u) return 6u;
+        if ((value >= 0x00000800u && value <= 0x000fffffu) ||
+            (value >= 0xfff00000u && value <= 0xfffff7ffu)) return 9u;
+        return 13u;
+    }
+    if (value <= 0x000007ffu) return 6u;
+    if (value <= 0x000fffffu) return 9u;
+    return 13u;
+}
+
 uint32_t psx_cpu_read_gpr(const PsxCpu *cpu, unsigned index)
 {
     if (!cpu || !cpu->initialized || index >= 32u || index == 0u) return 0u;
@@ -85,6 +107,7 @@ PsxCpuStepResult psx_cpu_step_result_with_cop0_gte(PsxCpu *cpu, PsxBus *bus,
     uint32_t branch_target = 0u;
     uint8_t byte_value;
     uint16_t half_value;
+    bool hilo_interlock;
 
     if (!cpu || !cpu->initialized || !bus)
         return PSX_CPU_STEP_FETCH_BUS_ERROR;
@@ -122,6 +145,22 @@ PsxCpuStepResult psx_cpu_step_result_with_cop0_gte(PsxCpu *cpu, PsxBus *bus,
     shamt = (instruction >> 6) & 31u;
     funct = instruction & 63u;
     imm = (uint16_t)instruction;
+    hilo_interlock = op == 0u &&
+        (funct == 0x10u || funct == 0x11u ||
+         funct == 0x12u || funct == 0x13u ||
+         funct == 0x18u || funct == 0x19u ||
+         funct == 0x1au || funct == 0x1bu);
+    if (cpu->hilo_busy_cycles != 0u) {
+        if (hilo_interlock) {
+            /* HI/LO consumers and a new HI/LO operation wait for the unit. */
+            cpu->last_step_cycles += cpu->hilo_busy_cycles;
+            cpu_commit_hilo(cpu);
+        } else {
+            --cpu->hilo_busy_cycles;
+            if (cpu->hilo_busy_cycles == 0u)
+                cpu_commit_hilo(cpu);
+        }
+    }
     a = psx_cpu_read_gpr(cpu, rs);
     b = psx_cpu_read_gpr(cpu, rt);
     /* MIPS I special case: adjacent LWL/LWR to the same rt merge through
@@ -197,34 +236,48 @@ PsxCpuStepResult psx_cpu_step_result_with_cop0_gte(PsxCpu *cpu, PsxBus *bus,
         case 0x11u: cpu->hi = a; break; /* MTHI */
         case 0x12u: result = cpu->lo; write_result = true; break; /* MFLO */
         case 0x13u: cpu->lo = a; break; /* MTLO */
-        case 0x18u: { /* MULT */
+        case 0x18u: { /* MULT: asynchronous result with operand-dependent latency. */
             int64_t product = signed32(a) * signed32(b);
             uint64_t bits = (uint64_t)product;
-            cpu->lo = (uint32_t)bits;
-            cpu->hi = (uint32_t)(bits >> 32);
+            cpu->hilo_pending_lo = (uint32_t)bits;
+            cpu->hilo_pending_hi = (uint32_t)(bits >> 32);
+            cpu->hilo_pending = true;
+            cpu->hilo_busy_cycles = (uint8_t)(cpu_multiply_cycles(a, true) - 1u);
             break;
         }
         case 0x19u: { /* MULTU */
             uint64_t product = (uint64_t)a * (uint64_t)b;
-            cpu->lo = (uint32_t)product;
-            cpu->hi = (uint32_t)(product >> 32);
+            cpu->hilo_pending_lo = (uint32_t)product;
+            cpu->hilo_pending_hi = (uint32_t)(product >> 32);
+            cpu->hilo_pending = true;
+            cpu->hilo_busy_cycles = (uint8_t)(cpu_multiply_cycles(a, false) - 1u);
             break;
         }
-        case 0x1au: /* DIV */
+        case 0x1au: /* DIV: result becomes visible after 36 cycles. */
             if (b == 0u) {
-                cpu->lo = (a & 0x80000000u) ? 1u : 0xffffffffu;
-                cpu->hi = a;
+                cpu->hilo_pending_lo = (a & 0x80000000u) ? 1u : 0xffffffffu;
+                cpu->hilo_pending_hi = a;
             } else if (a == 0x80000000u && b == 0xffffffffu) {
-                cpu->lo = 0x80000000u; cpu->hi = 0u;
+                cpu->hilo_pending_lo = 0x80000000u;
+                cpu->hilo_pending_hi = 0u;
             } else {
                 int64_t sa = signed32(a), sb = signed32(b);
-                cpu->lo = (uint32_t)(sa / sb);
-                cpu->hi = (uint32_t)(sa % sb);
+                cpu->hilo_pending_lo = (uint32_t)(sa / sb);
+                cpu->hilo_pending_hi = (uint32_t)(sa % sb);
             }
+            cpu->hilo_pending = true;
+            cpu->hilo_busy_cycles = 35u;
             break;
         case 0x1bu: /* DIVU */
-            if (b == 0u) { cpu->lo = 0xffffffffu; cpu->hi = a; }
-            else { cpu->lo = a / b; cpu->hi = a % b; }
+            if (b == 0u) {
+                cpu->hilo_pending_lo = 0xffffffffu;
+                cpu->hilo_pending_hi = a;
+            } else {
+                cpu->hilo_pending_lo = a / b;
+                cpu->hilo_pending_hi = a % b;
+            }
+            cpu->hilo_pending = true;
+            cpu->hilo_busy_cycles = 35u;
             break;
         case 0x21u: result = a + b; write_result = true; break;
         case 0x23u: result = a - b; write_result = true; break;
