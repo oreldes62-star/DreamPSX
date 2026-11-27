@@ -667,6 +667,61 @@ int main(void)
 
     assert(!psx_spu_read16(&spu, PSX_SPU_BASE_ADDR + 1u, &value));
     assert(!psx_spu_read16(&spu, 0x1f801800u, &value));
+    /* Four-tap stereo comb stage: independent channel delay addresses,
+     * shared Q15 coefficients, wide accumulation and final saturation. */
+    {
+        int16_t comb_left = 0;
+        int16_t comb_right = 0;
+        const uint16_t left_offsets[4] = {
+            PSX_SPU_REVERB_CONFIG_MLCOMB1_OFFSET,
+            PSX_SPU_REVERB_CONFIG_MLCOMB2_OFFSET,
+            PSX_SPU_REVERB_CONFIG_MLCOMB3_OFFSET,
+            PSX_SPU_REVERB_CONFIG_MLCOMB4_OFFSET
+        };
+        const uint16_t right_offsets[4] = {
+            PSX_SPU_REVERB_CONFIG_MRCOMB1_OFFSET,
+            PSX_SPU_REVERB_CONFIG_MRCOMB2_OFFSET,
+            PSX_SPU_REVERB_CONFIG_MRCOMB3_OFFSET,
+            PSX_SPU_REVERB_CONFIG_MRCOMB4_OFFSET
+        };
+        const uint16_t volume_offsets[4] = {
+            PSX_SPU_REVERB_CONFIG_VCOMB1_OFFSET,
+            PSX_SPU_REVERB_CONFIG_VCOMB2_OFFSET,
+            PSX_SPU_REVERB_CONFIG_VCOMB3_OFFSET,
+            PSX_SPU_REVERB_CONFIG_VCOMB4_OFFSET
+        };
+        psx_spu_reset(&spu);
+        assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR +
+            PSX_SPU_REVERB_WORK_AREA_START_OFFSET, 0u));
+        for (unsigned i = 0u; i < 4u; ++i) {
+            assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + left_offsets[i],
+                                   (uint16_t)i));
+            assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + right_offsets[i],
+                                   (uint16_t)(i + 4u)));
+            assert(psx_spu_write16(&spu, PSX_SPU_BASE_ADDR + volume_offsets[i],
+                                   0x4000u));
+            assert(psx_spu_reverb_write16(&spu, (uint16_t)i,
+                                           (int16_t)((i + 1u) * 1000u)));
+            assert(psx_spu_reverb_write16(&spu, (uint16_t)(i + 4u),
+                                           (int16_t)(-((int)i + 1) * 1000)));
+        }
+        assert(psx_spu_reverb_process_comb(&spu, &comb_left, &comb_right));
+        assert(comb_left == 5000);
+        assert(comb_right == -5000);
+        /* The comb stage is a read/compute operation; it must not advance
+         * the shared reverb work-area cursor or alter its delay samples. */
+        assert(spu.reverb_buffer_address == 0u);
+        assert(psx_spu_reverb_write16(&spu, 0u, 30000));
+        assert(psx_spu_reverb_write16(&spu, 1u, 30000));
+        assert(psx_spu_reverb_write16(&spu, 2u, 30000));
+        assert(psx_spu_reverb_write16(&spu, 3u, 30000));
+        assert(psx_spu_reverb_process_comb(&spu, &comb_left, &comb_right));
+        assert(comb_left == 32767);
+        assert(!psx_spu_reverb_process_comb(NULL, &comb_left, &comb_right));
+        assert(!psx_spu_reverb_process_comb(&spu, NULL, &comb_right));
+        psx_spu_reset(&spu);
+    }
+
     puts("DreamPSX SPU register/RAM tests: OK");
     return 0;
 }
