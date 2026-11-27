@@ -64,6 +64,22 @@ jobs:
             pcercuei/dreamcast-toolchain:stable \
             sh -lc '. /workspace/environ.sh && sh-elf-readelf -h dreampsx-audio-smoke.elf && sh-elf-readelf -h dreampsx-boot-smoke.elf && test "$(sh-elf-ar t libdreampsx_core.a | wc -l)" -eq 24'
 
+      - name: Build self-booting CDI diagnostic image
+        run: |
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE/kos:/workspace" \
+            -v "$GITHUB_WORKSPACE:/project" \
+            -w /project/platform/dreamcast/audio-smoke \
+            pcercuei/dreamcast-toolchain:stable \
+            sh -lc '. /workspace/environ.sh && sh ./package-cdi.sh'
+
+      - name: Upload DreamPSX CDI
+        uses: actions/upload-artifact@v4
+        with:
+          name: dreampsx-flycast-cdi
+          path: platform/dreamcast/audio-smoke/cdi-output/dreampsx-audio-smoke.cdi
+          if-no-files-found: error
+
       - name: Upload Dreamcast ELF
         uses: actions/upload-artifact@v4
         with:
