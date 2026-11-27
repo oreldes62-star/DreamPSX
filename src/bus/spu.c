@@ -35,6 +35,7 @@ void psx_spu_reset(PsxSpu *spu)
 {
     if (!spu || !spu->initialized) return;
     memset(spu->registers, 0, sizeof(spu->registers));
+    memset(spu->voices, 0, sizeof(spu->voices));
     memset(spu->ram, 0, sizeof(spu->ram));
     spu->transfer_address = 0u;
     spu->active_voices = 0u;
