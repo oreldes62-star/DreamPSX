@@ -16,6 +16,13 @@ typedef enum {
 } PsxDiscTrackMode;
 
 typedef struct {
+    uint8_t file;
+    uint8_t channel;
+    uint8_t submode;
+    uint8_t coding;
+} PsxDiscXaSubheader;
+
+typedef struct {
     const uint8_t *source;
     size_t source_size;
     size_t first_sector;
@@ -40,5 +47,9 @@ bool psx_disc_read_sector(const PsxDiscImage *disc, size_t lba,
 bool psx_disc_read_sector_form2(
     const PsxDiscImage *disc, size_t lba,
     uint8_t destination[PSX_DISC_SECTOR_FORM2_DATA_SIZE]);
+bool psx_disc_read_sector_form2_ex(
+    const PsxDiscImage *disc, size_t lba,
+    uint8_t destination[PSX_DISC_SECTOR_FORM2_DATA_SIZE],
+    PsxDiscXaSubheader *subheader);
 
 #endif
