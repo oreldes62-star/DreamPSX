@@ -578,6 +578,48 @@ int main(void)
     assert((machine.timers.timer[0].mode &
             PSX_TIMER_MODE_REACHED_OVERFLOW) == 0u);
 
+    /* All three timer IRQ sources must latch independently when their
+     * distinct clocks run together during one NTSC scanline:
+     * Timer 0 DOT, Timer 1 HBlank, Timer 2 SYSTEM/8. */
+    psx_machine_reset(&machine);
+    assert(psx_gpu_gp1_write(&machine.gpu, 0x08000001u));
+    psx_irq_write_mask(&machine.irq,
+        (uint16_t)((1u << 4u) | (1u << 5u) | (1u << 6u)));
+    machine.cop0_status = PSX_COP0_STATUS_IEC | (1u << 10u);
+    for (unsigned timer = 0u; timer < 3u; ++timer) {
+        const uint32_t base = PSX_TIMER_BASE_ADDR +
+                              timer * PSX_TIMER_STRIDE;
+        assert(psx_timers_write16(&machine.timers, base + 8u, 1u));
+        assert(psx_timers_write16(&machine.timers, base + 4u,
+            (uint16_t)(1u << PSX_TIMER_MODE_CLOCK_SHIFT |
+                       PSX_TIMER_MODE_IRQ_TARGET |
+                       PSX_TIMER_MODE_IRQ_REPEAT)));
+    }
+    assert(psx_machine_advance_system_cycles(&machine, 2153u));
+    assert(machine.timers.timer[0].counter != 0u);
+    assert(machine.timers.timer[1].counter == 1u);
+    assert(machine.timers.timer[2].counter == 2153u / 8u);
+    assert((psx_irq_read_stat(&machine.irq) & 0x0070u) == 0x0070u);
+    psx_machine_refresh_interrupts(&machine);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) != 0u);
+    assert(psx_machine_interrupt_eligible(&machine));
+
+    /* Acknowledge each timer independently; IP2 stays asserted until
+     * the final pending timer source has been cleared. */
+    for (unsigned source = 4u; source <= 6u; ++source) {
+        psx_irq_write_stat(&machine.irq,
+            (uint16_t)~(1u << source));
+        psx_machine_refresh_interrupts(&machine);
+        if (source != 6u) {
+            assert((psx_irq_read_stat(&machine.irq) & 0x0070u) != 0u);
+            assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) != 0u);
+            assert(psx_machine_interrupt_eligible(&machine));
+        }
+    }
+    assert((psx_irq_read_stat(&machine.irq) & 0x0070u) == 0u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) == 0u);
+    assert(!psx_machine_interrupt_eligible(&machine));
+
     free(vram);
     free(bios);
     free(ram);
