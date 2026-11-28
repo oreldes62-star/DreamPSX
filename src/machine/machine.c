@@ -218,27 +218,27 @@ static bool psx_machine_advance_raster_timers(PsxMachine *machine,
     const uint32_t line_video_clocks =
         machine->gpu_video_clock_region == PSX_VIDEO_CLOCK_PAL ?
         3406u : 3413u;
-    const uint64_t line_cycle_accumulated =
-        (uint64_t)line_video_clocks * 451584u +
-        machine->gpu_scanline_cycle_remainder;
-    const uint32_t line_cycles =
-        (uint32_t)(line_cycle_accumulated / video_clock_numerator);
-    const uint32_t next_line_cycle_remainder =
-        (uint32_t)(line_cycle_accumulated % video_clock_numerator);
     const uint32_t h_start = machine->gpu.display.horizontal_start;
     const uint32_t h_end = machine->gpu.display.horizontal_end;
-    uint32_t h_start_cycle = (uint32_t)(
-        ((uint64_t)h_start * line_cycles) / line_video_clocks);
-    uint32_t h_end_cycle = (uint32_t)(
-        ((uint64_t)h_end * line_cycles) / line_video_clocks);
-    if (h_start_cycle > line_cycles) h_start_cycle = line_cycles;
-    if (h_end_cycle > line_cycles) h_end_cycle = line_cycles;
-    if (h_end_cycle <= h_start_cycle) {
-        h_start_cycle = line_cycles / 4u;
-        h_end_cycle = (line_cycles * 3u) / 4u;
-    }
 
     while (cycles != 0u) {
+        const uint64_t line_cycle_accumulated =
+            (uint64_t)line_video_clocks * 451584u +
+            machine->gpu_scanline_cycle_remainder;
+        const uint32_t line_cycles =
+            (uint32_t)(line_cycle_accumulated / video_clock_numerator);
+        const uint32_t next_line_cycle_remainder =
+            (uint32_t)(line_cycle_accumulated % video_clock_numerator);
+        uint32_t h_start_cycle = (uint32_t)(
+            ((uint64_t)h_start * line_cycles) / line_video_clocks);
+        uint32_t h_end_cycle = (uint32_t)(
+            ((uint64_t)h_end * line_cycles) / line_video_clocks);
+        if (h_start_cycle > line_cycles) h_start_cycle = line_cycles;
+        if (h_end_cycle > line_cycles) h_end_cycle = line_cycles;
+        if (h_end_cycle <= h_start_cycle) {
+            h_start_cycle = line_cycles / 4u;
+            h_end_cycle = (line_cycles * 3u) / 4u;
+        }
         const uint32_t phase = machine->gpu_scanline_cycle_phase;
         const bool hblank = phase < h_start_cycle || phase >= h_end_cycle;
         if (!psx_timers_set_sync_signal(&machine->timers, 0u, hblank))
