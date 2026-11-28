@@ -424,6 +424,16 @@ int main(void)
     assert(psx_machine_interrupt_eligible(&machine));
     assert(machine.cpu.pc == 20u);
 
+    /* A second guest SW clears the final latched source. COP0 IP2 must
+     * fall at this instruction boundary, not one instruction later. */
+    psx_cpu_write_gpr(&machine.cpu, 8u, 0xfffffffeu); /* acknowledge IRQ0 */
+    assert(psx_bus_write32(&machine.bus, 20u, 0xad280000u)); /* SW t0,0(t1) */
+    assert(psx_machine_step(&machine));
+    assert(psx_irq_read_stat(&machine.irq) == 0u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) == 0u);
+    assert(!psx_machine_interrupt_eligible(&machine));
+    assert(machine.cpu.pc == 24u);
+
     free(vram);
     free(bios);
     free(ram);
