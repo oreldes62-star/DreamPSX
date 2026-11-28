@@ -97,6 +97,23 @@ int main(void)
         assert(counter == expected_counter);
         assert(psx_irq_read_stat(&machine.irq) == expected_irq_status);
         assert((expected_irq_status & (1u << 5u)) != 0u);
+
+        /* Reset-at-target must restart the counter on HBlank target hits. */
+        psx_machine_reset(&machine);
+        assert(psx_gpu_gp1_write(&machine.gpu, 0x08000000u));
+        assert(psx_timers_write16(&machine.timers,
+            PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE + 8u, 3u));
+        assert(psx_timers_write16(&machine.timers,
+            PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE + 4u,
+            (uint16_t)(timer1_mode | PSX_TIMER_MODE_RESET_AT_TARGET)));
+        assert(psx_machine_advance_system_cycles(&machine, total_cycles));
+        assert(psx_timers_read16(&machine.timers,
+            PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE, &counter));
+        assert(counter == 2u);
+        assert(psx_timers_read16(&machine.timers,
+            PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE + 4u, &expected_irq_status));
+        assert((expected_irq_status & PSX_TIMER_MODE_REACHED_TARGET) != 0u);
+        assert((psx_irq_read_stat(&machine.irq) & (1u << 5u)) != 0u);
     }
     psx_machine_reset(&machine);
     /* SPU output cadence is clocked at 44.1 kHz: 768 master cycles/frame. */
