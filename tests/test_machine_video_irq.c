@@ -874,6 +874,31 @@ int main(void)
     assert(psx_irq_read_stat(&machine.irq) == 0u);
     assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) == 0u);
 
+    /* Byte-lane MMIO must preserve the untouched I_STAT byte. A guest SB
+     * clears Timer0 in the low byte, then LBU sees the remaining GPU bit. */
+    psx_machine_reset(&machine);
+    assert(psx_gpu_gp0_write(&machine.gpu, 0x1f000000u));
+    assert(psx_timers_write16(&machine.timers,
+        PSX_TIMER_BASE_ADDR + 8u, 1u));
+    assert(psx_timers_write16(&machine.timers,
+        PSX_TIMER_BASE_ADDR + 4u, PSX_TIMER_MODE_IRQ_TARGET));
+    assert(psx_machine_timer_advance_clock(&machine, 0u,
+        PSX_TIMER_CLOCK_SYSTEM, 1u));
+    assert((psx_irq_read_stat(&machine.irq) & 0x0012u) == 0x0012u);
+    assert(psx_bus_write32(&machine.bus, 0u, 0x3c081f80u)); /* LUI t0,1f80 */
+    assert(psx_bus_write32(&machine.bus, 4u, 0x35081070u)); /* ORI t0,t0,1070 */
+    assert(psx_bus_write32(&machine.bus, 8u, 0x240900efu)); /* ADDIU t1,zero,ef */
+    assert(psx_bus_write32(&machine.bus, 12u, 0xa1090000u)); /* SB t1,0(t0) */
+    assert(psx_bus_write32(&machine.bus, 16u, 0x910a0000u)); /* LBU t2,0(t0) */
+    assert(psx_bus_write32(&machine.bus, 20u, 0x00000000u)); /* load delay */
+    machine.cpu.pc = 0u;
+    machine.cpu.next_pc = 4u;
+    machine.cop0_status = 0u;
+    for (unsigned step = 0u; step < 6u; ++step)
+        assert(psx_machine_step(&machine));
+    assert(psx_irq_read_stat(&machine.irq) == (1u << 1u));
+    assert(psx_cpu_read_gpr(&machine.cpu, 10u) == (1u << 1u));
+
     free(vram);
     free(bios);
     free(ram);
