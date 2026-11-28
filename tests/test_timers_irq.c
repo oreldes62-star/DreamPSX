@@ -181,6 +181,22 @@ int main(void)
     assert((machine.cop0_cause & PSX_COP0_CAUSE_BD) == 0u);
     assert(psx_cpu_read_gpr(&machine.cpu, 10u) == 0u);
 
+    /* A synchronous exception raised by the delay-slot instruction
+     * must report the branch address in EPC and set Cause.BD. */
+    psx_machine_reset(&machine);
+    assert(psx_bus_write32(&machine.bus, 0u, 0x10000001u)); /* BEQ zero,zero,+1 */
+    assert(psx_bus_write32(&machine.bus, 4u, 0x0000000cu)); /* SYSCALL */
+    machine.cpu.pc = 0u;
+    machine.cpu.next_pc = 4u;
+    assert(psx_machine_step(&machine));
+    assert(machine.cpu.delay_slot_pending);
+    assert(psx_machine_step(&machine));
+    assert(machine.cpu.pc == 0x80000080u);
+    assert(machine.cop0_epc == 0u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_BD) != 0u);
+    assert((machine.cop0_cause & 0x7cu) ==
+           ((uint32_t)PSX_EXCEPTION_SYSCALL << 2u));
+
     /* Clearing I_STAT removes IP2; a fresh edge is required to retrigger. */
     psx_irq_write_stat(&machine.irq, (uint16_t)~(1u << 4u));
     psx_machine_refresh_interrupts(&machine);
