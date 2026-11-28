@@ -389,14 +389,14 @@ int main(void)
      */
     {
         const uint32_t chunks[] = {
-            322u, 1612u, 214u, 322u, 1612u, 224u
+            322u, 1614u, 216u, 322u, 1615u, 227u
         };
         const uint16_t modes[] = {
             PSX_TIMER_MODE_SYNC_ENABLE,
             (uint16_t)(PSX_TIMER_MODE_SYNC_ENABLE |
                        (2u << PSX_TIMER_MODE_SYNC_SHIFT))
         };
-        const uint16_t expected_mode0 = 3222u;
+        const uint16_t expected_mode0 = 3229u;
 
         for (size_t mode_index = 0u; mode_index < 2u; ++mode_index) {
             uint16_t bulk_counter = 0u;
@@ -413,7 +413,7 @@ int main(void)
             else
                 /* Mode 2 resets at each HBlank rising edge, so the final
                  * partial blanking interval determines the residual count. */
-                assert(bulk_counter > 0u && bulk_counter < 4306u);
+                assert(bulk_counter > 0u && bulk_counter < 4316u);
 
             psx_machine_reset(&machine);
             assert(psx_timers_write16(&machine.timers,
