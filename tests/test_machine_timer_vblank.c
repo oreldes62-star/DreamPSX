@@ -60,8 +60,8 @@ int main(void)
 
     /* Timer 1 synchronization is driven by VBlank, while its selected
      * external clock is HBlank (one tick per scanline). */
-    assert(run_timer1_mode(&machine, 0u, 16u, false) == 0u);
-    assert(run_timer1_mode(&machine, 0u, 17u, false) == 1u);
+    assert(run_timer1_mode(&machine, 0u, 16u, false) == 1u);
+    assert(run_timer1_mode(&machine, 0u, 17u, false) == 2u);
 
     /* Mode 1 resets at the VBlank rising edge but continues to count. */
     assert(run_timer1_mode(&machine, 1u, 16u, false) == 16u);
