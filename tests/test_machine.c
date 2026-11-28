@@ -152,6 +152,35 @@ int main(void)
         }
     }
 
+    /* Scanline duration is a rational CPU/GPU clock conversion. Verify
+     * the accumulated line remainder for both physical oscillator regions.
+     */
+    {
+        const uint32_t line_count = 100u;
+        static const PsxVideoClockRegion regions[] = {
+            PSX_VIDEO_CLOCK_NTSC, PSX_VIDEO_CLOCK_PAL
+        };
+        for (size_t i = 0u; i < sizeof(regions) / sizeof(regions[0]); ++i) {
+            const uint32_t numerator =
+                regions[i] == PSX_VIDEO_CLOCK_PAL ? 709379u : 715909u;
+            const uint32_t line_clocks =
+                regions[i] == PSX_VIDEO_CLOCK_PAL ? 3406u : 3413u;
+            const uint64_t accumulated =
+                (uint64_t)line_count * line_clocks * 451584u;
+            const uint32_t expected_cycles =
+                (uint32_t)(accumulated / numerator);
+            const uint32_t expected_remainder =
+                (uint32_t)(accumulated % numerator);
+
+            psx_machine_reset(&machine);
+            assert(psx_machine_set_video_clock_region(&machine, regions[i]));
+            assert(psx_machine_advance_system_cycles(&machine, expected_cycles));
+            assert(machine.gpu.display.video_scanline == line_count);
+            assert(machine.gpu_scanline_cycle_phase == 0u);
+            assert(machine.gpu_scanline_cycle_remainder == expected_remainder);
+        }
+    }
+
     /* Machine-level GPU raster timing must be invariant to cycle batching. */
     {
         const uint32_t total_cycles = 2148u * 3u + 517u;
