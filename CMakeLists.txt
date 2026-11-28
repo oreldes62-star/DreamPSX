@@ -136,3 +136,14 @@ target_include_directories(test_kos_disc_file PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/tests/kos_stub
 )
 add_test(NAME test_kos_disc_file COMMAND test_kos_disc_file)
+
+# Host-test the Dreamcast KallistiOS video presenter against a framebuffer stub.
+add_executable(test_kos_video_backend
+    tests/test_kos_video_backend.c
+    src/platform/dreamcast/kos_video_backend.c
+)
+target_link_libraries(test_kos_video_backend PRIVATE dreampsx_core)
+target_include_directories(test_kos_video_backend PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/kos_stub
+)
+add_test(NAME test_kos_video_backend COMMAND test_kos_video_backend)
