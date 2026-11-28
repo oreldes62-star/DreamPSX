@@ -95,6 +95,7 @@ bool psx_machine_init(PsxMachine *machine,
     psx_bus_attach_cdrom(&machine->bus, &machine->cdrom);
     machine->bus.spu = &machine->spu;
     psx_bus_attach_sio(&machine->bus, &machine->sio);
+    psx_sio_attach_irq(&machine->sio, &machine->irq);
     return true;
 }
 
@@ -109,6 +110,7 @@ void psx_machine_reset(PsxMachine *machine)
     psx_dma_reset(&machine->dma);
     psx_cdrom_reset(&machine->cdrom);
     psx_spu_reset(&machine->spu);
+    psx_sio_reset(&machine->sio);
     psx_audio_buffer_reset(&machine->audio_output);
     machine->timer2_div8_phase = 0u;
     machine->cdrom_sector_cycle_phase = 0u;
