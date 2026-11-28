@@ -157,7 +157,8 @@ int main(int argc, char **argv)
                 return 1;
             }
         }
-\n        if (++report_counter >= 1000u) {
+
+        if (++report_counter >= 1000u) {
             printf("RUNNING: PC=0x%08lx audio-callbacks=%llu\n",
                    (unsigned long)machine.cpu.pc,
                    (unsigned long long)audio_stream.callback_count);
