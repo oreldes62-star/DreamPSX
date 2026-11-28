@@ -699,6 +699,45 @@ int main(void)
     assert(psx_cpu_read_gpr(&machine.cpu, 10u) == 0u);
     assert((psx_irq_read_stat(&machine.irq) & 0x0072u) == 0x0072u);
 
+    /* A synchronous SYSCALL exception must retain simultaneous GPU and
+     * Timer0/1/2 requests while COP0 interrupts are disabled. Re-enabling
+     * interrupts at the exception vector must then deliver the pending IP2. */
+    psx_machine_reset(&machine);
+    psx_irq_write_mask(&machine.irq, 0x0072u);
+    assert(psx_gpu_gp0_write(&machine.gpu, 0x1f000000u));
+    for (unsigned timer = 0u; timer < 3u; ++timer) {
+        const uint32_t base = PSX_TIMER_BASE_ADDR +
+                              timer * PSX_TIMER_STRIDE;
+        assert(psx_timers_write16(&machine.timers, base + 8u, 1u));
+        assert(psx_timers_write16(&machine.timers, base + 4u,
+                                  PSX_TIMER_MODE_IRQ_TARGET));
+        assert(psx_machine_timer_advance_clock(&machine, timer,
+            PSX_TIMER_CLOCK_SYSTEM, 1u));
+    }
+    assert((psx_irq_read_stat(&machine.irq) & 0x0072u) == 0x0072u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) != 0u);
+    assert(psx_bus_write32(&machine.bus, 0u, 0x0000000cu)); /* SYSCALL */
+    machine.cpu.pc = 0u;
+    machine.cpu.next_pc = 4u;
+    machine.cop0_status = 0u; /* Mask external IRQ while SYSCALL executes. */
+
+    assert(psx_machine_step(&machine));
+    assert(machine.cpu.pc == 0x80000080u);
+    assert(machine.cop0_epc == 0u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_EXCCODE) ==
+           ((uint32_t)PSX_EXCEPTION_SYSCALL <<
+            PSX_COP0_CAUSE_EXCCODE_SHIFT));
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) != 0u);
+    assert((psx_irq_read_stat(&machine.irq) & 0x0072u) == 0x0072u);
+
+    machine.cop0_status = PSX_COP0_STATUS_IEC | (1u << 10u);
+    assert(psx_machine_step(&machine));
+    assert(machine.cpu.pc == 0x80000080u);
+    assert(machine.cop0_epc == 0x80000080u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_EXCCODE) == 0u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) != 0u);
+    assert((psx_irq_read_stat(&machine.irq) & 0x0072u) == 0x0072u);
+
     free(vram);
     free(bios);
     free(ram);
