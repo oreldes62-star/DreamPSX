@@ -390,6 +390,40 @@ int main(void)
     assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) == 0u);
     assert(!psx_machine_interrupt_eligible(&machine));
 
+    /* A guest SW to I_STAT must update the shared COP0 IP2 line at the
+     * end of that instruction, without clearing unrelated IRQ sources.
+     * Both source lines fall first, leaving independent latched requests. */
+    psx_machine_reset(&machine);
+    psx_irq_write_mask(&machine.irq, 0x0003u);
+    assert(psx_irq_set_line(&machine.irq, 0u, true));
+    assert(psx_irq_set_line(&machine.irq, 1u, true));
+    assert(psx_irq_set_line(&machine.irq, 0u, false));
+    assert(psx_irq_set_line(&machine.irq, 1u, false));
+    psx_machine_refresh_interrupts(&machine);
+    assert((psx_irq_read_stat(&machine.irq) & 0x0003u) == 0x0003u);
+
+    /* t0 = 0xfffffffd (acknowledge IRQ1 only); t1 = I_STAT address. */
+    assert(psx_bus_write32(&machine.bus, 0u, 0x3c08ffffu)); /* LUI t0,ffff */
+    assert(psx_bus_write32(&machine.bus, 4u, 0x3508fffdu)); /* ORI t0,t0,fffd */
+    assert(psx_bus_write32(&machine.bus, 8u, 0x3c091f80u)); /* LUI t1,1f80 */
+    assert(psx_bus_write32(&machine.bus, 12u, 0x35291070u)); /* ORI t1,t1,1070 */
+    assert(psx_bus_write32(&machine.bus, 16u, 0xad280000u)); /* SW t0,0(t1) */
+    machine.cpu.pc = 0u;
+    machine.cpu.next_pc = 4u;
+    machine.cop0_status = 0u; /* Prepare registers before enabling IRQs. */
+    for (unsigned i = 0u; i < 4u; ++i)
+        assert(psx_machine_step(&machine));
+    assert(psx_cpu_read_gpr(&machine.cpu, 8u) == 0xfffffffdu);
+    assert(psx_cpu_read_gpr(&machine.cpu, 9u) == 0x1f801070u);
+    machine.cop0_status = PSX_COP0_STATUS_IEC | (1u << 10u);
+    psx_machine_refresh_interrupts(&machine);
+    assert(psx_machine_interrupt_eligible(&machine));
+    assert(psx_machine_step(&machine)); /* Guest acknowledges IRQ1 via SW. */
+    assert((psx_irq_read_stat(&machine.irq) & 0x0003u) == 0x0001u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) != 0u);
+    assert(psx_machine_interrupt_eligible(&machine));
+    assert(machine.cpu.pc == 20u);
+
     free(vram);
     free(bios);
     free(ram);
