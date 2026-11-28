@@ -386,7 +386,7 @@ int main(void)
     /* Clearing the final timer request is the only operation that drops IP2. */
     psx_irq_write_stat(&machine.irq, (uint16_t)~(1u << 4u));
     psx_machine_refresh_interrupts(&machine);
-    assert((psx_irq_read_stat(&machine.irq) & 0x0432u) == 0u);
+    assert(psx_irq_read_stat(&machine.irq) == 0u);
     assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) == 0u);
     assert(!psx_machine_interrupt_eligible(&machine));
 
