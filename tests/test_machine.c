@@ -253,6 +253,52 @@ int main(void)
         assert(!machine.timers.timer[0].sync_signal_active);
     }
 
+    /* Timer 0 target IRQ/reset behavior must remain deterministic when
+     * master-clock batches straddle HBlank boundaries. The target is reached
+     * five clocks after each HBlank reset; after the second line and seven
+     * more clocks, the counter must therefore read two and IRQ4 be pending.
+     */
+    {
+        const uint16_t mode = (uint16_t)(
+            PSX_TIMER_MODE_SYNC_ENABLE |
+            (1u << PSX_TIMER_MODE_SYNC_SHIFT) |
+            PSX_TIMER_MODE_RESET_AT_TARGET |
+            PSX_TIMER_MODE_IRQ_TARGET);
+        const uint32_t chunks[] = {2147u, 1u, 3u, 2145u, 5u, 2u};
+        uint16_t bulk_counter = 0u;
+        uint16_t chunk_counter = 0u;
+        uint16_t bulk_irq = 0u;
+        uint16_t bulk_mode;
+
+        psx_machine_reset(&machine);
+        assert(psx_timers_write16(&machine.timers,
+            PSX_TIMER_BASE_ADDR + 8u, 5u));
+        assert(psx_timers_write16(&machine.timers,
+            PSX_TIMER_BASE_ADDR + 4u, mode));
+        assert(psx_machine_advance_system_cycles(&machine, 2148u * 2u + 7u));
+        assert(psx_timers_read16(&machine.timers,
+            PSX_TIMER_BASE_ADDR, &bulk_counter));
+        bulk_irq = psx_irq_read_stat(&machine.irq);
+        bulk_mode = machine.timers.timer[0].mode;
+        assert(bulk_counter == 2u);
+        assert((bulk_irq & (1u << 4u)) != 0u);
+        assert((bulk_mode & PSX_TIMER_MODE_REACHED_TARGET) != 0u);
+
+        psx_machine_reset(&machine);
+        assert(psx_timers_write16(&machine.timers,
+            PSX_TIMER_BASE_ADDR + 8u, 5u));
+        assert(psx_timers_write16(&machine.timers,
+            PSX_TIMER_BASE_ADDR + 4u, mode));
+        for (size_t i = 0u; i < sizeof(chunks) / sizeof(chunks[0]); ++i)
+            assert(psx_machine_advance_system_cycles(&machine, chunks[i]));
+        assert(psx_timers_read16(&machine.timers,
+            PSX_TIMER_BASE_ADDR, &chunk_counter));
+        assert(chunk_counter == bulk_counter);
+        assert(psx_irq_read_stat(&machine.irq) == bulk_irq);
+        assert(machine.timers.timer[0].mode == bulk_mode);
+        assert(machine.timers.timer[0].irq_fired);
+    }
+
     psx_machine_reset(&machine);
     /* SPU output cadence is clocked at 44.1 kHz: 768 master cycles/frame. */
     {
