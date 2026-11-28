@@ -57,8 +57,10 @@ int main(void)
     assert(machine.timers.timer[2].counter == 1u);
     assert(machine.timer2_div8_phase == 0u);
     assert((psx_irq_read_stat(&machine.irq) & (1u << 6u)) != 0u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) != 0u);
 
-    /* Timer 0 selected for dot clock ignores system ticks. */
+    /* Timer 0 selected for dot clock ignores system ticks and routes its
+     * target event to source 4 (I_STAT bit 4), independently of Timer 1/2. */
     assert(psx_bus_write16(&machine.bus, PSX_TIMER_BASE_ADDR + 8u, 1u));
     assert(psx_bus_write16(&machine.bus, PSX_TIMER_BASE_ADDR + 4u,
         (uint16_t)((1u << PSX_TIMER_MODE_CLOCK_SHIFT) |
@@ -69,6 +71,8 @@ int main(void)
     assert(psx_machine_timer_advance_clock(&machine, 0u,
         PSX_TIMER_CLOCK_DOT, 1u));
     assert(machine.timers.timer[0].counter == 1u);
+    assert((psx_irq_read_stat(&machine.irq) & (1u << 4u)) != 0u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) != 0u);
 
     /* A real machine instruction now advances the shared system clock.
      * The timer IRQ is latched after retirement and sampled at the next
