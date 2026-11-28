@@ -87,7 +87,7 @@ int main(void)
     assert(psx_gpu_gp1_write(&machine.gpu,
         0x07000000u | (256u << 10u) | 16u));
     assert(psx_gpu_gp1_write(&machine.gpu, 0x08000000u));
-    assert(psx_machine_advance_system_cycles(&machine, 2147u));
+    assert(psx_machine_advance_system_cycles(&machine, 2152u));
     assert(machine.gpu.display.video_scanline == 0u);
     assert(machine.gpu_scanline_cycle_phase == 2147u);
     assert(psx_machine_advance_system_cycles(&machine, 1u));
@@ -98,13 +98,15 @@ int main(void)
     /* A PAL mode switch discards the old NTSC fractional line remainder. */
     psx_gpu_reset(&machine.gpu);
     machine.gpu_scanline_cycle_phase = 0u;
+    assert(psx_machine_set_video_clock_region(
+        &machine, PSX_VIDEO_CLOCK_PAL));
     assert(psx_gpu_gp1_write(&machine.gpu, 0x08000000u));
     assert(psx_machine_advance_system_cycles(&machine, 1000u));
     assert(machine.gpu_scanline_cycle_phase == 1000u);
     assert(psx_gpu_gp1_write(&machine.gpu,
         0x07000000u | (256u << 10u) | 16u));
     assert(psx_gpu_gp1_write(&machine.gpu, 0x08000008u));
-    assert(psx_machine_advance_system_cycles(&machine, 2156u));
+    assert(psx_machine_advance_system_cycles(&machine, 2167u));
     assert(machine.gpu.display.video_scanline == 0u);
     assert(machine.gpu_scanline_cycle_phase == 2156u);
     assert(psx_machine_advance_system_cycles(&machine, 1u));
@@ -115,7 +117,7 @@ int main(void)
      * master-clock cycles, including intervals spanning many scanlines.
      */
     {
-        const uint32_t total_cycles = 2148u * 1000u + 123u;
+        const uint32_t total_cycles = 2153u * 1000u + 123u;
         unsigned expected_scanline;
         uint32_t expected_phase;
 
