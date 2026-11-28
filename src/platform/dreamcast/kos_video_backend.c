@@ -57,7 +57,11 @@ bool psx_kos_video_backend_present(PsxKosVideoBackend *backend,
     /* Nearest-neighbour scaling keeps the frontend deterministic and avoids
        floating-point work on the SH-4. Draw only into the non-visible buffer. */
     for (unsigned y = 0u; y < PSX_KOS_VIDEO_HEIGHT; ++y) {
-        const unsigned source_y =
+        /* A 480-line interlaced source contains one parity per field.
+           Bob-deinterlace the current field to the Dreamcast's 240-line
+           output instead of blending or displaying the opposite field. */
+        const unsigned source_y = info.field_valid && source_height >= 480u ?
+            (2u * y + (info.field_odd ? 1u : 0u)) % source_height :
             (unsigned)(((uint64_t)y * source_height) /
                        PSX_KOS_VIDEO_HEIGHT);
         for (unsigned x = 0u; x < PSX_KOS_VIDEO_WIDTH; ++x) {
