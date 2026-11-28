@@ -208,8 +208,18 @@ bool psx_machine_timer_advance_clock(PsxMachine *machine, unsigned timer,
                                                clock, ticks, &irq_sources))
         return false;
     if ((irq_sources & (1u << timer)) != 0u) {
-        psx_irq_set_line(&machine->irq, 4u + timer, true);
-        psx_irq_set_line(&machine->irq, 4u + timer, false);
+        PsxTimer *source = &machine->timers.timer[timer];
+        if ((source->mode & PSX_TIMER_MODE_IRQ_TOGGLE) != 0u) {
+            /* Toggle mode holds the timer IRQ output until the next event.
+             * The interrupt controller latches only the low-to-high edge. */
+            source->irq_toggle_state = !source->irq_toggle_state;
+            psx_irq_set_line(&machine->irq, 4u + timer,
+                             source->irq_toggle_state);
+        } else {
+            /* Pulse mode presents a short active pulse for each IRQ event. */
+            psx_irq_set_line(&machine->irq, 4u + timer, true);
+            psx_irq_set_line(&machine->irq, 4u + timer, false);
+        }
         psx_machine_refresh_interrupts(machine);
     }
     return true;
