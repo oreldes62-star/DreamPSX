@@ -79,6 +79,29 @@ int main(void)
     assert(!psx_machine_video_advance_scanline(NULL, &video));
     assert(!psx_machine_video_advance_scanline(&machine, NULL));
 
+    /* CPU/master-clock cycles now drive the GPU raster automatically.
+     * Splitting one scanline across calls must preserve its fractional phase.
+     */
+    psx_gpu_reset(&machine.gpu);
+    machine.gpu_scanline_cycle_phase = 0u;
+    assert(psx_gpu_gp1_write(&machine.gpu,
+        0x07000000u | (256u << 10u) | 16u));
+    assert(psx_gpu_gp1_write(&machine.gpu, 0x08000000u));
+    assert(psx_machine_advance_system_cycles(&machine, 2147u));
+    assert(machine.gpu.display.video_scanline == 0u);
+    assert(machine.gpu_scanline_cycle_phase == 2147u);
+    assert(psx_machine_advance_system_cycles(&machine, 1u));
+    assert(machine.gpu.display.video_scanline == 1u);
+    assert(machine.gpu_scanline_cycle_phase == 0u);
+    assert(machine.gpu.display.video_vblank);
+
+    /* PAL uses its own line cadence and likewise survives split intervals. */
+    assert(psx_gpu_gp1_write(&machine.gpu, 0x08000008u));
+    machine.gpu_scanline_cycle_phase = 0u;
+    assert(psx_machine_advance_system_cycles(&machine, 2156u));
+    assert(machine.gpu.display.video_scanline == 1u);
+    assert(machine.gpu_scanline_cycle_phase == 0u);
+
     /* GPU command IRQ1 reaches COP0 IP2 and is accepted at an instruction
      * boundary. Device acknowledge drops the source; I_STAT is separate. */
     psx_irq_write_mask(&machine.irq, (uint16_t)(1u << 1u));
