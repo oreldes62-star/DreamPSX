@@ -1320,14 +1320,17 @@ int main(void)
                            (uint16_t)~(1u << 1u)));
     psx_machine_refresh_interrupts(&machine);
     assert(psx_irq_read_stat(&machine.irq) == 0x0070u);
-    for (unsigned timer = 0u; timer < PSX_TIMER_COUNT; ++timer) {
-        const uint16_t bit = (uint16_t)(1u << (timer + 4u));
-        assert(psx_bus_write16(&machine.bus, PSX_IRQ_STAT_ADDR,
-                               (uint16_t)~bit));
-        psx_machine_refresh_interrupts(&machine);
-        assert(psx_irq_read_stat(&machine.irq) ==
-               (uint16_t)(0x0070u & (uint16_t)~((1u << (timer + 1u)) - 0x10u)));
-        assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) != 0u);
+    {
+        uint16_t expected_pending = 0x0070u;
+        for (unsigned timer = 0u; timer < PSX_TIMER_COUNT; ++timer) {
+            const uint16_t bit = (uint16_t)(1u << (timer + 4u));
+            assert(psx_bus_write16(&machine.bus, PSX_IRQ_STAT_ADDR,
+                                   (uint16_t)~bit));
+            expected_pending &= (uint16_t)~bit;
+            psx_machine_refresh_interrupts(&machine);
+            assert(psx_irq_read_stat(&machine.irq) == expected_pending);
+            assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) != 0u);
+        }
     }
     assert(psx_irq_read_stat(&machine.irq) == 0u);
     assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) == 0u);
