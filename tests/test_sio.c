@@ -21,8 +21,12 @@ int main(void)
     assert(psx_sio_write16(&sio, PSX_SIO_CTRL_ADDR,
                            PSX_SIO_CTRL_DTR | PSX_SIO_CTRL_DSRIEN));
 
-    /* First byte asserts /ACK and latches the controller IRQ7 edge. */
+    /* A byte is received only after ten baud-derived bit-times. */
     assert(psx_sio_write8(&sio, PSX_SIO_DATA_ADDR, 0x01u));
+    psx_sio_advance_cycles(&sio, 9u);
+    assert(psx_sio_read16(&sio, PSX_SIO_STAT_ADDR, &status) &&
+           !(status & PSX_SIO_STAT_RX_READY));
+    psx_sio_advance_cycles(&sio, 1u);
     assert((psx_irq_read_stat(&irq) & (1u << PSX_SIO_IRQ_SOURCE)) != 0u);
     assert(psx_sio_read8(&sio, PSX_SIO_DATA_ADDR, &value) && value == 0xffu);
     assert(psx_sio_read16(&sio, PSX_SIO_STAT_ADDR, &status) &&
@@ -37,8 +41,10 @@ int main(void)
            !(status & PSX_SIO_STAT_IRQ));
 
     assert(psx_sio_write8(&sio, PSX_SIO_DATA_ADDR, 0x42u));
+    psx_sio_advance_cycles(&sio, 10u);
     assert(psx_sio_read8(&sio, PSX_SIO_DATA_ADDR, &value) && value == 0x41u);
     assert(psx_sio_write8(&sio, PSX_SIO_DATA_ADDR, 0x00u));
+    psx_sio_advance_cycles(&sio, 10u);
     assert(psx_sio_read8(&sio, PSX_SIO_DATA_ADDR, &value) && value == 0x5au);
     assert(psx_sio_write8(&sio, PSX_SIO_DATA_ADDR, 0x00u));
     assert(psx_sio_read8(&sio, PSX_SIO_DATA_ADDR, &value) &&
@@ -62,6 +68,7 @@ int main(void)
     psx_sio_set_pad_state(&sio, false, 0u);
     assert(psx_sio_write16(&sio, PSX_SIO_CTRL_ADDR, PSX_SIO_CTRL_DTR));
     assert(psx_sio_write8(&sio, PSX_SIO_DATA_ADDR, 0x01u));
+    psx_sio_advance_cycles(&sio, 10u);
     assert(psx_sio_read8(&sio, PSX_SIO_DATA_ADDR, &value) && value == 0xffu);
     assert(!psx_sio_read8(&sio, 0x1f801050u, &value));
     assert(!psx_sio_write8(NULL, PSX_SIO_DATA_ADDR, 0u));
