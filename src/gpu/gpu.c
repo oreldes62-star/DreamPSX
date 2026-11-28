@@ -1139,6 +1139,7 @@ bool psx_gpu_get_display_mode_info(const PsxGpu *gpu,
                   horizontal_widths[mode & 3u];
     info->height = (mode & (1u << 2u)) != 0u ? 480u : 240u;
     info->pal = (mode & (1u << 3u)) != 0u;
+    info->dot_clock_divisor = cycles_per_pixel[hres_index];
     info->color_24bit = (mode & (1u << 4u)) != 0u;
     info->interlaced = (mode & (1u << 5u)) != 0u;
     info->reverse = (mode & (1u << 7u)) != 0u;
