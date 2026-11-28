@@ -139,6 +139,30 @@ int main(void)
         assert(counter == 15u);
     }
 
+    /* Timer 0 receives the GPU HBlank edge. Mode 1 resets on that
+     * edge and continues counting; this direct event test deliberately
+     * avoids claiming a cycle-accurate HBlank duration.
+     */
+    {
+        PsxGpuVideoState video;
+        const uint16_t mode = (uint16_t)(
+            PSX_TIMER_MODE_SYNC_ENABLE |
+            (1u << PSX_TIMER_MODE_SYNC_SHIFT));
+
+        psx_machine_reset(&machine);
+        assert(psx_timers_write16(&machine.timers,
+            PSX_TIMER_BASE_ADDR, 77u));
+        assert(psx_timers_write16(&machine.timers,
+            PSX_TIMER_BASE_ADDR + 4u, mode));
+        assert(psx_timers_write16(&machine.timers,
+            PSX_TIMER_BASE_ADDR, 77u));
+        assert(psx_machine_video_advance_scanline(&machine, &video));
+        assert(video.hblank_pulse);
+        assert(!machine.timers.timer[0].sync_signal_active);
+        assert(machine.timers.timer[0].sync_started);
+        assert(machine.timers.timer[0].counter == 0u);
+    }
+
     psx_machine_reset(&machine);
     /* SPU output cadence is clocked at 44.1 kHz: 768 master cycles/frame. */
     {
