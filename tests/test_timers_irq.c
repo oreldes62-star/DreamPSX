@@ -124,6 +124,34 @@ int main(void)
     assert(machine.cop0_epc == 4u);
     assert((machine.cop0_status & PSX_COP0_STATUS_IEC) == 0u);
 
+    /* Three timer sources may be pending together. Taking the CPU
+     * interrupt must preserve all I_STAT latches; acknowledging one source
+     * must leave the other two asserted on the shared COP0 IP2 line. */
+    psx_machine_reset(&machine);
+    assert(psx_bus_write16(&machine.bus, PSX_IRQ_MASK_ADDR,
+        (uint16_t)((1u << 4u) | (1u << 5u) | (1u << 6u))));
+    for (unsigned timer = 0u; timer < 3u; ++timer) {
+        const uint32_t base = PSX_TIMER_BASE_ADDR + timer * PSX_TIMER_STRIDE;
+        assert(psx_bus_write16(&machine.bus, base + 8u, 1u));
+        assert(psx_bus_write16(&machine.bus, base + 4u,
+                               PSX_TIMER_MODE_IRQ_TARGET));
+        assert(psx_machine_timer_advance_clock(&machine, timer,
+            PSX_TIMER_CLOCK_SYSTEM, 1u));
+    }
+    assert((psx_irq_read_stat(&machine.irq) & 0x70u) == 0x70u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) != 0u);
+    assert(psx_bus_write32(&machine.bus, 0u, 0x24080001u));
+    machine.cop0_status = PSX_COP0_STATUS_IEC | (1u << 10u);
+    machine.cpu.pc = 0u;
+    machine.cpu.next_pc = 4u;
+    assert(psx_machine_step(&machine));
+    assert(machine.cpu.pc == 0x80000080u);
+    assert((psx_irq_read_stat(&machine.irq) & 0x70u) == 0x70u);
+    psx_irq_write_stat(&machine.irq, (uint16_t)~(1u << 5u));
+    psx_machine_refresh_interrupts(&machine);
+    assert((psx_irq_read_stat(&machine.irq) & 0x70u) == 0x50u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) != 0u);
+
     /* An IRQ arriving after a taken branch must not split its delay slot.
      * The delay-slot instruction retires first; the interrupt is accepted
      * at the following boundary with EPC pointing at the branch target. */
