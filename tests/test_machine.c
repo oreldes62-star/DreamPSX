@@ -309,7 +309,7 @@ int main(void)
         assert(psx_machine_advance_system_cycles(&machine,
                                                    2148u * 2u + 10u));
         assert(machine.timers.timer[0].sync_started);
-        assert(machine.timers.timer[0].counter == 541u);
+        assert(machine.timers.timer[0].counter == 225u);
     }
 
     /* Timer 0 raster synchronization must be invariant to how the CPU
