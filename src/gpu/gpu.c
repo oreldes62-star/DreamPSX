@@ -1022,8 +1022,8 @@ bool psx_gpu_scanout_rgb565(const PsxGpu *gpu, unsigned width,
                 const unsigned blue = read_vram_byte(gpu, source_y,
                                                        byte_x + 2u);
                 destination[column] = (uint16_t)(
-                    (red >> 3u) | ((green >> 2u) << 5u) |
-                    ((blue >> 3u) << 11u));
+                    ((red >> 3u) << 11u) | ((green >> 2u) << 5u) |
+                    (blue >> 3u));
             } else {
                 const unsigned source_x = (gpu->display.start_x + column) %
                                           PSX_GPU_VRAM_WIDTH;
@@ -1033,8 +1033,8 @@ bool psx_gpu_scanout_rgb565(const PsxGpu *gpu, unsigned width,
                 const unsigned green = (pixel >> 5u) & 0x1fu;
                 const unsigned blue = (pixel >> 10u) & 0x1fu;
                 const unsigned green6 = (green << 1u) | (green >> 4u);
-                destination[column] = (uint16_t)(red | (green6 << 5u) |
-                                                  (blue << 11u));
+                destination[column] = (uint16_t)((red << 11u) |
+                                                  (green6 << 5u) | blue);
             }
         }
     }
