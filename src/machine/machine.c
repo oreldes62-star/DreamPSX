@@ -114,6 +114,7 @@ void psx_machine_reset(PsxMachine *machine)
     psx_audio_buffer_reset(&machine->audio_output);
     machine->timer2_div8_phase = 0u;
     machine->gpu_scanline_cycle_phase = 0u;
+    machine->gpu_scanline_mode = machine->gpu.display.mode;
     machine->cdrom_sector_cycle_phase = 0u;
     machine->spu_audio_cycle_phase = 0u;
     machine->cop0_status = 0u;
@@ -181,9 +182,19 @@ bool psx_machine_advance_system_cycles(PsxMachine *machine, uint32_t cycles)
      */
     {
         PsxGpuDisplayModeInfo mode;
-        const uint32_t line_cycles =
-            psx_gpu_get_display_mode_info(&machine->gpu, &mode) && mode.pal ?
-            2157u : 2148u;
+        const bool mode_valid =
+            psx_gpu_get_display_mode_info(&machine->gpu, &mode);
+        const uint32_t current_mode = machine->gpu.display.mode;
+        const uint32_t line_cycles = mode_valid && mode.pal ? 2157u : 2148u;
+
+        /* GP1 display-mode changes can switch PAL/NTSC or progressive/
+         * interlaced cadence. Do not carry a remainder measured in the old
+         * mode into the new raster period.
+         */
+        if (machine->gpu_scanline_mode != current_mode) {
+            machine->gpu_scanline_cycle_phase = 0u;
+            machine->gpu_scanline_mode = current_mode;
+        }
         uint64_t phase = (uint64_t)machine->gpu_scanline_cycle_phase +
                          (uint64_t)cycles;
         while (phase >= line_cycles) {
