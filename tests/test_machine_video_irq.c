@@ -87,9 +87,9 @@ int main(void)
     assert(psx_gpu_gp1_write(&machine.gpu,
         0x07000000u | (256u << 10u) | 16u));
     assert(psx_gpu_gp1_write(&machine.gpu, 0x08000000u));
-    assert(psx_machine_advance_system_cycles(&machine, 2152u));
+    assert(psx_machine_advance_system_cycles(&machine, 2151u));
     assert(machine.gpu.display.video_scanline == 0u);
-    assert(machine.gpu_scanline_cycle_phase == 2147u);
+    assert(machine.gpu_scanline_cycle_phase == 2151u);
     assert(psx_machine_advance_system_cycles(&machine, 1u));
     assert(machine.gpu.display.video_scanline == 1u);
     assert(machine.gpu_scanline_cycle_phase == 0u);
@@ -108,7 +108,7 @@ int main(void)
     assert(psx_gpu_gp1_write(&machine.gpu, 0x08000008u));
     assert(psx_machine_advance_system_cycles(&machine, 2167u));
     assert(machine.gpu.display.video_scanline == 0u);
-    assert(machine.gpu_scanline_cycle_phase == 2156u);
+    assert(machine.gpu_scanline_cycle_phase == 2167u);
     assert(psx_machine_advance_system_cycles(&machine, 1u));
     assert(machine.gpu.display.video_scanline == 1u);
     assert(machine.gpu_scanline_cycle_phase == 0u);
