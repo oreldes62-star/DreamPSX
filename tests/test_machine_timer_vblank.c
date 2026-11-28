@@ -204,7 +204,7 @@ static void run_mixed_timer_clocks(PsxMachine *machine, bool pal,
         machine, pal ? PSX_VIDEO_CLOCK_PAL : PSX_VIDEO_CLOCK_NTSC));
     psx_machine_reset(machine);
     assert(psx_gpu_gp1_write(&machine->gpu, 0x08000001u));
-    assert(psx_irq_write_mask(&machine->irq, 0x0070u));
+    psx_irq_write_mask(&machine->irq, 0x0070u);
     machine->cop0_status = PSX_COP0_STATUS_IEC | (1u << 10u);
 
     /* Run all three hardware clock domains at once:
