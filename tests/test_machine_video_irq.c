@@ -288,6 +288,36 @@ int main(void)
     assert((machine.cop0_cause & PSX_COP0_CAUSE_BD) == 0u);
     assert(psx_cpu_read_gpr(&machine.cpu, 10u) == 0u);
 
+    /* GPU command IRQ1 must obey the same branch-delay rule as VBlank
+     * and timer interrupts, even though its source is the GP0 command port. */
+    psx_machine_reset(&machine);
+    psx_irq_write_mask(&machine.irq, (uint16_t)(1u << 1u));
+    assert(psx_bus_write32(&machine.bus, 0u, 0x10000001u)); /* BEQ zero,zero,+1 */
+    assert(psx_bus_write32(&machine.bus, 4u, 0x24090007u)); /* ADDIU t1,zero,7 */
+    assert(psx_bus_write32(&machine.bus, 8u, 0x240a0009u)); /* ADDIU t2,zero,9 */
+    machine.cop0_status = PSX_COP0_STATUS_IEC | (1u << 10u);
+    machine.cpu.pc = 0u;
+    machine.cpu.next_pc = 4u;
+    assert(psx_machine_step(&machine));
+    assert(machine.cpu.delay_slot_pending);
+    assert(psx_bus_write32(&machine.bus, 0x1f801810u, 0x1f000000u));
+    psx_machine_refresh_interrupts(&machine);
+    assert((psx_irq_read_stat(&machine.irq) & (1u << 1u)) != 0u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) != 0u);
+    assert(psx_machine_step(&machine)); /* GPU IRQ1 waits for delay slot */
+    assert(!machine.cpu.delay_slot_pending);
+    assert(psx_cpu_read_gpr(&machine.cpu, 9u) == 7u);
+    assert(machine.cpu.pc == 8u && machine.cpu.next_pc == 12u);
+    assert(psx_machine_step(&machine));
+    assert(machine.cpu.pc == 0x80000080u);
+    assert(machine.cop0_epc == 8u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_BD) == 0u);
+    assert(psx_cpu_read_gpr(&machine.cpu, 10u) == 0u);
+    assert(psx_bus_write32(&machine.bus, 0x1f801814u, 0x02000000u));
+    psx_irq_write_stat(&machine.irq, (uint16_t)~(1u << 1u));
+    psx_machine_refresh_interrupts(&machine);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) == 0u);
+
     free(vram);
     free(bios);
     free(ram);
