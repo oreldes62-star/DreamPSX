@@ -272,6 +272,7 @@ int main(void)
     assert(psx_machine_step(&machine));
     assert((machine.cop0_cause & 0x00000700u) == 0x00000400u);
     psx_irq_set_line(&machine.irq, 1u, false);
+    psx_irq_write_stat(&machine.irq, (uint16_t)~(1u << 1u));
     psx_machine_refresh_interrupts(&machine);
     assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) == 0u);
     psx_irq_write_mask(&machine.irq, 0u);
