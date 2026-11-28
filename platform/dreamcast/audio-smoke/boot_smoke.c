@@ -7,6 +7,7 @@
 #include "dreampsx/machine.h"
 #include "dreampsx/kos_disc_file.h"
 #include "dreampsx/kos_audio_backend.h"
+#include "dreampsx/kos_video_backend.h"
 #include "dreampsx/dreamcast_audio_stream.h"
 
 #define PSX_BIOS_PATH "/cd/PSX/BIOS.BIN"
@@ -19,6 +20,7 @@ static PsxKosDiscFile disc_file;
 static PsxDiscImage disc;
 static PsxDreamcastAudioStream audio_stream;
 static PsxKosAudioBackend audio_backend;
+static PsxKosVideoBackend video_backend;
 
 static uint8_t psx_ram[PSX_RAM_SIZE];
 static uint8_t psx_bios[PSX_BIOS_SIZE];
@@ -68,11 +70,12 @@ int main(int argc, char **argv)
 {
     PsxBootConfig boot_config;
     uint32_t report_counter = 0u;
+    uint32_t video_frame_divider = 0u;
 
     (void)argc;
     (void)argv;
 
-    dbgio_dev_select("fb");
+    dbgio_dev_select("serial");
     printf("DreamPSX file-backed boot smoke test\n");
     printf("Expected files:\n  %s\n  %s and its relative BIN file\n",
            PSX_BIOS_PATH, PSX_CUE_PATH);
@@ -134,7 +137,7 @@ int main(int argc, char **argv)
             return 1;
         }
 
-        if (++report_counter >= 1000u) {
+        if (++video_frame_divider >= 16u) {\n            PsxGpuDisplay display;\n            video_frame_divider = 0u;\n            if (psx_gpu_get_display(&machine.gpu, &display) &&\n                !display.disabled &&\n                !psx_kos_video_backend_present(&video_backend, &machine.gpu)) {\n                printf("ERROR: GPU framebuffer presentation failed\\n");\n                shutdown_audio();\n                psx_kos_disc_file_close(&disc_file, &disc);\n                return 1;\n            }\n        }\n\n        if (++report_counter >= 1000u) {
             printf("RUNNING: PC=0x%08lx audio-callbacks=%llu\n",
                    (unsigned long)machine.cpu.pc,
                    (unsigned long long)audio_stream.callback_count);
