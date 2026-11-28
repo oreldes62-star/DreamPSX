@@ -28,6 +28,19 @@ static uint32_t physical_address(uint32_t address)
     return address;
 }
 
+/* A timer MODE write resets its IRQ toggle output to inactive. Keep the
+ * interrupt-controller input level in sync without clearing the separately
+ * latched I_STAT request. */
+static void bus_reset_timer_irq_output(PsxBus *bus, uint32_t address)
+{
+    if (address < PSX_TIMER_BASE_ADDR) return;
+    const uint32_t offset = address - PSX_TIMER_BASE_ADDR;
+    const unsigned timer = (unsigned)(offset / PSX_TIMER_STRIDE);
+    const unsigned slot = (unsigned)(offset % PSX_TIMER_STRIDE);
+    if (timer < PSX_TIMER_COUNT && slot == 4u)
+        psx_irq_set_line(bus->irq, 4u + timer, false);
+}
+
 bool psx_bus_init(PsxBus *bus, PsxMemory *memory, PsxIrqController *irq,
                   PsxGpu *gpu, PsxTimers *timers)
 {
@@ -111,7 +124,10 @@ bool psx_bus_write16(PsxBus *bus, uint32_t address, uint16_t value)
     if (bus->sio && psx_sio_write16(bus->sio, address, value)) return true;
     if (bus->spu && psx_spu_write16(bus->spu, address, value)) return true;
     if (psx_irq_mmio_write16(bus->irq, address, value)) return true;
-    if (psx_timers_write16(bus->timers, address, value)) return true;
+    if (psx_timers_write16(bus->timers, address, value)) {
+        bus_reset_timer_irq_output(bus, address);
+        return true;
+    }
     return psx_memory_write16(bus->memory, address, value);
 }
 
@@ -202,6 +218,9 @@ bool psx_bus_write32(PsxBus *bus, uint32_t address, uint32_t value)
         return ok;
     }
     if (psx_irq_mmio_write32(bus->irq, address, value)) return true;
-    if (psx_timers_write32(bus->timers, address, value)) return true;
+    if (psx_timers_write32(bus->timers, address, value)) {
+        bus_reset_timer_irq_output(bus, address);
+        return true;
+    }
     return psx_memory_write32(bus->memory, address, value);
 }
