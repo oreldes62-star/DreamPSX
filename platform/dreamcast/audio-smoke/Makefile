@@ -10,6 +10,7 @@ CORE_SOURCES = \
     ../../../src/bus/irq_mmio.c \
     ../../../src/bus/memory.c \
     ../../../src/bus/spu.c \
+    ../../../src/bus/sio.c \
     ../../../src/audio/spu_adpcm.c \
     ../../../src/audio/audio_buffer.c \
     ../../../src/audio/dreamcast_audio_stream.c \
