@@ -515,6 +515,27 @@ int main(void)
     assert(psx_cpu_read_gpr(&machine.cpu, 9u) == 0x1202u);
     assert(psx_cpu_read_gpr(&machine.cpu, 10u) == 0x3456u);
 
+    /* Guest stores must program COUNT and TARGET through the CPU bus,
+     * and subsequent guest loads must observe the written values. */
+    psx_machine_reset(&machine);
+    assert(psx_bus_write32(&machine.bus, 0u, 0x3c081f80u));  /* LUI t0,1f80 */
+    assert(psx_bus_write32(&machine.bus, 4u, 0x35081100u));  /* ORI t0,t0,1100 */
+    assert(psx_bus_write32(&machine.bus, 8u, 0x24092222u));  /* ADDIU t1,zero,2222 */
+    assert(psx_bus_write32(&machine.bus, 12u, 0xad090000u)); /* SW t1,COUNT */
+    assert(psx_bus_write32(&machine.bus, 16u, 0x24093333u)); /* ADDIU t1,zero,3333 */
+    assert(psx_bus_write32(&machine.bus, 20u, 0xad090008u)); /* SW t1,TARGET */
+    assert(psx_bus_write32(&machine.bus, 24u, 0x8d0a0000u)); /* LW t2,COUNT */
+    assert(psx_bus_write32(&machine.bus, 28u, 0x00000000u)); /* NOP */
+    assert(psx_bus_write32(&machine.bus, 32u, 0x25080008u)); /* ADDIU t0,t0,8 */
+    assert(psx_bus_write32(&machine.bus, 36u, 0x8d0b0000u)); /* LW t3,TARGET */
+    assert(psx_bus_write32(&machine.bus, 40u, 0x00000000u)); /* NOP */
+    machine.cpu.pc = 0u;
+    machine.cpu.next_pc = 4u;
+    for (unsigned i = 0u; i < 11u; ++i)
+        assert(psx_machine_step(&machine));
+    assert(psx_cpu_read_gpr(&machine.cpu, 10u) == 0x2225u);
+    assert(psx_cpu_read_gpr(&machine.cpu, 11u) == 0x3333u);
+
     /* A guest LW of Timer0 MODE must observe the latched reached-target
      * flag, then clear that read-to-clear flag in the peripheral. */
     psx_machine_reset(&machine);
