@@ -144,6 +144,8 @@ bool psx_machine_set_video_clock_region(PsxMachine *machine,
     if (machine->gpu_video_clock_region != region) {
         machine->gpu_video_clock_region = region;
         machine->gpu_video_clock_phase = 0u;
+        machine->gpu_scanline_cycle_phase = 0u;
+        machine->gpu_scanline_cycle_remainder = 0u;
         machine->timer0_dot_phase = 0u;
     }
     return true;
