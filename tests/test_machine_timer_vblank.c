@@ -67,6 +67,11 @@ int main(void)
     assert(run_timer1_mode(&machine, 1u, 16u, false) == 16u);
     assert(run_timer1_mode(&machine, 1u, 17u, false) == 17u);
 
+    /* Mode 2 resets at the VBlank rising edge and counts only while
+     * VBlank is active: lines 1 through 15 in this startup window.
+     */
+    assert(run_timer1_mode(&machine, 2u, 16u, false) == 15u);
+
     /* Mode 3 waits for the first VBlank edge, then free-runs. */
     assert(run_timer1_mode(&machine, 3u, 16u, false) == 16u);
     assert(run_timer1_mode(&machine, 3u, 17u, false) == 17u);
