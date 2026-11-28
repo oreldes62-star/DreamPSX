@@ -768,6 +768,42 @@ int main(void)
     psx_machine_refresh_interrupts(&machine);
     assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) != 0u);
 
+    /* I_MASK gates delivery to COP0 without destroying I_STAT. Enabling
+     * either pending source must assert IP2; masking both must drop IP2
+     * while both device requests remain latched. */
+    psx_machine_reset(&machine);
+    machine.cop0_status = PSX_COP0_STATUS_IEC | (1u << 10u);
+    assert(psx_gpu_gp0_write(&machine.gpu, 0x1f000000u));
+    assert(psx_timers_write16(&machine.timers,
+        PSX_TIMER_BASE_ADDR + 8u, 1u));
+    assert(psx_timers_write16(&machine.timers,
+        PSX_TIMER_BASE_ADDR + 4u, PSX_TIMER_MODE_IRQ_TARGET));
+    assert(psx_machine_timer_advance_clock(&machine, 0u,
+        PSX_TIMER_CLOCK_SYSTEM, 1u));
+    assert((psx_irq_read_stat(&machine.irq) & 0x0012u) == 0x0012u);
+    psx_machine_refresh_interrupts(&machine);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) == 0u);
+    assert(!psx_machine_interrupt_eligible(&machine));
+
+    psx_irq_write_mask(&machine.irq, (uint16_t)(1u << 1u));
+    psx_machine_refresh_interrupts(&machine);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) != 0u);
+    assert(psx_machine_interrupt_eligible(&machine));
+
+    psx_irq_write_mask(&machine.irq, 0u);
+    psx_machine_refresh_interrupts(&machine);
+    assert((psx_irq_read_stat(&machine.irq) & 0x0012u) == 0x0012u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) == 0u);
+    assert(!psx_machine_interrupt_eligible(&machine));
+
+    psx_irq_write_mask(&machine.irq, (uint16_t)(1u << 4u));
+    psx_machine_refresh_interrupts(&machine);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) != 0u);
+    psx_irq_write_stat(&machine.irq, (uint16_t)~(1u << 4u));
+    psx_machine_refresh_interrupts(&machine);
+    assert(psx_irq_read_stat(&machine.irq) == 0u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) == 0u);
+
     free(vram);
     free(bios);
     free(ram);
