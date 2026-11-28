@@ -146,11 +146,12 @@ int main(void)
         assert(machine.gpu_scanline_cycle_phase == expected_phase);
     }
 
-    /* VBlank IRQ state must be independent of how master-clock cycles
-     * are batched while crossing multiple vertical blanking edges.
+    /* VBlank IRQ state must be independent of cycle batching in both
+     * physical oscillator regions, including a real latched IRQ0 event.
      */
-    {
-        const uint32_t total_cycles = 2153u * 600u + 317u;
+    for (unsigned region = 0u; region < 2u; ++region) {
+        const uint32_t line_cycles = region == 0u ? 2153u : 2169u;
+        const uint32_t total_cycles = line_cycles * 600u + 317u;
         uint16_t whole_irq_stat;
         uint16_t whole_timer1;
         uint32_t whole_source_level;
@@ -158,6 +159,9 @@ int main(void)
         uint16_t whole_scanline;
         uint32_t whole_phase;
 
+        assert(psx_machine_set_video_clock_region(
+            &machine, region == 0u ?
+            PSX_VIDEO_CLOCK_NTSC : PSX_VIDEO_CLOCK_PAL));
         psx_machine_reset(&machine);
         assert(psx_gpu_gp1_write(&machine.gpu,
             0x07000000u | (256u << 10u) | 16u));
@@ -180,10 +184,11 @@ int main(void)
         psx_irq_write_mask(&machine.irq, 1u);
         machine.cop0_status = PSX_COP0_STATUS_IEC | PSX_COP0_CAUSE_IP2;
         {
-            const uint32_t chunks[] = {1u, 322u, 2153u, 4097u,
-                                       2153u * 200u, 17u,
-                                       total_cycles - 1u - 322u - 2153u -
-                                       4097u - 2153u * 200u - 17u};
+            const uint32_t chunks[] = {
+                1u, 322u, line_cycles, 4097u, line_cycles * 200u, 17u,
+                total_cycles - 1u - 322u - line_cycles - 4097u -
+                    line_cycles * 200u - 17u
+            };
             for (size_t i = 0u; i < sizeof(chunks) / sizeof(chunks[0]); ++i)
                 assert(psx_machine_advance_system_cycles(&machine, chunks[i]));
         }
