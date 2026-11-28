@@ -71,6 +71,21 @@ int main(void)
     assert(run_timer1_mode(&machine, 3u, 16u, false) == 16u);
     assert(run_timer1_mode(&machine, 3u, 17u, false) == 17u);
 
+    /* GP1(08h) resets the GPU output timing state. Timer 1 must see
+     * the corresponding VBlank level change immediately on the next
+     * machine-clock advance, rather than remaining gated by the old field.
+     */
+    psx_machine_reset(&machine);
+    assert(psx_timers_write16(&machine.timers,
+        PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE + 4u,
+        PSX_TIMER_MODE_SYNC_ENABLE));
+    assert(psx_timers_set_sync_signal(&machine.timers, 1u, true));
+    assert(machine.timers.timer[1].sync_signal_active);
+    assert(psx_gpu_gp1_write(&machine.gpu, 0x08000001u));
+    assert(psx_machine_advance_system_cycles(&machine, 1u));
+    assert(!machine.timers.timer[1].sync_signal_active);
+    assert(machine.timers.timer[1].counter == 1u);
+
     /* Every tested mode must be invariant to how master-clock cycles are
      * batched around the raster's scanline boundaries. */
     for (unsigned sync_mode = 0u; sync_mode < 4u; ++sync_mode) {
