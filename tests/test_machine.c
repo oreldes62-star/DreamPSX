@@ -274,6 +274,46 @@ int main(void)
         assert(counter == 225u);
     }
 
+    /* Timer 0 modes 0 and 2 must gate system-clock ticks over the
+     * horizontal blanking interval, independent of CPU batch boundaries.
+     * With the default GP1(06h) range, the modeled visible interval is
+     * 1612 cycles and the two blanking portions total 536 cycles per line.
+     */
+    {
+        const uint32_t chunks[] = {
+            322u, 1612u, 214u, 322u, 1612u, 224u
+        };
+        const uint16_t modes[] = {
+            PSX_TIMER_MODE_SYNC_ENABLE,
+            (uint16_t)(PSX_TIMER_MODE_SYNC_ENABLE |
+                       (2u << PSX_TIMER_MODE_SYNC_SHIFT))
+        };
+        const uint16_t expected[] = {3224u, 536u};
+
+        for (size_t mode_index = 0u; mode_index < 2u; ++mode_index) {
+            uint16_t bulk_counter = 0u;
+            uint16_t chunk_counter = 0u;
+            psx_machine_reset(&machine);
+            assert(psx_timers_write16(&machine.timers,
+                PSX_TIMER_BASE_ADDR + 4u, modes[mode_index]));
+            assert(psx_machine_advance_system_cycles(
+                &machine, 2148u * 2u + 10u));
+            assert(psx_timers_read16(&machine.timers,
+                PSX_TIMER_BASE_ADDR, &bulk_counter));
+            assert(bulk_counter == expected[mode_index]);
+
+            psx_machine_reset(&machine);
+            assert(psx_timers_write16(&machine.timers,
+                PSX_TIMER_BASE_ADDR + 4u, modes[mode_index]));
+            for (size_t i = 0u; i < sizeof(chunks) / sizeof(chunks[0]); ++i)
+                assert(psx_machine_advance_system_cycles(&machine, chunks[i]));
+            assert(psx_timers_read16(&machine.timers,
+                PSX_TIMER_BASE_ADDR, &chunk_counter));
+            assert(chunk_counter == bulk_counter);
+            assert(machine.gpu_scanline_cycle_phase == 10u);
+        }
+    }
+
     /* Timer 0 mode 3 starts on the first sampled HBlank level and
      * then free-runs; the initial raster position is already blanking.
      */
