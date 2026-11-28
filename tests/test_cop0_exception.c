@@ -16,13 +16,13 @@ int main(void)
     machine.cpu.pc = 0x80001004u;
     machine.cpu.next_pc = 0x80001008u;
     machine.cop0_status = 0x0000000bu; /* current IE/KU and previous mode bits */
-    machine.cop0_cause = 0x00000400u;  /* preserve pending IP2 */
+    machine.cop0_cause = 0x00000700u;  /* preserve software IP0/IP1 and hardware IP2 */
     psx_machine_raise_exception(&machine, PSX_EXCEPTION_OVERFLOW,
                                 0u, false, 0u);
     assert(machine.cop0_epc == 0x80001004u);
     assert(((machine.cop0_cause & PSX_COP0_CAUSE_EXCCODE) >>
             PSX_COP0_CAUSE_EXCCODE_SHIFT) == PSX_EXCEPTION_OVERFLOW);
-    assert((machine.cop0_cause & 0x00000400u) != 0u);
+    assert((machine.cop0_cause & 0x00000700u) == 0x00000700u);
     assert(machine.cpu.pc == 0x80000080u);
     assert(machine.cpu.next_pc == 0x80000084u);
 
@@ -36,6 +36,7 @@ int main(void)
     assert(machine.cop0_badvaddr == 0x12345678u);
     assert(machine.cpu.pc == 0xbfc00180u);
     assert(machine.cpu.next_pc == 0xbfc00184u);
+    assert((machine.cop0_cause & 0x00000700u) == 0x00000700u);
 
     free(bios);
     free(ram);
