@@ -13,6 +13,7 @@ uint16_t *vram_s = dreamcast_framebuffer;
 static unsigned selected_mode;
 static vid_pixel_mode_t selected_pixel_mode;
 static unsigned waitvbl_count;
+static unsigned flip_count;
 static bool dithering_enabled;
 
 void vid_set_mode(int mode, vid_pixel_mode_t pixel_mode)
@@ -39,6 +40,12 @@ void vid_waitvbl(void)
     ++waitvbl_count;
 }
 
+void vid_flip(int32_t framebuffer)
+{
+    assert(framebuffer == -1);
+    ++flip_count;
+}
+
 int main(void)
 {
     PsxKosVideoBackend backend;
@@ -47,9 +54,11 @@ int main(void)
 
     assert(psx_kos_video_backend_start(&backend));
     assert(backend.initialized);
-    assert(selected_mode == DM_320x240);
+    assert(selected_mode == (DM_320x240 | DM_MULTIBUFFER));
     assert(selected_pixel_mode == PM_RGB565);
     assert(!dithering_enabled);
+    assert(waitvbl_count == 1u);
+    assert(flip_count == 1u);
 
     assert(psx_gpu_init(&gpu, psx_vram,
                         PSX_GPU_VRAM_WIDTH * PSX_GPU_VRAM_HEIGHT));
@@ -60,7 +69,8 @@ int main(void)
 
     assert(psx_kos_video_backend_present(&backend, &gpu));
     assert(backend.presented_frames == 1u);
-    assert(waitvbl_count == 1u);
+    assert(waitvbl_count == 2u);
+    assert(flip_count == 2u);
     assert(dreamcast_framebuffer[0] == 0xf800u);
     assert(dreamcast_framebuffer[1] == 0xf800u);
     assert(dreamcast_framebuffer[2] == 0x07e0u);
@@ -73,7 +83,8 @@ int main(void)
     psx_vram[319] = 0x03e0u;
     assert(psx_kos_video_backend_present(&backend, &gpu));
     assert(backend.presented_frames == 2u);
-    assert(waitvbl_count == 2u);
+    assert(waitvbl_count == 3u);
+    assert(flip_count == 3u);
     assert(dreamcast_framebuffer[PSX_KOS_VIDEO_WIDTH - 1u] == 0x07e0u);
 
     assert(!psx_kos_video_backend_present(NULL, &gpu));
