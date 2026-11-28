@@ -660,10 +660,12 @@ int main(void)
     assert(psx_irq_read_stat(&machine.irq) == 0u);
     assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) == 0u);
 
-    /* Simultaneous Timer0/1/2 IRQs raised by the branch instruction's
-     * elapsed system cycles must all wait until its delay slot retires. */
+    /* A pending GPU IRQ1 plus Timer0/1/2 IRQs raised by the branch
+     * instruction's elapsed cycles must all wait until its delay slot
+     * retires. This checks four independent sources at one CPU boundary. */
     psx_machine_reset(&machine);
-    psx_irq_write_mask(&machine.irq, 0x0070u);
+    psx_irq_write_mask(&machine.irq, 0x0072u);
+    assert(psx_gpu_gp0_write(&machine.gpu, 0x1f000000u));
     for (unsigned timer = 0u; timer < 3u; ++timer) {
         const uint32_t base = PSX_TIMER_BASE_ADDR +
                               timer * PSX_TIMER_STRIDE;
@@ -681,7 +683,7 @@ int main(void)
 
     assert(psx_machine_step(&machine)); /* Branch retires, timers advance. */
     assert(machine.cpu.delay_slot_pending);
-    assert((psx_irq_read_stat(&machine.irq) & 0x0070u) == 0x0070u);
+    assert((psx_irq_read_stat(&machine.irq) & 0x0072u) == 0x0072u);
     assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) != 0u);
     assert(machine.cpu.pc == 4u && machine.cpu.next_pc == 8u);
 
@@ -695,7 +697,7 @@ int main(void)
     assert(machine.cop0_epc == 8u);
     assert((machine.cop0_cause & PSX_COP0_CAUSE_BD) == 0u);
     assert(psx_cpu_read_gpr(&machine.cpu, 10u) == 0u);
-    assert((psx_irq_read_stat(&machine.irq) & 0x0070u) == 0x0070u);
+    assert((psx_irq_read_stat(&machine.irq) & 0x0072u) == 0x0072u);
 
     free(vram);
     free(bios);
