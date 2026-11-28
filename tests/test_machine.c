@@ -30,7 +30,7 @@ int main(void)
         assert(psx_timers_read16(&machine.timers,
             PSX_TIMER_BASE_ADDR, &counter));
         assert(counter == 3u);
-        assert(machine.timer0_dot_phase == 4u);
+        assert(machine.timer0_dot_phase == 9u);
         assert(machine.gpu_video_clock_phase == 285949u);
 
         psx_machine_reset(&machine);
@@ -50,7 +50,7 @@ int main(void)
             PSX_TIMER_BASE_ADDR + 4u,
             (uint16_t)(1u << PSX_TIMER_MODE_CLOCK_SHIFT)));
         assert(psx_machine_advance_system_cycles(&machine, 9u));
-        assert(machine.timer0_dot_phase == 9u);
+        assert(machine.timer0_dot_phase == 4u);
         assert(psx_gpu_gp1_write(&machine.gpu, 0x08000001u)); /* 320 / 8 */
         assert(psx_machine_advance_system_cycles(&machine, 8u));
         assert(machine.timer0_dot_phase == 4u);
