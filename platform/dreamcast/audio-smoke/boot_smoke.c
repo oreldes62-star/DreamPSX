@@ -8,6 +8,7 @@
 #include "dreampsx/kos_disc_file.h"
 #include "dreampsx/kos_audio_backend.h"
 #include "dreampsx/kos_video_backend.h"
+#include "dreampsx/kos_input_backend.h"
 #include "dreampsx/dreamcast_audio_stream.h"
 
 #define PSX_BIOS_PATH "/cd/PSX/BIOS.BIN"
@@ -21,6 +22,7 @@ static PsxDiscImage disc;
 static PsxDreamcastAudioStream audio_stream;
 static PsxKosAudioBackend audio_backend;
 static PsxKosVideoBackend video_backend;
+static PsxKosInputBackend input_backend;
 
 static uint8_t psx_ram[PSX_RAM_SIZE];
 static uint8_t psx_bios[PSX_BIOS_SIZE];
@@ -136,6 +138,18 @@ int main(int argc, char **argv)
                 return 1;
             }
             elapsed_cycles += psx_cpu_last_step_cycles(&machine.cpu);
+        }
+
+        {
+            PsxKosInputState input_state;
+            if (!psx_kos_input_backend_poll(&input_backend, &input_state)) {
+                printf("ERROR: Maple controller polling failed\\n");
+                shutdown_audio();
+                psx_kos_disc_file_close(&disc_file, &disc);
+                return 1;
+            }
+            psx_sio_set_pad_state(&machine.sio, input_state.connected,
+                                  input_state.buttons);
         }
 
         if (!psx_kos_audio_backend_poll(&audio_backend)) {
