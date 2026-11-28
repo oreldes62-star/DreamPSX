@@ -50,6 +50,36 @@ static uint16_t run_timer1_mode(PsxMachine *machine, unsigned sync_mode,
     return counter;
 }
 
+static uint16_t run_timer0_active_dot_ticks(PsxMachine *machine,
+                                                  bool chunked)
+{
+    uint16_t counter = 0u;
+    const uint16_t mode = (uint16_t)(
+        PSX_TIMER_MODE_SYNC_ENABLE |
+        (0u << PSX_TIMER_MODE_SYNC_SHIFT) |
+        (1u << PSX_TIMER_MODE_CLOCK_SHIFT));
+
+    psx_machine_reset(machine);
+    assert(psx_gpu_gp1_write(&machine->gpu, 0x08000001u));
+    assert(psx_timers_write16(&machine->timers,
+        PSX_TIMER_BASE_ADDR + 4u, mode));
+
+    if (chunked) {
+        /* Split immediately around the default GP1(06h) HBlank edges:
+         * x1=512 video clocks (323 CPU cycles), x2=3072 (1938 cycles).
+         */
+        const uint32_t chunks[] = {322u, 1u, 1614u, 1u, 215u};
+        for (size_t i = 0u; i < sizeof(chunks) / sizeof(chunks[0]); ++i)
+            assert(psx_machine_advance_system_cycles(machine, chunks[i]));
+    } else {
+        assert(psx_machine_advance_system_cycles(machine, 2153u));
+    }
+
+    assert(psx_timers_read16(&machine->timers,
+        PSX_TIMER_BASE_ADDR, &counter));
+    return counter;
+}
+
 int main(void)
 {
     PsxMachine machine;
@@ -90,6 +120,13 @@ int main(void)
     assert(psx_machine_advance_system_cycles(&machine, 1u));
     assert(!machine.timers.timer[1].sync_signal_active);
     assert(machine.timers.timer[1].counter == 1u);
+
+    /* Timer 0 counts GPU dots only while HBlank is inactive in sync
+     * mode 0. GP1(06h)'s default [512,3072) interval is 2560 video
+     * clocks, or exactly 320 dots in 320-pixel mode (divider 8).
+     */
+    assert(run_timer0_active_dot_ticks(&machine, false) == 320u);
+    assert(run_timer0_active_dot_ticks(&machine, true) == 320u);
 
     /* Every tested mode must be invariant to how master-clock cycles are
      * batched around the raster's scanline boundaries. */
