@@ -74,6 +74,25 @@ int main(void)
     assert((psx_irq_read_stat(&machine.irq) & (1u << 4u)) != 0u);
     assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) != 0u);
 
+    /* Repeating target IRQs must create a fresh controller edge after
+     * software acknowledges the previous I_STAT request. */
+    psx_machine_reset(&machine);
+    assert(psx_bus_write16(&machine.bus, PSX_IRQ_MASK_ADDR,
+                           (uint16_t)(1u << 4u)));
+    assert(psx_bus_write16(&machine.bus, PSX_TIMER_BASE_ADDR + 8u, 1u));
+    assert(psx_bus_write16(&machine.bus, PSX_TIMER_BASE_ADDR + 4u,
+        (uint16_t)(PSX_TIMER_MODE_RESET_AT_TARGET |
+                   PSX_TIMER_MODE_IRQ_TARGET | PSX_TIMER_MODE_IRQ_REPEAT)));
+    assert(psx_machine_timer_advance_clock(&machine, 0u,
+        PSX_TIMER_CLOCK_SYSTEM, 1u));
+    assert((psx_irq_read_stat(&machine.irq) & (1u << 4u)) != 0u);
+    psx_irq_write_stat(&machine.irq, (uint16_t)~(1u << 4u));
+    psx_machine_refresh_interrupts(&machine);
+    assert((psx_irq_read_stat(&machine.irq) & (1u << 4u)) == 0u);
+    assert(psx_machine_timer_advance_clock(&machine, 0u,
+        PSX_TIMER_CLOCK_SYSTEM, 1u));
+    assert((psx_irq_read_stat(&machine.irq) & (1u << 4u)) != 0u);
+
     /* A real machine instruction now advances the shared system clock.
      * The timer IRQ is latched after retirement and sampled at the next
      * instruction boundary.
