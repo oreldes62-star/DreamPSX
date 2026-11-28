@@ -93,7 +93,10 @@ static void sio_data_write(PsxSio *sio, uint8_t value)
         (!(sio->control & PSX_SIO_CTRL_DTR) &&
          !(sio->control & PSX_SIO_CTRL_RXEN))) {
         sio->phase = 0u;
-        queue_byte(sio, response);
+        sio->pending_response = response;
+        sio->pending_ack = false;
+        sio->tx_cycles_remaining = transfer_duration(sio);
+        sio->tx_busy = true;
         return;
     }
 
