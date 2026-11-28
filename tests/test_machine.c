@@ -294,7 +294,7 @@ int main(void)
 
     /* Timer 0 mode 1 must reset at each raster HBlank edge, after the
      * system clocks preceding that edge have elapsed. Ten cycles after the
-     * second line boundary therefore leave a counter value of ten.
+     * second HBlank edge therefore leave 541 elapsed system ticks.
      */
     {
         const uint16_t mode = (uint16_t)(
@@ -309,7 +309,7 @@ int main(void)
         assert(psx_machine_advance_system_cycles(&machine,
                                                    2148u * 2u + 10u));
         assert(machine.timers.timer[0].sync_started);
-        assert(machine.timers.timer[0].counter == 10u);
+        assert(machine.timers.timer[0].counter == 541u);
     }
 
     /* Timer 0 raster synchronization must be invariant to how the CPU
