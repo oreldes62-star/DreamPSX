@@ -31,6 +31,10 @@ typedef struct {
     uint16_t mode;
     uint16_t control;
     uint16_t baud;
+    uint32_t tx_cycles_remaining;
+    uint8_t pending_response;
+    bool pending_ack;
+    bool tx_busy;
     bool irq_pending;
     PsxIrqController *irq;
     bool initialized;
@@ -38,6 +42,7 @@ typedef struct {
 bool psx_sio_init(PsxSio *sio);
 void psx_sio_reset(PsxSio *sio);
 void psx_sio_attach_irq(PsxSio *sio, PsxIrqController *irq);
+void psx_sio_advance_cycles(PsxSio *sio, uint32_t cycles);
 void psx_sio_set_pad_state(PsxSio *sio, bool connected, uint16_t pressed_buttons);
 bool psx_sio_read8(PsxSio *sio, uint32_t address, uint8_t *value);
 bool psx_sio_write8(PsxSio *sio, uint32_t address, uint8_t value);
