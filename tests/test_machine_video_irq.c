@@ -113,6 +113,9 @@ int main(void)
     assert(machine.gpu.display.video_scanline == 1u);
     assert(machine.gpu_scanline_cycle_phase == 0u);
 
+    assert(psx_machine_set_video_clock_region(
+        &machine, PSX_VIDEO_CLOCK_NTSC));
+
     /* Raster advancement must be independent of how the caller batches
      * master-clock cycles, including intervals spanning many scanlines.
      */
