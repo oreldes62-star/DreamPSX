@@ -50,6 +50,44 @@ int main(void)
         assert(machine.gpu.display.video_frame_counter == frames);
         assert(machine.gpu.display.video_vblank == vblank);
     }
+    /* Timer 1 receives exactly one HBlank clock per completed scanline,
+     * independent of how the master-clock interval is batched. */
+    {
+        const uint32_t total_cycles = 2148u * 5u + 123u;
+        const uint32_t chunks[] = {17u, 1000u, 3001u, 2048u, 3000u, 2100u};
+        uint32_t expected_counter;
+        uint32_t remaining = total_cycles;
+        uint16_t counter = 0u;
+
+        psx_machine_reset(&machine);
+        assert(psx_gpu_gp1_write(&machine.gpu, 0x08000000u));
+        assert(psx_timers_write16(&machine.timers,
+            PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE + 4u,
+            (uint16_t)(1u << PSX_TIMER_MODE_CLOCK_SHIFT)));
+        assert(psx_machine_advance_system_cycles(&machine, total_cycles));
+        assert(psx_timers_read16(&machine.timers,
+            PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE, &counter));
+        expected_counter = counter;
+        assert(expected_counter == 5u);
+
+        psx_machine_reset(&machine);
+        assert(psx_gpu_gp1_write(&machine.gpu, 0x08000000u));
+        assert(psx_timers_write16(&machine.timers,
+            PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE + 4u,
+            (uint16_t)(1u << PSX_TIMER_MODE_CLOCK_SHIFT)));
+        for (unsigned i = 0u; i < sizeof(chunks) / sizeof(chunks[0]); ++i) {
+            const uint32_t step = chunks[i] < remaining ? chunks[i] : remaining;
+            if (step != 0u) {
+                assert(psx_machine_advance_system_cycles(&machine, step));
+                remaining -= step;
+            }
+        }
+        if (remaining != 0u)
+            assert(psx_machine_advance_system_cycles(&machine, remaining));
+        assert(psx_timers_read16(&machine.timers,
+            PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE, &counter));
+        assert(counter == expected_counter);
+    }
     psx_machine_reset(&machine);
     /* SPU output cadence is clocked at 44.1 kHz: 768 master cycles/frame. */
     {
