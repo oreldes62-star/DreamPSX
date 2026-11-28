@@ -282,9 +282,15 @@ bool psx_machine_video_advance_scanline(PsxMachine *machine,
         !psx_gpu_video_advance_scanline(&machine->gpu, state))
         return false;
 
-    /* The current raster API advances one complete scanline at a time.
-     * Emit one abstract HBlank clock tick for Timer1 on each line. Exact
-     * horizontal phase/dot timing will be supplied by a finer scheduler.
+    /* Timer 1 synchronization is driven by the GPU's VBlank level.
+     * The current raster scheduler updates this once per scanline; a
+     * future horizontal-phase scheduler can refine the signal timing.
+     */
+    if (!psx_timers_set_sync_signal(&machine->timers, 1u, state->vblank))
+        return false;
+
+    /* The current raster API emits one abstract HBlank clock tick per line.
+     * Timer 1's selected HBlank clock is still gated by its VBlank sync mode.
      */
     if (state->hblank_pulse &&
         !psx_machine_timer_advance_clock(machine, 1u,
