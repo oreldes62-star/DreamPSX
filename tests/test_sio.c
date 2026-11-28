@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include "dreampsx/sio.h"
+#include "dreampsx/kos_input_backend.h"
 
 int main(void)
 {
