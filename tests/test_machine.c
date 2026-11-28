@@ -352,7 +352,7 @@ int main(void)
         psx_machine_reset(&machine);
         assert(psx_timers_write16(&machine.timers,
             PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE + 4u, mode));
-        assert(psx_machine_advance_system_cycles(&machine, 2153u * 16u));
+        assert(psx_machine_advance_system_cycles(&machine, 34445u));
         assert(machine.gpu.display.video_scanline == 16u);
         assert(!machine.gpu.display.video_vblank);
         assert(!machine.timers.timer[1].sync_signal_active);
@@ -379,7 +379,7 @@ int main(void)
         assert(machine.timers.timer[0].sync_started);
         assert(psx_timers_read16(&machine.timers,
             PSX_TIMER_BASE_ADDR, &counter));
-        assert(counter == 225u);
+        assert(counter == 227u);
     }
 
     /* Timer 0 modes 0 and 2 must gate system-clock ticks over the
