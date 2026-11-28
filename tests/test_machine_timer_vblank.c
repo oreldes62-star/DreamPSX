@@ -52,7 +52,7 @@ static uint16_t run_timer1_mode(PsxMachine *machine, unsigned sync_mode,
 
 static uint16_t run_timer0_active_dot_ticks(PsxMachine *machine,
                                                   uint32_t horizontal_range,
-                                                  bool chunked)
+                                                  bool pal, bool chunked)
 {
     uint16_t counter = 0u;
     const uint16_t mode = (uint16_t)(
@@ -60,6 +60,8 @@ static uint16_t run_timer0_active_dot_ticks(PsxMachine *machine,
         (0u << PSX_TIMER_MODE_SYNC_SHIFT) |
         (1u << PSX_TIMER_MODE_CLOCK_SHIFT));
 
+    assert(psx_machine_set_video_clock_region(
+        machine, pal ? PSX_VIDEO_CLOCK_PAL : PSX_VIDEO_CLOCK_NTSC));
     psx_machine_reset(machine);
     assert(psx_gpu_gp1_write(&machine->gpu, 0x08000001u));
     assert(psx_timers_write16(&machine->timers,
@@ -69,11 +71,13 @@ static uint16_t run_timer0_active_dot_ticks(PsxMachine *machine,
         /* Split immediately around the default GP1(06h) HBlank edges:
          * x1=512 video clocks (323 CPU cycles), x2=3072 (1938 cycles).
          */
-        const uint32_t chunks[] = {322u, 1u, 1614u, 1u, 215u};
-        for (size_t i = 0u; i < sizeof(chunks) / sizeof(chunks[0]); ++i)
+        const uint32_t ntsc_chunks[] = {645u, 1u, 645u, 1u, 861u};
+        const uint32_t pal_chunks[] = {651u, 1u, 651u, 1u, 865u};
+        const uint32_t *chunks = pal ? pal_chunks : ntsc_chunks;
+        for (size_t i = 0u; i < 5u; ++i)
             assert(psx_machine_advance_system_cycles(machine, chunks[i]));
     } else {
-        assert(psx_machine_advance_system_cycles(machine, 2153u));
+        assert(psx_machine_advance_system_cycles(machine, pal ? 2169u : 2153u));
     }
 
     assert(psx_timers_read16(&machine->timers,
@@ -126,14 +130,23 @@ int main(void)
      * mode 0. GP1(06h)'s default [512,3072) interval is 2560 video
      * clocks, or exactly 320 dots in 320-pixel mode (divider 8).
      */
-    assert(run_timer0_active_dot_ticks(&machine, 0u, false) == 320u);
-    assert(run_timer0_active_dot_ticks(&machine, 0u, true) == 320u);
+    assert(run_timer0_active_dot_ticks(&machine, 0u, false, false) == 320u);
+    assert(run_timer0_active_dot_ticks(&machine, 0u, false, true) == 320u);
 
     /* A custom [1024,2048) display interval is 1024 video clocks,
      * therefore 128 Timer 0 dots in 320-pixel mode.
      */
-    assert(run_timer0_active_dot_ticks(&machine, 0x06080400u, false) == 128u);
-    assert(run_timer0_active_dot_ticks(&machine, 0x06080400u, true) == 128u);
+    assert(run_timer0_active_dot_ticks(&machine, 0x06080400u,
+                                        false, false) == 128u);
+    assert(run_timer0_active_dot_ticks(&machine, 0x06080400u,
+                                        false, true) == 128u);
+    /* Repeat the custom range with the PAL physical oscillator. The
+     * CPU-cycle boundaries differ, but the GPU-dot count must not.
+     */
+    assert(run_timer0_active_dot_ticks(&machine, 0x06080400u,
+                                        true, false) == 128u);
+    assert(run_timer0_active_dot_ticks(&machine, 0x06080400u,
+                                        true, true) == 128u);
 
     /* Every tested mode must be invariant to how master-clock cycles are
      * batched around the raster's scanline boundaries. */
