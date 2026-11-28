@@ -4,31 +4,32 @@
 
 Turn the verified KallistiOS ELF build into a self-booting Dreamcast CDI artifact that can be opened by Flycast on Android. This milestone validates the Dreamcast disc-image packaging pipeline; it does not claim that a PS1 title is playable.
 
-## Packaging pipeline
+## Automated audio diagnostic CDI
 
-The new `platform/dreamcast/audio-smoke/package-cdi.sh` script uses the open-source `mkdcdisc` utility. It:
+The `platform/dreamcast/audio-smoke/package-cdi.sh` script uses the open-source `mkdcdisc` utility. It checks both DreamPSX ELF outputs, stages the separate PS1 file-backed boot diagnostic ELF, and invokes `mkdcdisc -e` with the AICA audio diagnostic ELF as the boot executable. The resulting `dreampsx-audio-smoke.cdi` is published by GitHub Actions as artifact `dreampsx-flycast-cdi`.
 
-1. Checks that both DreamPSX ELF outputs exist.
-2. Stages the separate PS1 file-backed boot diagnostic ELF and a README on the data track.
-3. Invokes `mkdcdisc -e` with the AICA audio diagnostic ELF as the boot executable.
-4. Uses `mkdcdisc` to generate the Dreamcast self-boot bootstrap, scrambled executable, ISO data track and CDI container.
+The disc boots the AICA audio diagnostic, which should produce a 440 Hz stereo test tone. A successful CI build confirms packaging and artifact creation, not runtime execution in Flycast.
 
-GitHub Actions builds `mkdcdisc` from its upstream source using Meson and libisofs, then attempts to publish the artifact named `dreampsx-flycast-cdi`, containing `dreampsx-audio-smoke.cdi`.
+## Optional user-file-backed PS1 boot CDI
 
-## What this CDI currently does
+The same script can create a second, personalized image when run locally with `DREAMPSX_PSX_DIR` set to a directory containing:
 
-The boot target is deliberately the existing AICA audio diagnostic. When launched, it should produce the 440 Hz stereo test tone. This is a useful first Flycast test of the self-boot image and Dreamcast executable startup path.
+- `BIOS.BIN` — exactly 524,288 bytes
+- `GAME.CUE`
+- The relative BIN/ISO file referenced by the CUE (the current loader supports a bounded single-track data CUE)
 
-The CDI is not yet a playable PS1 emulator. The separate `DREAMPSX_BOOT.ELF` is the current PS1 file-backed startup diagnostic, but it is not selected as the disc boot executable in this first package.
+Example on a development computer:
 
-## BIOS and game files
+```sh
+DREAMPSX_PSX_DIR=/path/to/your/PSX sh platform/dreamcast/audio-smoke/package-cdi.sh
+```
 
-No PlayStation BIOS or game image is copied into the repository or generated artifact. The next boot-smoke CDI variant will need the user's own files at:
+This produces `dreampsx-ps1-boot-smoke.cdi`, booting `dreampsx-boot-smoke.elf` with the user files staged under `/cd/PSX/`. The BIOS and game are neither committed nor uploaded by CI. The automated CI run deliberately skips this personalized image because it has no user BIOS/game files.
 
-- `/cd/PSX/BIOS.BIN` — exactly 524,288 bytes
-- `/cd/PSX/GAME.CUE`
-- The relative BIN/ISO file referenced by the CUE (the current smoke loader expects a supported single-track data disc)
+## Current limitations
+
+The PS1 boot smoke app loads the BIOS, mounts the CUE/BIN through KOS VFS, resolves SYSTEM.CNF, loads the PS-X EXE, initializes PC/GP/SP, advances CPU instructions and starts AICA audio. It does not execute the full retail BIOS startup sequence. GPU frame presentation and controller input are not wired into the app, so this is not yet a playable PS1 emulator frontend.
 
 ## Validation boundary
 
-A successful CI packaging job proves that the image was generated and is non-empty. It does not prove that Flycast Android boots it or that a PS1 game runs. The first runtime check must be performed in Flycast; GPU presentation and controller input are still not wired into the current boot smoke application.
+The first automated audio CDI was generated successfully in GitHub Actions run 46081255394; the workflow completed with success and uploaded artifact `dreampsx-flycast-cdi` (3,566,765 bytes). Flycast Android runtime playback has not yet been verified. The optional personalized PS1 boot CDI packaging path is newly added and still needs its own CI/shell validation and a user-supplied test set.
