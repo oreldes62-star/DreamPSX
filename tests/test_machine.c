@@ -409,6 +409,8 @@ int main(void)
             (1u << PSX_TIMER_MODE_SYNC_SHIFT));
 
         psx_machine_reset(&machine);
+        assert(psx_machine_set_video_clock_region(
+            &machine, PSX_VIDEO_CLOCK_NTSC));
         assert(psx_timers_write16(&machine.timers,
             PSX_TIMER_BASE_ADDR + 4u, mode));
         assert(psx_timers_write16(&machine.timers,
@@ -417,7 +419,6 @@ int main(void)
         assert(machine.timers.timer[0].sync_started);
         assert(psx_timers_read16(&machine.timers,
             PSX_TIMER_BASE_ADDR, &counter));
-        fprintf(stderr, "HBlank count=%u line_phase=%u line_remainder=%u video_phase=%u line_video_phase=%u scanline=%u\\n", (unsigned)counter, (unsigned)machine.gpu_scanline_cycle_phase, (unsigned)machine.gpu_scanline_cycle_remainder, (unsigned)machine.gpu_video_clock_phase, (unsigned)machine.gpu_scanline_video_clock_phase, (unsigned)machine.gpu.display.video_scanline);
         assert(counter == 225u);
     }
 
