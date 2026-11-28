@@ -173,6 +173,9 @@ bool psx_machine_advance_system_cycles(PsxMachine *machine, uint32_t cycles)
 {
     if (!machine) return false;
 
+    /* SIO serial transfers share the PS1 master-clock domain. */
+    psx_sio_advance_cycles(&machine->sio, cycles);
+
     for (unsigned timer = 0u; timer < 3u; ++timer) {
         if (!psx_machine_timer_advance_clock(machine, timer,
                                               PSX_TIMER_CLOCK_SYSTEM,
