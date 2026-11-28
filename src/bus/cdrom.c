@@ -368,7 +368,7 @@ bool psx_cdrom_mount_iso(PsxCdrom *cdrom, const uint8_t *image, size_t size)
 bool psx_cdrom_mount_disc(PsxCdrom *cdrom, const PsxDiscImage *disc)
 {
     if (!cdrom || !cdrom->initialized || !disc || !disc->mounted ||
-        !disc->source || disc->sector_count == 0u)
+        (!disc->source && !disc->read_at) || disc->sector_count == 0u)
         return false;
     cdrom->disc = *disc;
     cdrom->iso_data = NULL;

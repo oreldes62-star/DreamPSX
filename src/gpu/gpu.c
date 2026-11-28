@@ -1022,8 +1022,8 @@ bool psx_gpu_scanout_rgb565(const PsxGpu *gpu, unsigned width,
                 const unsigned blue = read_vram_byte(gpu, source_y,
                                                        byte_x + 2u);
                 destination[column] = (uint16_t)(
-                    (red >> 3u) | ((green >> 2u) << 5u) |
-                    ((blue >> 3u) << 11u));
+                    ((red >> 3u) << 11u) | ((green >> 2u) << 5u) |
+                    (blue >> 3u));
             } else {
                 const unsigned source_x = (gpu->display.start_x + column) %
                                           PSX_GPU_VRAM_WIDTH;
@@ -1033,8 +1033,8 @@ bool psx_gpu_scanout_rgb565(const PsxGpu *gpu, unsigned width,
                 const unsigned green = (pixel >> 5u) & 0x1fu;
                 const unsigned blue = (pixel >> 10u) & 0x1fu;
                 const unsigned green6 = (green << 1u) | (green >> 4u);
-                destination[column] = (uint16_t)(red | (green6 << 5u) |
-                                                  (blue << 11u));
+                destination[column] = (uint16_t)((red << 11u) |
+                                                  (green6 << 5u) | blue);
             }
         }
     }
@@ -1149,6 +1149,7 @@ bool psx_gpu_get_display_mode_info(const PsxGpu *gpu,
     static const unsigned cycles_per_pixel[5] = {10u, 8u, 5u, 4u, 7u};
     const unsigned hres_index = (mode & (1u << 6u)) != 0u ?
                                 4u : (mode & 3u);
+    info->dot_clock_divisor = cycles_per_pixel[hres_index];
     const unsigned h_start = gpu->display.horizontal_start;
     const unsigned h_end = gpu->display.horizontal_end;
     const unsigned v_start = gpu->display.vertical_start;

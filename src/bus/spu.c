@@ -18,6 +18,109 @@ static uint16_t load_le16(const uint8_t *bytes)
                       ((uint16_t)bytes[1] << 8u));
 }
 
+/* Direct voice volume is a signed 15-bit value doubled by the SPU. */
+int16_t psx_spu_decode_direct_volume(uint16_t value)
+{
+    int32_t signed_value = (int32_t)(value & 0x7fffu);
+    if ((signed_value & 0x4000) != 0)
+        signed_value -= 0x8000;
+    return (int16_t)(signed_value * 2);
+}
+
+static bool spu_volume_sweep_tick(uint16_t control, int16_t *level_ptr,
+                                    uint32_t *counter_ptr, bool *active_ptr)
+{
+    const unsigned shift = (control >> 2u) & 0x1fu;
+    const unsigned step_code = control & 3u;
+    const bool exponential = (control & 0x4000u) != 0u;
+    const bool decreasing = (control & 0x2000u) != 0u;
+    const bool negative_phase = (control & 0x1000u) != 0u;
+    const bool subtract = (exponential && decreasing) ?
+                          true : (decreasing ^ negative_phase);
+    uint32_t increment;
+    int32_t step;
+    int32_t level;
+
+    if ((control & 0x8000u) == 0u || !*active_ptr)
+        return true;
+    increment = shift > 11u ?
+        (0x8000u >> (shift - 11u)) : 0x8000u;
+    step = 7 - (int32_t)step_code;
+    if (subtract)
+        step = -step - 1;
+    if (shift < 11u)
+        step *= (int32_t)(1u << (11u - shift));
+
+    level = *level_ptr;
+    if (exponential) {
+        if (decreasing) {
+            step = (step * level) / 0x8000;
+        } else if (level > 0x6000) {
+            if (shift < 10u)
+                step >>= 2;
+            else if (shift >= 11u)
+                increment >>= 2;
+            else {
+                step >>= 1;
+                increment >>= 1;
+            }
+        }
+    }
+
+    /* Shift 31 / step 3 is the documented frozen-rate encoding. */
+    if (!(shift == 31u && step_code == 3u) && increment == 0u)
+        increment = 1u;
+    *counter_ptr += increment;
+    if ((*counter_ptr & 0x8000u) == 0u)
+        return true;
+    *counter_ptr &= 0x7fffu;
+
+    level += step;
+    if (!decreasing) {
+        if (level < -32768) level = -32768;
+        if (level > 32767) level = 32767;
+    } else if (negative_phase) {
+        if (level < -32768) level = -32768;
+        if (level > 0) level = 0;
+    } else if (level < 0) {
+        level = 0;
+    }
+    *level_ptr = (int16_t)level;
+    if (decreasing)
+        *active_ptr = level != 0;
+    else
+        *active_ptr = level != (negative_phase ? -32768 : 32767);
+    return true;
+}
+
+bool psx_spu_voice_volume_tick(PsxSpu *spu, unsigned voice_index)
+{
+    PsxSpuVoice *voice;
+    if (!spu || !spu->initialized || voice_index >= PSX_SPU_VOICE_COUNT)
+        return false;
+    voice = &spu->voices[voice_index];
+    return spu_volume_sweep_tick(voice->volume_left, &voice->volume_left_level,
+                                 &voice->volume_left_counter,
+                                 &voice->volume_left_sweep_active) &&
+           spu_volume_sweep_tick(voice->volume_right, &voice->volume_right_level,
+                                 &voice->volume_right_counter,
+                                 &voice->volume_right_sweep_active);
+}
+
+static bool psx_spu_main_volume_tick(PsxSpu *spu)
+{
+    if (!spu || !spu->initialized)
+        return false;
+    return spu_volume_sweep_tick(
+               load_le16(&spu->registers[PSX_SPU_MAIN_VOLUME_LEFT_OFFSET]),
+               &spu->main_volume_left_level, &spu->main_volume_left_counter,
+               &spu->main_volume_left_sweep_active) &&
+           spu_volume_sweep_tick(
+               load_le16(&spu->registers[PSX_SPU_MAIN_VOLUME_RIGHT_OFFSET]),
+               &spu->main_volume_right_level, &spu->main_volume_right_counter,
+               &spu->main_volume_right_sweep_active);
+}
+
 static void store_le16(uint8_t *bytes, uint16_t value)
 {
     bytes[0] = (uint8_t)value;
@@ -42,6 +145,12 @@ void psx_spu_reset(PsxSpu *spu)
     spu->reverb_buffer_address = 0u;
     spu->active_voices = 0u;
     spu->control = 0u;
+    spu->main_volume_left_level = 0;
+    spu->main_volume_right_level = 0;
+    spu->main_volume_left_counter = 0u;
+    spu->main_volume_right_counter = 0u;
+    spu->main_volume_left_sweep_active = false;
+    spu->main_volume_right_sweep_active = false;
 }
 
 bool psx_spu_read16(PsxSpu *spu, uint32_t address, uint16_t *value)
@@ -134,6 +243,26 @@ bool psx_spu_write16(PsxSpu *spu, uint32_t address, uint16_t value)
         }
         return true;
     }
+    if (offset == PSX_SPU_MAIN_VOLUME_LEFT_OFFSET ||
+        offset == PSX_SPU_MAIN_VOLUME_RIGHT_OFFSET) {
+        const bool is_left = offset == PSX_SPU_MAIN_VOLUME_LEFT_OFFSET;
+        store_le16(&spu->registers[offset], value);
+        if (is_left) {
+            spu->main_volume_left_counter = 0u;
+            spu->main_volume_left_sweep_active =
+                (value & 0x8000u) != 0u && (value & 0x007fu) != 0x007fu;
+            if ((value & 0x8000u) == 0u)
+                spu->main_volume_left_level = psx_spu_decode_direct_volume(value);
+        } else {
+            spu->main_volume_right_counter = 0u;
+            spu->main_volume_right_sweep_active =
+                (value & 0x8000u) != 0u && (value & 0x007fu) != 0x007fu;
+            if ((value & 0x8000u) == 0u)
+                spu->main_volume_right_level = psx_spu_decode_direct_volume(value);
+        }
+        return true;
+    }
+
     if (offset == PSX_SPU_REVERB_WORK_AREA_START_OFFSET) {
         store_le16(&spu->registers[offset], value);
         spu->reverb_buffer_address =
@@ -151,8 +280,24 @@ bool psx_spu_write16(PsxSpu *spu, uint32_t address, uint16_t value)
         const unsigned voice_offset = offset % PSX_SPU_VOICE_REGISTER_BYTES;
         PsxSpuVoice *voice = &spu->voices[voice_index];
         switch (voice_offset) {
-        case 0x00u: voice->volume_left = value; break;
-        case 0x02u: voice->volume_right = value; break;
+        case 0x00u:
+            voice->volume_left = value;
+            voice->volume_left_counter = 0u;
+            voice->volume_left_sweep_active =
+                (value & 0x8000u) != 0u &&
+                (value & 0x007fu) != 0x007fu;
+            if ((value & 0x8000u) == 0u)
+                voice->volume_left_level = psx_spu_decode_direct_volume(value);
+            break;
+        case 0x02u:
+            voice->volume_right = value;
+            voice->volume_right_counter = 0u;
+            voice->volume_right_sweep_active =
+                (value & 0x8000u) != 0u &&
+                (value & 0x007fu) != 0x007fu;
+            if ((value & 0x8000u) == 0u)
+                voice->volume_right_level = psx_spu_decode_direct_volume(value);
+            break;
         case 0x04u: voice->pitch = (uint16_t)(value & 0x3fffu); break;
         case 0x06u: voice->start_address = value; break;
         case 0x08u: voice->adsr1 = value; break;
@@ -421,10 +566,21 @@ bool psx_spu_mix_sample(PsxSpu *spu, int16_t *left, int16_t *right)
 {
     int64_t mix_left = 0;
     int64_t mix_right = 0;
+    int64_t send_left = 0;
+    int64_t send_right = 0;
+    int16_t wet_left = 0;
+    int16_t wet_right = 0;
+    uint16_t reverb_mask_low;
+    uint16_t reverb_mask_high;
     bool produced = false;
 
     if (!spu || !spu->initialized || !left || !right)
         return false;
+
+    reverb_mask_low = load_le16(&spu->registers[
+        PSX_SPU_REVERB_ENABLE_LOW_OFFSET]);
+    reverb_mask_high = load_le16(&spu->registers[
+        PSX_SPU_REVERB_ENABLE_HIGH_OFFSET]);
 
     for (unsigned i = 0u; i < PSX_SPU_VOICE_COUNT; ++i) {
         PsxSpuVoice *voice = &spu->voices[i];
@@ -433,29 +589,56 @@ bool psx_spu_mix_sample(PsxSpu *spu, int16_t *left, int16_t *right)
         int32_t volume_left;
         int32_t volume_right;
         int64_t enveloped;
+        int64_t voice_left;
+        int64_t voice_right;
+        const bool reverb_enabled = i < 16u ?
+            (reverb_mask_low & (1u << i)) != 0u :
+            (reverb_mask_high & (1u << (i - 16u))) != 0u;
 
         if ((spu->active_voices & (1u << i)) == 0u)
             continue;
+        if (!psx_spu_voice_volume_tick(spu, i))
+            return false;
         if (!psx_spu_voice_envelope_tick(spu, i, &envelope))
             continue;
         if (!psx_spu_voice_render_sample(spu, i, &sample))
             continue;
 
-        /* Fixed-volume mode: signed 15-bit register value, scaled by ENVX.
-         * Sweep-mode registers are intentionally not implemented yet. */
-        volume_left = (int16_t)voice->volume_left;
-        volume_right = (int16_t)voice->volume_right;
+        /* Apply the voice envelope and fixed L/R volumes once. The same
+         * post-volume signal feeds dry output and, when selected by the
+         * hardware reverb-enable bitmap, the wet-send bus. */
+        volume_left = voice->volume_left_level;
+        volume_right = voice->volume_right_level;
         enveloped = ((int64_t)sample * envelope) / PSX_SPU_ENVELOPE_MAX;
-        mix_left += (enveloped * volume_left) / 32767;
-        mix_right += (enveloped * volume_right) / 32767;
+        voice_left = (enveloped * volume_left) / 32768;
+        voice_right = (enveloped * volume_right) / 32768;
+        mix_left += voice_left;
+        mix_right += voice_right;
+        if (reverb_enabled) {
+            send_left += voice_left;
+            send_right += voice_right;
+        }
         produced = true;
     }
 
-    *left = clamp_audio_sample(mix_left);
-    *right = clamp_audio_sample(mix_right);
+    /* The reverb input bus is 16-bit at the DSP boundary. Preserve the
+     * wide voice accumulation until this point, then add the returned wet
+     * signal to the dry mix with a final saturating sum. */
+    if (!psx_spu_reverb_process_sample(spu,
+            clamp_audio_sample(send_left), clamp_audio_sample(send_right),
+            &wet_left, &wet_right))
+        return false;
+
+    if (!psx_spu_main_volume_tick(spu))
+        return false;
+    *left = clamp_audio_sample(((int64_t)(mix_left + wet_left) *
+                                spu->main_volume_left_level) / 32768);
+    *right = clamp_audio_sample(((int64_t)(mix_right + wet_right) *
+                                 spu->main_volume_right_level) / 32768);
+    /* A reverb tail can remain audible after the last source voice ends. */
+    produced = produced || wet_left != 0 || wet_right != 0;
     return produced;
 }
-
 
 
 int16_t psx_spu_reverb_saturate(int32_t value)
@@ -602,6 +785,163 @@ bool psx_spu_reverb_process_reflections(PsxSpu *spu, int16_t left_input,
     reverb_process_reflection(spu, input_right,
         PSX_SPU_REVERB_CONFIG_MRDIFF_OFFSET,
         PSX_SPU_REVERB_CONFIG_DLDIFF_OFFSET, wall_volume, iir_volume);
+    return true;
+}
+
+bool psx_spu_reverb_process_comb(const PsxSpu *spu,
+                                   int16_t *left_output,
+                                   int16_t *right_output)
+{
+    static const uint16_t left_taps[4] = {
+        PSX_SPU_REVERB_CONFIG_MLCOMB1_OFFSET,
+        PSX_SPU_REVERB_CONFIG_MLCOMB2_OFFSET,
+        PSX_SPU_REVERB_CONFIG_MLCOMB3_OFFSET,
+        PSX_SPU_REVERB_CONFIG_MLCOMB4_OFFSET
+    };
+    static const uint16_t right_taps[4] = {
+        PSX_SPU_REVERB_CONFIG_MRCOMB1_OFFSET,
+        PSX_SPU_REVERB_CONFIG_MRCOMB2_OFFSET,
+        PSX_SPU_REVERB_CONFIG_MRCOMB3_OFFSET,
+        PSX_SPU_REVERB_CONFIG_MRCOMB4_OFFSET
+    };
+    static const uint16_t volumes[4] = {
+        PSX_SPU_REVERB_CONFIG_VCOMB1_OFFSET,
+        PSX_SPU_REVERB_CONFIG_VCOMB2_OFFSET,
+        PSX_SPU_REVERB_CONFIG_VCOMB3_OFFSET,
+        PSX_SPU_REVERB_CONFIG_VCOMB4_OFFSET
+    };
+    int64_t left_sum = 0;
+    int64_t right_sum = 0;
+
+    if (!spu || !spu->initialized || !left_output || !right_output)
+        return false;
+
+    /* Each channel has four independently delayed taps. Accumulate the
+     * signed Q15 products at full width and saturate only at the output. */
+    for (unsigned i = 0u; i < 4u; ++i) {
+        const uint16_t left_address = load_le16(&spu->registers[left_taps[i]]);
+        const uint16_t right_address = load_le16(&spu->registers[right_taps[i]]);
+        const int16_t coefficient = (int16_t)load_le16(
+            &spu->registers[volumes[i]]);
+        const int32_t left_sample = reverb_read_absolute(
+            spu, psx_spu_reverb_resolve_address(spu, left_address));
+        const int32_t right_sample = reverb_read_absolute(
+            spu, psx_spu_reverb_resolve_address(spu, right_address));
+        left_sum += reverb_multiply_q15_wide(left_sample, coefficient);
+        right_sum += reverb_multiply_q15_wide(right_sample, coefficient);
+    }
+
+    *left_output = psx_spu_reverb_saturate(
+        left_sum > INT32_MAX ? INT32_MAX :
+        left_sum < INT32_MIN ? INT32_MIN : (int32_t)left_sum);
+    *right_output = psx_spu_reverb_saturate(
+        right_sum > INT32_MAX ? INT32_MAX :
+        right_sum < INT32_MIN ? INT32_MIN : (int32_t)right_sum);
+    return true;
+}
+
+static bool reverb_process_allpass_stage(PsxSpu *spu, int32_t input,
+                                           uint16_t address_register,
+                                           uint16_t delay_register,
+                                           int16_t coefficient,
+                                           int32_t *output)
+{
+    const uint16_t destination_relative = load_le16(
+        &spu->registers[address_register]);
+    const uint16_t delay = load_le16(&spu->registers[delay_register]);
+    const uint16_t delayed_relative =
+        (uint16_t)(destination_relative - delay);
+    const int32_t delayed = reverb_read_absolute(
+        spu, psx_spu_reverb_resolve_address(spu, delayed_relative));
+    const int32_t feedback = input -
+        reverb_multiply_q15_wide(delayed, coefficient);
+
+    reverb_write_absolute(spu,
+        psx_spu_reverb_resolve_address(spu, destination_relative), feedback);
+    *output = reverb_multiply_q15_wide(input, coefficient) + delayed;
+    return true;
+}
+
+bool psx_spu_reverb_process_allpass(PsxSpu *spu,
+                                    int16_t comb_left, int16_t comb_right,
+                                    int16_t *left_output,
+                                    int16_t *right_output)
+{
+    int16_t apf1_volume;
+    int16_t apf2_volume;
+    int32_t left = comb_left;
+    int32_t right = comb_right;
+
+    if (!spu || !spu->initialized || !left_output || !right_output)
+        return false;
+
+    apf1_volume = (int16_t)load_le16(&spu->registers[
+        PSX_SPU_REVERB_CONFIG_VAPF1_OFFSET]);
+    apf2_volume = (int16_t)load_le16(&spu->registers[
+        PSX_SPU_REVERB_CONFIG_VAPF2_OFFSET]);
+
+    (void)reverb_process_allpass_stage(spu, left,
+        PSX_SPU_REVERB_CONFIG_MLAPF1_OFFSET,
+        PSX_SPU_REVERB_CONFIG_DAPF1_OFFSET, apf1_volume, &left);
+    (void)reverb_process_allpass_stage(spu, right,
+        PSX_SPU_REVERB_CONFIG_MRAPF1_OFFSET,
+        PSX_SPU_REVERB_CONFIG_DAPF1_OFFSET, apf1_volume, &right);
+    (void)reverb_process_allpass_stage(spu, left,
+        PSX_SPU_REVERB_CONFIG_MLAPF2_OFFSET,
+        PSX_SPU_REVERB_CONFIG_DAPF2_OFFSET, apf2_volume, &left);
+    (void)reverb_process_allpass_stage(spu, right,
+        PSX_SPU_REVERB_CONFIG_MRAPF2_OFFSET,
+        PSX_SPU_REVERB_CONFIG_DAPF2_OFFSET, apf2_volume, &right);
+
+    *left_output = psx_spu_reverb_saturate(left);
+    *right_output = psx_spu_reverb_saturate(right);
+    return true;
+}
+
+bool psx_spu_reverb_process_sample(PsxSpu *spu,
+                                      int16_t input_left,
+                                      int16_t input_right,
+                                      int16_t *wet_left,
+                                      int16_t *wet_right)
+{
+    int16_t comb_left;
+    int16_t comb_right;
+    int16_t apf_left;
+    int16_t apf_right;
+    int16_t output_volume_left;
+    int16_t output_volume_right;
+    int32_t result_left;
+    int32_t result_right;
+
+    if (!spu || !spu->initialized || !wet_left || !wet_right)
+        return false;
+
+    *wet_left = 0;
+    *wet_right = 0;
+
+    /* SPUCNT bit 7 gates the reverb DSP. Keep the work-area cursor still
+     * while disabled, matching the hardware's stopped reverb path. */
+    if ((spu->control & 0x0080u) == 0u)
+        return true;
+
+    if (!psx_spu_reverb_process_reflections(spu, input_left, input_right) ||
+        !psx_spu_reverb_process_comb(spu, &comb_left, &comb_right) ||
+        !psx_spu_reverb_process_allpass(spu, comb_left, comb_right,
+                                        &apf_left, &apf_right))
+        return false;
+
+    output_volume_left = (int16_t)load_le16(&spu->registers[
+        PSX_SPU_REVERB_OUTPUT_VOLUME_LEFT_OFFSET]);
+    output_volume_right = (int16_t)load_le16(&spu->registers[
+        PSX_SPU_REVERB_OUTPUT_VOLUME_RIGHT_OFFSET]);
+    result_left = reverb_multiply_q15_wide(apf_left, output_volume_left);
+    result_right = reverb_multiply_q15_wide(apf_right, output_volume_right);
+    *wet_left = psx_spu_reverb_saturate(result_left);
+    *wet_right = psx_spu_reverb_saturate(result_right);
+
+    /* All DSP stages for one output frame share this cursor. Advance once,
+     * only after the complete wet sample has been evaluated. */
+    psx_spu_reverb_advance(spu);
     return true;
 }
 

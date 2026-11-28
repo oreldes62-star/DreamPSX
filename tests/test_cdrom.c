@@ -9,6 +9,15 @@ static void select_bank(PsxCdrom *cdrom, uint8_t bank)
     assert(psx_cdrom_write8(cdrom, PSX_CDROM_BASE_ADDR, bank));
 }
 
+typedef struct { size_t reads; } ReaderState;
+static bool cdrom_reader(void *context, size_t offset, uint8_t *destination, size_t size)
+{
+    ReaderState *state = (ReaderState *)context;
+    if (!state || !destination || offset > 4096u || size > 4096u - offset) return false;
+    ++state->reads;
+    for (size_t i = 0u; i < size; ++i) destination[i] = (uint8_t)(0x5au + ((offset + i) & 0xffu));
+    return true;
+}
 int main(void)
 {
     PsxCdrom cdrom;
@@ -393,6 +402,29 @@ int main(void)
     assert(!psx_cdrom_read8(&cdrom, PSX_CDROM_BASE_ADDR + 4u, &value));
     assert(!psx_cdrom_read8(NULL, PSX_CDROM_BASE_ADDR, &value));
 
+    /* CD-ROM can mount a random-access image and fetch a sector on demand. */
+    {
+        PsxDiscImage reader_disc;
+        ReaderState reader_state = { 0u };
+        uint8_t first = 0u;
+        psx_cdrom_reset(&cdrom);
+        assert(psx_disc_mount_reader(&reader_disc, 4096u, PSX_DISC_MODE1_2048, cdrom_reader, &reader_state));
+        assert(psx_cdrom_mount_disc(&cdrom, &reader_disc));
+        assert(cdrom.disc.source == NULL && cdrom.disc.read_at != NULL);
+        assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 2u, 0x00u));
+        assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 2u, 0x02u));
+        assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 2u, 0x00u));
+        assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 1u, 0x02u));
+        assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 1u, 0x06u));
+        assert(reader_state.reads == 1u);
+        select_bank(&cdrom, 2u);
+        assert(psx_cdrom_write8(&cdrom, PSX_CDROM_BASE_ADDR + 2u, 0x80u));
+        select_bank(&cdrom, 0u);
+        assert(psx_cdrom_read8(&cdrom, PSX_CDROM_BASE_ADDR + 2u, &first));
+        assert(first == 0x5au);
+        assert(reader_state.reads == 1u);
+        psx_cdrom_unmount(&cdrom);
+    }
     puts("cdrom tests passed");
     return 0;
 }

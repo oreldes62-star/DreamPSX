@@ -8,6 +8,9 @@
 #define PSX_TIMER_BASE_ADDR 0x1f801100u
 #define PSX_TIMER_STRIDE 0x10u
 
+#define PSX_TIMER_MODE_SYNC_ENABLE (1u << 0)
+#define PSX_TIMER_MODE_SYNC_SHIFT 1u
+#define PSX_TIMER_MODE_SYNC_MASK (3u << PSX_TIMER_MODE_SYNC_SHIFT)
 #define PSX_TIMER_MODE_RESET_AT_TARGET (1u << 3)
 #define PSX_TIMER_MODE_REACHED_TARGET  (1u << 10)
 #define PSX_TIMER_MODE_REACHED_OVERFLOW (1u << 11)
@@ -29,6 +32,8 @@ typedef struct {
     uint16_t mode;
     uint16_t target;
     bool irq_fired;
+    bool sync_signal_active;
+    bool sync_started;
 } PsxTimer;
 
 typedef struct {
@@ -56,5 +61,10 @@ bool psx_timers_advance(PsxTimers *timers, unsigned timer,
 bool psx_timers_advance_clock(PsxTimers *timers, unsigned timer,
                               PsxTimerClock clock, uint32_t ticks,
                               uint8_t *irq_sources);
+/* Update the blanking signal used by Timer 0/1 synchronization modes.
+ * Timer 0 is associated with HBlank; Timer 1 with VBlank.
+ */
+bool psx_timers_set_sync_signal(PsxTimers *timers, unsigned timer,
+                                bool active);
 
 #endif

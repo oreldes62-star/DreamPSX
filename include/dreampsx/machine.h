@@ -14,8 +14,14 @@
 #include "dreampsx/dma.h"
 #include "dreampsx/cdrom.h"
 #include "dreampsx/spu.h"
+#include "dreampsx/sio.h"
 #include "dreampsx/audio_buffer.h"
 #include "dreampsx/boot_config.h"
+
+typedef enum {
+    PSX_VIDEO_CLOCK_NTSC = 0,
+    PSX_VIDEO_CLOCK_PAL = 1
+} PsxVideoClockRegion;
 
 typedef struct {
     PsxIrqController irq;
@@ -28,8 +34,17 @@ typedef struct {
     PsxDmaController dma;
     PsxCdrom cdrom;
     PsxSpu spu;
+    PsxSio sio;
     PsxAudioBuffer audio_output;
     uint8_t timer2_div8_phase;
+    uint32_t gpu_scanline_cycle_phase;
+    uint32_t gpu_scanline_cycle_remainder;
+    uint32_t gpu_scanline_mode;
+    uint32_t gpu_video_clock_phase;
+    uint32_t gpu_scanline_video_clock_phase;
+    PsxVideoClockRegion gpu_video_clock_region;
+    uint32_t timer0_dot_phase;
+    uint32_t timer0_dot_divisor;
     uint32_t cdrom_sector_cycle_phase;
     uint32_t spu_audio_cycle_phase;
     uint32_t cop0_status;
@@ -45,6 +60,11 @@ bool psx_machine_boot_from_iso(PsxMachine *machine, const PsxIso9660 *iso,
  * image as CD-ROM media for subsequent guest reads. */
 bool psx_machine_boot_from_disc(PsxMachine *machine, const uint8_t *image,
                                 size_t image_size, PsxBootConfig *config);
+/* Boots from an already-mounted sector reader (memory-backed or file-backed).
+ * The reader context must remain valid until the CD-ROM is unmounted. */
+bool psx_machine_boot_from_disc_image(PsxMachine *machine,
+                                      const PsxDiscImage *disc,
+                                      PsxBootConfig *config);
 /* Boots directly from caller-owned CUE text and BIN bytes without expanding
  * raw sectors into a separate ISO buffer. Both inputs must remain alive. */
 bool psx_machine_boot_from_cue(PsxMachine *machine, const char *cue_text,
@@ -55,6 +75,9 @@ bool psx_machine_init(PsxMachine *machine,
                       const uint8_t *bios, size_t bios_size,
                       uint16_t *gpu_vram, size_t gpu_vram_pixels);
 void psx_machine_reset(PsxMachine *machine);
+/* Select physical GPU oscillator independently of GP1(08h) output mode. */
+bool psx_machine_set_video_clock_region(PsxMachine *machine,
+                                        PsxVideoClockRegion region);
 void psx_machine_refresh_interrupts(PsxMachine *machine);
 bool psx_machine_interrupt_eligible(const PsxMachine *machine);
 /* Advance one GPU scanline, route its HBlank pulse to Timer1, and route

@@ -14,6 +14,7 @@ add_library(dreampsx_core STATIC
     src/bus/irq_mmio.c
     src/bus/memory.c
     src/bus/spu.c
+    src/bus/sio.c
     src/audio/spu_adpcm.c
     src/audio/audio_buffer.c
     src/audio/dreamcast_audio_stream.c
@@ -79,6 +80,7 @@ set(DREAMPSX_TESTS
     test_gpu_display_mode
     test_gpu_video_timing
     test_machine_video_irq
+    test_machine_timer_vblank
     test_timers
     test_timers_bus
     test_timers_irq
@@ -88,6 +90,7 @@ set(DREAMPSX_TESTS
     test_machine_boot
     test_memory
     test_spu
+    test_sio
     test_audio_buffer
     test_dreamcast_audio_stream
 )
@@ -124,3 +127,38 @@ if(DREAMPSX_BUILD_KOS_AUDIO_BACKEND)
     target_include_directories(dreampsx_kos_audio_backend PRIVATE ${KOS_INCLUDE_DIR})
     target_link_libraries(dreampsx_kos_audio_backend PUBLIC dreampsx_core)
 endif()
+
+# Host-test the KallistiOS VFS-backed disc reader against a deterministic
+# short-read/seek stub; the production adapter is compiled in the KOS build.
+add_executable(test_kos_disc_file
+    tests/test_kos_disc_file.c
+    src/platform/dreamcast/kos_disc_file.c
+)
+target_link_libraries(test_kos_disc_file PRIVATE dreampsx_core)
+target_include_directories(test_kos_disc_file PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/kos_stub
+)
+add_test(NAME test_kos_disc_file COMMAND test_kos_disc_file)
+
+# Host-test the Dreamcast KallistiOS video presenter against a framebuffer stub.
+add_executable(test_kos_video_backend
+    tests/test_kos_video_backend.c
+    src/platform/dreamcast/kos_video_backend.c
+)
+target_link_libraries(test_kos_video_backend PRIVATE dreampsx_core)
+target_include_directories(test_kos_video_backend PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/kos_stub
+)
+add_test(NAME test_kos_video_backend COMMAND test_kos_video_backend)
+
+
+# Host-test the Dreamcast Maple controller input adapter.
+add_executable(test_kos_input_backend
+    tests/test_kos_input_backend.c
+    src/platform/dreamcast/kos_input_backend.c
+)
+target_include_directories(test_kos_input_backend PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/kos_stub
+)
+target_link_libraries(test_kos_input_backend PRIVATE dreampsx_core)
+add_test(NAME test_kos_input_backend COMMAND test_kos_input_backend)

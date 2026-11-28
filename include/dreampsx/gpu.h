@@ -12,6 +12,7 @@ typedef struct {
     unsigned width;
     unsigned height;
     bool pal;
+    unsigned dot_clock_divisor;
     bool color_24bit;
     bool interlaced;
     bool reverse;

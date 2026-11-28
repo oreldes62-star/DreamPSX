@@ -18,6 +18,15 @@ static void make_raw(uint8_t *sector, uint8_t mode, uint8_t seed)
         sector[(mode == 1u ? 16u : 24u) + i] = (uint8_t)(seed + i);
 }
 
+typedef struct { size_t size; size_t calls; size_t bytes_read; } SparseDisc;
+static bool sparse_read(void *context, size_t offset, uint8_t *destination, size_t size)
+{
+    SparseDisc *disc = (SparseDisc *)context;
+    if (!disc || !destination || offset > disc->size || size > disc->size - offset) return false;
+    ++disc->calls; disc->bytes_read += size;
+    for (size_t i = 0u; i < size; ++i) destination[i] = (uint8_t)((offset + i) >> 11u);
+    return true;
+}
 int main(void)
 {
     static uint8_t raw[4u * 2352u];
@@ -118,6 +127,28 @@ int main(void)
         assert(!psx_disc_mount_cue(&disc, multi_file_cue,
                                    sizeof(multi_file_cue) - 1u,
                                    plain, sizeof(plain)));
+    }
+    /* Large sparse image: only the requested sector is fetched. */
+    {
+        SparseDisc sparse = { 64u * 1024u * 1024u, 0u, 0u };
+        size_t target_lba = sparse.size / PSX_DISC_SECTOR_DATA_SIZE - 1u;
+        assert(psx_disc_mount_reader(&disc, sparse.size, PSX_DISC_MODE1_2048, sparse_read, &sparse));
+        assert(disc.source == NULL && disc.read_at != NULL);
+        assert(disc.sector_count == sparse.size / PSX_DISC_SECTOR_DATA_SIZE);
+        assert(psx_disc_read_sector(&disc, target_lba, output));
+        assert(sparse.calls == 1u && sparse.bytes_read == PSX_DISC_SECTOR_DATA_SIZE);
+        assert(output[0] == (uint8_t)((target_lba * PSX_DISC_SECTOR_DATA_SIZE) >> 11u));
+        assert(!psx_disc_read_sector(&disc, disc.sector_count, output));
+        { PsxDiscImage damaged = disc; damaged.source_sector_size = 0u; assert(!psx_disc_read_sector(&damaged, 0u, output)); }
+        assert(sparse.calls == 1u);
+        psx_disc_unmount(&disc);
+        assert(!disc.mounted);
+    }
+    {
+        SparseDisc sparse = { 2352u, 0u, 0u };
+        assert(!psx_disc_mount_reader(&disc, sparse.size, (PsxDiscTrackMode)99, sparse_read, &sparse));
+        assert(!psx_disc_mount_reader(&disc, 2353u, PSX_DISC_MODE1_2352, sparse_read, &sparse));
+        assert(!psx_disc_mount_reader(&disc, 2048u, PSX_DISC_MODE1_2048, NULL, &sparse));
     }
     puts("disc image tests passed");
     return 0;

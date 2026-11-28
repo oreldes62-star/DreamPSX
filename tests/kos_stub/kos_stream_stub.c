@@ -24,8 +24,8 @@ void snd_stream_start(snd_stream_hnd_t h, uint32_t f, int st) {
 int snd_stream_poll(snd_stream_hnd_t h) {
     int result; (void)h;
     if (current_callback) {
-        void *data=current_callback(7, 2, &poll_received);
-        if (data) memcpy(poll_samples, data, (size_t)poll_received*2u*sizeof(int16_t));
+        void *data=current_callback(7, 8, &poll_received);
+        if (data) memcpy(poll_samples, data, (size_t)poll_received);
     }
     result=next_poll_result; next_poll_result=0; return result;
 }

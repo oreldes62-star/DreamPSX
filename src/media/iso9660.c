@@ -102,7 +102,7 @@ bool psx_iso9660_mount_disc(PsxIso9660 *iso, const PsxDiscImage *disc)
     uint8_t pvd[PSX_ISO9660_SECTOR_SIZE];
     if (!iso) return false;
     memset(iso, 0, sizeof(*iso));
-    if (!disc || !disc->mounted || !disc->source ||
+    if (!disc || !disc->mounted || (!disc->source && !disc->read_at) ||
         disc->sector_count < 17u ||
         disc->sector_count > SIZE_MAX / PSX_ISO9660_SECTOR_SIZE)
         return false;

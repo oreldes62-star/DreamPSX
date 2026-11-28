@@ -1,5 +1,6 @@
 #include "dreampsx/machine.h"
 #include "dreampsx/cop0_irq.h"
+#include "dreampsx/dreamcast_audio_stream.h"
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
@@ -14,6 +15,638 @@ int main(void)
     assert(ram && bios && gpu_vram);
     assert(psx_machine_init(&machine, ram, PSX_RAM_SIZE, bios, PSX_BIOS_SIZE,
                             gpu_vram, PSX_GPU_VRAM_WIDTH * PSX_GPU_VRAM_HEIGHT));
+    /* Timer 0 receives a rational GPU video clock, then the selected
+     * horizontal-resolution divider. Both fractional phases survive batching.
+     */
+    {
+        const uint32_t chunks[] = {3u, 7u, 1u, 14u};
+        uint16_t counter = 0u;
+
+        psx_machine_reset(&machine);
+        assert(psx_timers_write16(&machine.timers,
+            PSX_TIMER_BASE_ADDR + 4u,
+            (uint16_t)(1u << PSX_TIMER_MODE_CLOCK_SHIFT)));
+        assert(psx_machine_advance_system_cycles(&machine, 25u));
+        assert(psx_timers_read16(&machine.timers,
+            PSX_TIMER_BASE_ADDR, &counter));
+        assert(counter == 3u);
+        assert(machine.timer0_dot_phase == 9u);
+        assert(machine.gpu_video_clock_phase == 285949u);
+
+        psx_machine_reset(&machine);
+        assert(psx_timers_write16(&machine.timers,
+            PSX_TIMER_BASE_ADDR + 4u,
+            (uint16_t)(1u << PSX_TIMER_MODE_CLOCK_SHIFT)));
+        for (size_t i = 0u; i < sizeof(chunks) / sizeof(chunks[0]); ++i)
+            assert(psx_machine_advance_system_cycles(&machine, chunks[i]));
+        assert(psx_timers_read16(&machine.timers,
+            PSX_TIMER_BASE_ADDR, &counter));
+        assert(counter == 3u);
+        assert(machine.timer0_dot_phase == 9u);
+        assert(machine.gpu_video_clock_phase == 285949u);
+
+        psx_machine_reset(&machine);
+        assert(psx_timers_write16(&machine.timers,
+            PSX_TIMER_BASE_ADDR + 4u,
+            (uint16_t)(1u << PSX_TIMER_MODE_CLOCK_SHIFT)));
+        assert(psx_machine_advance_system_cycles(&machine, 9u));
+        assert(machine.timer0_dot_phase == 4u);
+        assert(psx_gpu_gp1_write(&machine.gpu, 0x08000001u)); /* 320 / 8 */
+        assert(psx_machine_advance_system_cycles(&machine, 8u));
+        assert(machine.timer0_dot_phase == 4u);
+        assert(machine.gpu_video_clock_phase == 429269u);
+        assert(psx_timers_read16(&machine.timers,
+            PSX_TIMER_BASE_ADDR, &counter));
+        assert(counter == 2u); /* one dot tick before the mode switch, one after */
+
+        /* All five supported horizontal modes feed their own dot divisor. */
+        {
+            static const unsigned modes[] = {0u, 1u, 2u, 3u, 0x40u};
+            static const unsigned divisors[] = {10u, 8u, 5u, 4u, 7u};
+            for (size_t i = 0u; i < sizeof(modes) / sizeof(modes[0]); ++i) {
+                psx_machine_reset(&machine);
+                assert(psx_gpu_gp1_write(&machine.gpu,
+                    0x08000000u | modes[i]));
+                assert(psx_timers_write16(&machine.timers,
+                    PSX_TIMER_BASE_ADDR + 4u,
+                    (uint16_t)(1u << PSX_TIMER_MODE_CLOCK_SHIFT)));
+                assert(psx_machine_advance_system_cycles(
+                    &machine, divisors[i] * 4u - 1u));
+                assert(psx_timers_read16(&machine.timers,
+                    PSX_TIMER_BASE_ADDR, &counter));
+                {
+                    const uint64_t accumulated =
+                        (uint64_t)(divisors[i] * 4u - 1u) * 715909u;
+                    const uint32_t video_ticks =
+                        (uint32_t)(accumulated / 451584u);
+                    assert(counter == video_ticks / divisors[i]);
+                    assert(machine.timer0_dot_phase ==
+                           video_ticks % divisors[i]);
+                    assert(machine.gpu_video_clock_phase ==
+                           accumulated % 451584u);
+                }
+            }
+        }
+    }
+
+    /* Long-run Timer 0 dot-clock phase must remain exact in both
+     * emulated video-clock modes, independent of CPU-cycle batching.
+     */
+    {
+        static const unsigned output_modes[] = {8u, 0u}; /* deliberately cross-region */
+        const uint32_t total_cycles = 1000003u;
+        for (size_t i = 0u; i < sizeof(output_modes) / sizeof(output_modes[0]); ++i) {
+            uint16_t bulk_counter = 0u;
+            uint32_t bulk_dot_phase = 0u;
+            uint32_t bulk_video_phase = 0u;
+
+            const PsxVideoClockRegion region =
+                i == 0u ? PSX_VIDEO_CLOCK_NTSC : PSX_VIDEO_CLOCK_PAL;
+            const uint32_t numerator =
+                region == PSX_VIDEO_CLOCK_PAL ? 709379u : 715909u;
+            const uint64_t expected_video =
+                (uint64_t)total_cycles * numerator;
+            const uint32_t expected_video_ticks =
+                (uint32_t)(expected_video / 451584u);
+            const uint32_t expected_video_phase =
+                (uint32_t)(expected_video % 451584u);
+
+            psx_machine_reset(&machine);
+            assert(psx_gpu_gp1_write(&machine.gpu,
+                0x08000000u | output_modes[i]));
+            assert(psx_machine_set_video_clock_region(&machine, region));
+            assert(psx_timers_write16(&machine.timers,
+                PSX_TIMER_BASE_ADDR + 4u,
+                (uint16_t)(1u << PSX_TIMER_MODE_CLOCK_SHIFT)));
+            assert(psx_machine_advance_system_cycles(&machine, total_cycles));
+            assert(psx_timers_read16(&machine.timers,
+                PSX_TIMER_BASE_ADDR, &bulk_counter));
+            bulk_dot_phase = machine.timer0_dot_phase;
+            bulk_video_phase = machine.gpu_video_clock_phase;
+            assert(bulk_video_phase == expected_video_phase);
+            assert(bulk_dot_phase == expected_video_ticks % 10u);
+            assert(bulk_counter == (uint16_t)(expected_video_ticks / 10u));
+
+            psx_machine_reset(&machine);
+            assert(machine.gpu_video_clock_region == region);
+            assert(psx_gpu_gp1_write(&machine.gpu,
+                0x08000000u | output_modes[i]));
+            assert(psx_timers_write16(&machine.timers,
+                PSX_TIMER_BASE_ADDR + 4u,
+                (uint16_t)(1u << PSX_TIMER_MODE_CLOCK_SHIFT)));
+            for (uint32_t elapsed = 0u; elapsed < total_cycles;) {
+                const uint32_t step =
+                    (total_cycles - elapsed > 9973u) ?
+                    9973u : total_cycles - elapsed;
+                assert(psx_machine_advance_system_cycles(&machine, step));
+                elapsed += step;
+            }
+            {
+                uint16_t chunk_counter = 0u;
+                assert(psx_timers_read16(&machine.timers,
+                    PSX_TIMER_BASE_ADDR, &chunk_counter));
+                assert(chunk_counter == bulk_counter);
+                assert(machine.timer0_dot_phase == bulk_dot_phase);
+                assert(machine.gpu_video_clock_phase == bulk_video_phase);
+            }
+        }
+    }
+
+    /* Scanline duration is a rational CPU/GPU clock conversion. Verify
+     * the accumulated line remainder for both physical oscillator regions.
+     */
+    {
+        const uint32_t line_count = 100u;
+        static const PsxVideoClockRegion regions[] = {
+            PSX_VIDEO_CLOCK_NTSC, PSX_VIDEO_CLOCK_PAL
+        };
+        for (size_t i = 0u; i < sizeof(regions) / sizeof(regions[0]); ++i) {
+            const uint32_t numerator =
+                regions[i] == PSX_VIDEO_CLOCK_PAL ? 709379u : 715909u;
+            const uint32_t line_clocks =
+                regions[i] == PSX_VIDEO_CLOCK_PAL ? 3406u : 3413u;
+            const uint64_t accumulated =
+                (uint64_t)line_count * line_clocks * 451584u;
+            const uint32_t expected_cycles =
+                (uint32_t)((accumulated + numerator - 1u) / numerator);
+            const uint32_t expected_remainder =
+                (uint32_t)(accumulated % numerator);
+
+            psx_machine_reset(&machine);
+            assert(psx_machine_set_video_clock_region(&machine, regions[i]));
+            assert(psx_machine_advance_system_cycles(&machine, expected_cycles));
+            assert(machine.gpu.display.video_scanline == line_count);
+            assert(machine.gpu_scanline_cycle_phase == 0u);
+            assert(machine.gpu_scanline_cycle_remainder == expected_remainder);
+        }
+    }
+
+    assert(psx_machine_set_video_clock_region(
+        &machine, PSX_VIDEO_CLOCK_NTSC));
+
+    /* Machine-level GPU raster timing must be invariant to cycle batching. */
+    {
+        const uint32_t total_cycles = 2153u * 3u + 517u;
+        const uint32_t chunks[] = {1u, 37u, 211u, 1024u, 3000u, 669u};
+        unsigned remaining;
+        uint32_t scanline;
+        uint32_t phase;
+        uint64_t frames;
+        bool vblank;
+
+        psx_machine_reset(&machine);
+        assert(psx_gpu_gp1_write(&machine.gpu, 0x08000000u));
+        assert(psx_machine_advance_system_cycles(&machine, total_cycles));
+        scanline = machine.gpu.display.video_scanline;
+        phase = machine.gpu_scanline_cycle_phase;
+        frames = machine.gpu.display.video_frame_counter;
+        vblank = machine.gpu.display.video_vblank;
+
+        psx_machine_reset(&machine);
+        assert(psx_gpu_gp1_write(&machine.gpu, 0x08000000u));
+        remaining = total_cycles;
+        for (unsigned i = 0u; i < sizeof(chunks) / sizeof(chunks[0]); ++i) {
+            const uint32_t step = chunks[i] < remaining ?
+                                  chunks[i] : remaining;
+            if (step != 0u) {
+                assert(psx_machine_advance_system_cycles(&machine, step));
+                remaining -= step;
+            }
+        }
+        if (remaining != 0u)
+            assert(psx_machine_advance_system_cycles(&machine, remaining));
+        assert(machine.gpu.display.video_scanline == scanline);
+        assert(machine.gpu_scanline_cycle_phase == phase);
+        assert(machine.gpu.display.video_frame_counter == frames);
+        assert(machine.gpu.display.video_vblank == vblank);
+    }
+    /* Timer 1 receives exactly one HBlank clock per completed scanline,
+     * independent of how the master-clock interval is batched. */
+    {
+        const uint32_t total_cycles = 2153u * 5u + 123u;
+        const uint32_t chunks[] = {17u, 1000u, 3001u, 2048u, 3000u, 2100u};
+        uint32_t expected_counter;
+        uint16_t expected_irq_status;
+        uint32_t remaining = total_cycles;
+        uint16_t counter = 0u;
+        const uint16_t timer1_mode =
+            (uint16_t)((1u << PSX_TIMER_MODE_CLOCK_SHIFT) |
+                       PSX_TIMER_MODE_IRQ_TARGET);
+
+        psx_machine_reset(&machine);
+        assert(psx_gpu_gp1_write(&machine.gpu, 0x08000000u));
+        assert(psx_timers_write16(&machine.timers,
+            PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE + 8u, 3u));
+        assert(psx_timers_write16(&machine.timers,
+            PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE + 4u, timer1_mode));
+        assert(psx_machine_advance_system_cycles(&machine, total_cycles));
+        assert(psx_timers_read16(&machine.timers,
+            PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE, &counter));
+        expected_counter = counter;
+        expected_irq_status = psx_irq_read_stat(&machine.irq);
+        assert(expected_counter == 5u);
+        assert((expected_irq_status & (1u << 5u)) != 0u);
+
+        psx_machine_reset(&machine);
+        assert(psx_gpu_gp1_write(&machine.gpu, 0x08000000u));
+        assert(psx_timers_write16(&machine.timers,
+            PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE + 8u, 3u));
+        assert(psx_timers_write16(&machine.timers,
+            PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE + 4u, timer1_mode));
+        for (unsigned i = 0u; i < sizeof(chunks) / sizeof(chunks[0]); ++i) {
+            const uint32_t step = chunks[i] < remaining ? chunks[i] : remaining;
+            if (step != 0u) {
+                assert(psx_machine_advance_system_cycles(&machine, step));
+                remaining -= step;
+            }
+        }
+        if (remaining != 0u)
+            assert(psx_machine_advance_system_cycles(&machine, remaining));
+        assert(psx_timers_read16(&machine.timers,
+            PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE, &counter));
+        assert(counter == expected_counter);
+        assert(psx_irq_read_stat(&machine.irq) == expected_irq_status);
+        assert((expected_irq_status & (1u << 5u)) != 0u);
+
+        /* Reset-at-target must restart the counter on HBlank target hits. */
+        psx_machine_reset(&machine);
+        assert(psx_gpu_gp1_write(&machine.gpu, 0x08000000u));
+        assert(psx_timers_write16(&machine.timers,
+            PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE + 8u, 3u));
+        assert(psx_timers_write16(&machine.timers,
+            PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE + 4u,
+            (uint16_t)(timer1_mode | PSX_TIMER_MODE_RESET_AT_TARGET)));
+        assert(psx_machine_advance_system_cycles(&machine, total_cycles));
+        assert(psx_timers_read16(&machine.timers,
+            PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE, &counter));
+        assert(counter == 2u);
+        assert(psx_timers_read16(&machine.timers,
+            PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE + 4u, &expected_irq_status));
+        assert((expected_irq_status & PSX_TIMER_MODE_REACHED_TARGET) != 0u);
+        assert((psx_irq_read_stat(&machine.irq) & (1u << 5u)) != 0u);
+
+        /* The reset-at-target path must also be invariant to cycle batching. */
+        {
+            const uint32_t reset_chunks[] = {1u, 2152u, 1u, 17u, 2000u,
+                                             2153u, 19u};
+            uint16_t bulk_reset_counter = 0u;
+            uint16_t bulk_reset_mode = 0u;
+            uint16_t bulk_reset_irq = 0u;
+            uint16_t chunk_reset_counter = 0u;
+            uint32_t reset_remaining = 2153u * 2u + 19u;
+
+            psx_machine_reset(&machine);
+            assert(psx_gpu_gp1_write(&machine.gpu, 0x08000000u));
+            assert(psx_timers_write16(&machine.timers,
+                PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE + 8u, 3u));
+            assert(psx_timers_write16(&machine.timers,
+                PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE + 4u,
+                (uint16_t)(timer1_mode | PSX_TIMER_MODE_RESET_AT_TARGET)));
+            assert(psx_machine_advance_system_cycles(&machine,
+                                                      reset_remaining));
+            assert(psx_timers_read16(&machine.timers,
+                PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE,
+                &bulk_reset_counter));
+            bulk_reset_mode = machine.timers.timer[1].mode;
+            bulk_reset_irq = psx_irq_read_stat(&machine.irq);
+
+            psx_machine_reset(&machine);
+            assert(psx_gpu_gp1_write(&machine.gpu, 0x08000000u));
+            assert(psx_timers_write16(&machine.timers,
+                PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE + 8u, 3u));
+            assert(psx_timers_write16(&machine.timers,
+                PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE + 4u,
+                (uint16_t)(timer1_mode | PSX_TIMER_MODE_RESET_AT_TARGET)));
+            for (size_t i = 0u;
+                 i < sizeof(reset_chunks) / sizeof(reset_chunks[0]); ++i) {
+                const uint32_t step = reset_chunks[i] < reset_remaining ?
+                                      reset_chunks[i] : reset_remaining;
+                if (step != 0u) {
+                    assert(psx_machine_advance_system_cycles(&machine, step));
+                    reset_remaining -= step;
+                }
+            }
+            if (reset_remaining != 0u)
+                assert(psx_machine_advance_system_cycles(&machine,
+                                                          reset_remaining));
+            assert(psx_timers_read16(&machine.timers,
+                PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE,
+                &chunk_reset_counter));
+            assert(chunk_reset_counter == bulk_reset_counter);
+            assert(machine.timers.timer[1].mode == bulk_reset_mode);
+            assert(psx_irq_read_stat(&machine.irq) == bulk_reset_irq);
+        }
+    }
+    /* Timer 1 VBlank synchronization is wired to the GPU raster.
+     * With sync mode 2 it counts HBlank ticks during VBlank only. The
+     * default visible range starts at scanline 16: lines 1..15 are blank,
+     * then line 16 leaves VBlank and must stop the counter.
+     */
+    {
+        uint16_t counter = 0u;
+        const uint16_t mode = (uint16_t)(
+            PSX_TIMER_MODE_SYNC_ENABLE |
+            (2u << PSX_TIMER_MODE_SYNC_SHIFT) |
+            (1u << PSX_TIMER_MODE_CLOCK_SHIFT));
+
+        psx_machine_reset(&machine);
+        assert(psx_timers_write16(&machine.timers,
+            PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE + 4u, mode));
+        assert(psx_machine_advance_system_cycles(&machine, 34446u));
+        assert(machine.gpu.display.video_scanline == 16u);
+        assert(!machine.gpu.display.video_vblank);
+        assert(!machine.timers.timer[1].sync_signal_active);
+        assert(psx_timers_read16(&machine.timers,
+            PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE, &counter));
+        assert(counter == 15u);
+    }
+
+    /* GP1(06h) positions are video-clock counts, not pixel or
+     * normalized line fractions. Verify the resulting visible interval
+     * against the exact rational CPU/GPU conversion in both regions.
+     */
+    {
+        static const PsxVideoClockRegion regions[] = {
+            PSX_VIDEO_CLOCK_NTSC, PSX_VIDEO_CLOCK_PAL
+        };
+        for (size_t i = 0u; i < sizeof(regions) / sizeof(regions[0]); ++i) {
+            const uint32_t numerator =
+                regions[i] == PSX_VIDEO_CLOCK_PAL ? 709379u : 715909u;
+            const uint32_t line_clocks =
+                regions[i] == PSX_VIDEO_CLOCK_PAL ? 3406u : 3413u;
+            const uint32_t line_cycles = (uint32_t)(
+                ((uint64_t)line_clocks * 451584u + numerator - 1u) /
+                numerator);
+            const uint32_t h_start_cycles = (uint32_t)(
+                ((uint64_t)1000u * 451584u + numerator - 1u) /
+                numerator);
+            const uint32_t h_end_cycles = (uint32_t)(
+                ((uint64_t)2000u * 451584u + numerator - 1u) /
+                numerator);
+            uint16_t counter = 0u;
+
+            psx_machine_reset(&machine);
+            assert(psx_machine_set_video_clock_region(&machine, regions[i]));
+            assert(psx_gpu_gp1_write(&machine.gpu,
+                0x06000000u | 1000u | (2000u << 12u)));
+            assert(psx_timers_write16(&machine.timers,
+                PSX_TIMER_BASE_ADDR + 4u, PSX_TIMER_MODE_SYNC_ENABLE));
+            assert(psx_machine_advance_system_cycles(&machine, line_cycles));
+            assert(psx_timers_read16(&machine.timers,
+                PSX_TIMER_BASE_ADDR, &counter));
+            assert(counter == h_end_cycles - h_start_cycles);
+            assert(machine.gpu_scanline_cycle_phase == 0u);
+        }
+    }
+
+    /* Timer 0 mode 1 resets on the end-of-display HBlank edge, then
+     * continues counting through blanking and the next visible interval.
+     */
+    {
+        uint16_t counter = 0u;
+        const uint16_t mode = (uint16_t)(
+            PSX_TIMER_MODE_SYNC_ENABLE |
+            (1u << PSX_TIMER_MODE_SYNC_SHIFT));
+
+        psx_machine_reset(&machine);
+        assert(psx_machine_set_video_clock_region(
+            &machine, PSX_VIDEO_CLOCK_NTSC));
+        assert(psx_timers_write16(&machine.timers,
+            PSX_TIMER_BASE_ADDR + 4u, mode));
+        assert(psx_timers_write16(&machine.timers,
+            PSX_TIMER_BASE_ADDR, 77u));
+        assert(psx_machine_advance_system_cycles(&machine, 2153u * 2u + 10u));
+        assert(machine.timers.timer[0].sync_started);
+        assert(psx_timers_read16(&machine.timers,
+            PSX_TIMER_BASE_ADDR, &counter));
+        assert(counter == 225u);
+    }
+
+    /* Timer 0 modes 0 and 2 must gate system-clock ticks over the
+     * horizontal blanking interval, independent of CPU batch boundaries.
+     * With the default GP1(06h) range, the modeled visible interval is
+     * 1611 cycles and the two blanking portions total 537 cycles per line.
+     */
+    {
+        const uint32_t chunks[] = {
+            322u, 1614u, 216u, 322u, 1615u, 227u
+        };
+        const uint16_t modes[] = {
+            PSX_TIMER_MODE_SYNC_ENABLE,
+            (uint16_t)(PSX_TIMER_MODE_SYNC_ENABLE |
+                       (2u << PSX_TIMER_MODE_SYNC_SHIFT))
+        };
+        const uint16_t expected_mode0 = 3230u;
+
+        for (size_t mode_index = 0u; mode_index < 2u; ++mode_index) {
+            uint16_t bulk_counter = 0u;
+            uint16_t chunk_counter = 0u;
+            psx_machine_reset(&machine);
+            assert(psx_timers_write16(&machine.timers,
+                PSX_TIMER_BASE_ADDR + 4u, modes[mode_index]));
+            assert(psx_machine_advance_system_cycles(
+                &machine, 2153u * 2u + 10u));
+            assert(psx_timers_read16(&machine.timers,
+                PSX_TIMER_BASE_ADDR, &bulk_counter));
+            if (mode_index == 0u)
+                assert(bulk_counter == expected_mode0);
+            else
+                /* Mode 2 resets at each HBlank rising edge, so the final
+                 * partial blanking interval determines the residual count. */
+                assert(bulk_counter > 0u && bulk_counter < 4316u);
+
+            psx_machine_reset(&machine);
+            assert(psx_timers_write16(&machine.timers,
+                PSX_TIMER_BASE_ADDR + 4u, modes[mode_index]));
+            for (size_t i = 0u; i < sizeof(chunks) / sizeof(chunks[0]); ++i)
+                assert(psx_machine_advance_system_cycles(&machine, chunks[i]));
+            assert(psx_timers_read16(&machine.timers,
+                PSX_TIMER_BASE_ADDR, &chunk_counter));
+            assert(chunk_counter == bulk_counter);
+            assert(machine.gpu_scanline_cycle_phase == 10u);
+        }
+    }
+
+    /* HBlank synchronization must remain batch-invariant in every
+     * supported GPU horizontal mode, including changes to the dot divisor.
+     * The modeled GP1(06h) interval is shared, but dot-clock phase must not
+     * leak into the system-clock Timer 0 tests.
+     */
+    {
+        static const unsigned gpu_modes[] = {0u, 1u, 2u, 3u, 0x40u};
+        static const unsigned sync_modes[] = {0u, 2u};
+        const uint32_t chunks[] = {322u, 1614u, 216u, 322u, 1615u, 227u};
+        const uint32_t total_cycles = 2153u * 2u + 10u;
+
+        for (size_t g = 0u; g < sizeof(gpu_modes) / sizeof(gpu_modes[0]); ++g) {
+            for (size_t s = 0u; s < sizeof(sync_modes) / sizeof(sync_modes[0]); ++s) {
+                uint16_t bulk_counter = 0u;
+                uint16_t chunk_counter = 0u;
+                const uint16_t timer_mode = (uint16_t)(
+                    PSX_TIMER_MODE_SYNC_ENABLE |
+                    (sync_modes[s] << PSX_TIMER_MODE_SYNC_SHIFT));
+
+                psx_machine_reset(&machine);
+                assert(psx_gpu_gp1_write(&machine.gpu,
+                    0x08000000u | gpu_modes[g]));
+                assert(psx_timers_write16(&machine.timers,
+                    PSX_TIMER_BASE_ADDR + 4u, timer_mode));
+                assert(psx_machine_advance_system_cycles(&machine, total_cycles));
+                assert(psx_timers_read16(&machine.timers,
+                    PSX_TIMER_BASE_ADDR, &bulk_counter));
+
+                psx_machine_reset(&machine);
+                assert(psx_gpu_gp1_write(&machine.gpu,
+                    0x08000000u | gpu_modes[g]));
+                assert(psx_timers_write16(&machine.timers,
+                    PSX_TIMER_BASE_ADDR + 4u, timer_mode));
+                for (size_t i = 0u; i < sizeof(chunks) / sizeof(chunks[0]); ++i)
+                    assert(psx_machine_advance_system_cycles(&machine, chunks[i]));
+                assert(psx_timers_read16(&machine.timers,
+                    PSX_TIMER_BASE_ADDR, &chunk_counter));
+                assert(chunk_counter == bulk_counter);
+                assert(machine.gpu_scanline_cycle_phase == 10u);
+                assert(machine.timers.timer[0].sync_signal_active);
+            }
+        }
+    }
+
+    /* Timer 0 mode 3 starts on the first sampled HBlank level and
+     * then free-runs; the initial raster position is already blanking.
+     */
+    {
+        const uint16_t mode = (uint16_t)(
+            PSX_TIMER_MODE_SYNC_ENABLE |
+            (3u << PSX_TIMER_MODE_SYNC_SHIFT));
+
+        psx_machine_reset(&machine);
+        assert(psx_timers_write16(&machine.timers,
+            PSX_TIMER_BASE_ADDR + 4u, mode));
+        assert(psx_machine_advance_system_cycles(&machine, 5u));
+        assert(machine.timers.timer[0].sync_started);
+        assert(machine.timers.timer[0].counter == 5u);
+        assert(psx_machine_advance_system_cycles(&machine, 3u));
+        assert(machine.timers.timer[0].counter == 8u);
+    }
+
+    /* Timer 0 mode 1 must reset at each raster HBlank edge, after the
+     * system clocks preceding that edge have elapsed. The counter reports elapsed system ticks since the second
+     * rising HBlank edge.
+     */
+    {
+        const uint16_t mode = (uint16_t)(
+            PSX_TIMER_MODE_SYNC_ENABLE |
+            (1u << PSX_TIMER_MODE_SYNC_SHIFT));
+
+        psx_machine_reset(&machine);
+        assert(psx_timers_write16(&machine.timers,
+            PSX_TIMER_BASE_ADDR + 4u, mode));
+        assert(psx_timers_write16(&machine.timers,
+            PSX_TIMER_BASE_ADDR, 77u));
+        assert(psx_machine_advance_system_cycles(&machine,
+                                                   2153u * 2u + 10u));
+        assert(machine.timers.timer[0].sync_started);
+        assert(machine.timers.timer[0].counter == 225u);
+    }
+
+    /* Timer 0 raster synchronization must be invariant to how the CPU
+     * batches elapsed master-clock cycles around HBlank boundaries.
+     */
+    {
+        const uint16_t mode = (uint16_t)(
+            PSX_TIMER_MODE_SYNC_ENABLE |
+            (1u << PSX_TIMER_MODE_SYNC_SHIFT));
+        const uint32_t chunks[] = {1u, 2152u, 2u, 2153u, 8u};
+        const uint32_t total_cycles = 2153u * 2u + 10u;
+        uint16_t bulk_counter = 0u;
+        uint16_t chunk_counter = 0u;
+        uint16_t bulk_irq = 0u;
+        uint32_t bulk_phase;
+        uint32_t bulk_scanline;
+        uint32_t bulk_frames;
+
+        psx_machine_reset(&machine);
+        assert(psx_machine_set_video_clock_region(
+            &machine, PSX_VIDEO_CLOCK_NTSC));
+        assert(psx_timers_write16(&machine.timers,
+            PSX_TIMER_BASE_ADDR + 4u, mode));
+        assert(psx_timers_write16(&machine.timers,
+            PSX_TIMER_BASE_ADDR, 77u));
+        assert(psx_machine_advance_system_cycles(&machine, total_cycles));
+        assert(psx_timers_read16(&machine.timers,
+            PSX_TIMER_BASE_ADDR, &bulk_counter));
+        bulk_irq = psx_irq_read_stat(&machine.irq);
+        bulk_phase = machine.gpu_scanline_cycle_phase;
+        bulk_scanline = machine.gpu.display.video_scanline;
+        bulk_frames = machine.gpu.display.video_frame_counter;
+
+        psx_machine_reset(&machine);
+        assert(psx_machine_set_video_clock_region(
+            &machine, PSX_VIDEO_CLOCK_NTSC));
+        assert(psx_timers_write16(&machine.timers,
+            PSX_TIMER_BASE_ADDR + 4u, mode));
+        assert(psx_timers_write16(&machine.timers,
+            PSX_TIMER_BASE_ADDR, 77u));
+        for (size_t i = 0u; i < sizeof(chunks) / sizeof(chunks[0]); ++i)
+            assert(psx_machine_advance_system_cycles(&machine, chunks[i]));
+        assert(psx_timers_read16(&machine.timers,
+            PSX_TIMER_BASE_ADDR, &chunk_counter));
+        assert(chunk_counter == bulk_counter);
+        assert(psx_irq_read_stat(&machine.irq) == bulk_irq);
+        assert(machine.gpu_scanline_cycle_phase == bulk_phase);
+        assert(machine.gpu.display.video_scanline == bulk_scanline);
+        assert(machine.gpu.display.video_frame_counter == bulk_frames);
+        assert(machine.timers.timer[0].sync_started);
+        assert(machine.timers.timer[0].sync_signal_active);
+    }
+
+    /* Timer 0 target IRQ/reset behavior must remain deterministic when
+     * master-clock batches straddle HBlank boundaries. The target is reached
+     * five clocks after each HBlank reset; 222 clocks after the second
+     * reset, the counter must read two and IRQ4 must be pending.
+     */
+    {
+        const uint16_t mode = (uint16_t)(
+            PSX_TIMER_MODE_SYNC_ENABLE |
+            (1u << PSX_TIMER_MODE_SYNC_SHIFT) |
+            PSX_TIMER_MODE_RESET_AT_TARGET |
+            PSX_TIMER_MODE_IRQ_TARGET);
+        const uint32_t chunks[] = {2152u, 1u, 3u, 2145u, 5u, 7u};
+        uint16_t bulk_counter = 0u;
+        uint16_t chunk_counter = 0u;
+        uint16_t bulk_irq = 0u;
+        uint16_t bulk_mode;
+
+        psx_machine_reset(&machine);
+        assert(psx_timers_write16(&machine.timers,
+            PSX_TIMER_BASE_ADDR + 8u, 5u));
+        assert(psx_timers_write16(&machine.timers,
+            PSX_TIMER_BASE_ADDR + 4u, mode));
+        assert(psx_machine_advance_system_cycles(&machine, 2153u * 2u + 7u));
+        assert(psx_timers_read16(&machine.timers,
+            PSX_TIMER_BASE_ADDR, &bulk_counter));
+        bulk_irq = psx_irq_read_stat(&machine.irq);
+        bulk_mode = machine.timers.timer[0].mode;
+        assert(bulk_counter == 2u);
+        assert((bulk_irq & (1u << 4u)) != 0u);
+        assert((bulk_mode & PSX_TIMER_MODE_REACHED_TARGET) != 0u);
+
+        psx_machine_reset(&machine);
+        assert(psx_timers_write16(&machine.timers,
+            PSX_TIMER_BASE_ADDR + 8u, 5u));
+        assert(psx_timers_write16(&machine.timers,
+            PSX_TIMER_BASE_ADDR + 4u, mode));
+        for (size_t i = 0u; i < sizeof(chunks) / sizeof(chunks[0]); ++i)
+            assert(psx_machine_advance_system_cycles(&machine, chunks[i]));
+        assert(psx_timers_read16(&machine.timers,
+            PSX_TIMER_BASE_ADDR, &chunk_counter));
+        assert(chunk_counter == bulk_counter);
+        assert(psx_irq_read_stat(&machine.irq) == bulk_irq);
+        assert(machine.timers.timer[0].mode == bulk_mode);
+        assert(machine.timers.timer[0].irq_fired);
+    }
+
+    psx_machine_reset(&machine);
     /* SPU output cadence is clocked at 44.1 kHz: 768 master cycles/frame. */
     {
         int16_t frame[2] = {1, 1};
@@ -56,6 +689,43 @@ int main(void)
         psx_machine_reset(&machine);
         assert(machine.audio_output.frame_count == 0u);
         assert(machine.audio_output.dropped_frames == 0u);
+    }
+    /* End-to-end host path: machine SPU render -> machine PCM queue ->
+     * KallistiOS-compatible byte-count callback, preserving stereo frames. */
+    {
+        PsxDreamcastAudioStream stream;
+        int received = 0;
+        int16_t *pcm;
+        size_t queued = 0u;
+        PsxSpuVoice *voice = &machine.spu.voices[0];
+
+        psx_machine_reset(&machine);
+        assert(psx_spu_write16(&machine.spu, PSX_SPU_BASE_ADDR,
+                               0x3fffu));
+        assert(psx_spu_write16(&machine.spu, PSX_SPU_BASE_ADDR + 0x002u,
+                               0x3fffu));
+        assert(psx_spu_write16(&machine.spu, PSX_SPU_BASE_ADDR +
+                               PSX_SPU_MAIN_VOLUME_LEFT_OFFSET, 0x3fffu));
+        assert(psx_spu_write16(&machine.spu, PSX_SPU_BASE_ADDR +
+                               PSX_SPU_MAIN_VOLUME_RIGHT_OFFSET, 0x3fffu));
+        voice->adsr2 = 0x1fc0u; /* Frozen sustain rate for deterministic PCM. */
+        voice->envelope_level = PSX_SPU_ENVELOPE_MAX;
+        voice->envelope_phase = PSX_SPU_ADSR_SUSTAIN;
+        voice->current_sample = 12000;
+        voice->current_sample_valid = true;
+        machine.spu.active_voices = 1u;
+
+        assert(psx_machine_render_audio(&machine, 4u, &queued));
+        assert(queued == 4u);
+        assert(psx_dreamcast_audio_stream_init(&stream,
+                                               &machine.audio_output));
+        pcm = (int16_t *)psx_dreamcast_audio_stream_callback(
+            &stream, 4 * (int)sizeof(int16_t) * 2, &received);
+        assert(pcm != NULL && received == 16);
+        assert(pcm[0] > 0 && pcm[1] > 0);
+        assert(pcm[2] == pcm[0] && pcm[3] == pcm[1]);
+        assert(machine.audio_output.frame_count == 0u);
+        assert(stream.silence_frames == 0u);
     }
     assert(psx_memory_write32(&machine.memory, 0u, 0xdecafbad));
     uint32_t memory_probe = 0u;

@@ -15,6 +15,8 @@
 #define PSX_SPU_KEY_OFF_LOW_OFFSET 0x18cu
 #define PSX_SPU_KEY_OFF_HIGH_OFFSET 0x18eu
 #define PSX_SPU_CONTROL_OFFSET 0x1aau
+#define PSX_SPU_MAIN_VOLUME_LEFT_OFFSET 0x180u
+#define PSX_SPU_MAIN_VOLUME_RIGHT_OFFSET 0x182u
 #define PSX_SPU_VOICE_COUNT 24u
 #define PSX_SPU_VOICE_REGISTER_BYTES 0x10u
 #define PSX_SPU_VOICE_CURRENT_VOLUME_OFFSET 0x0cu
@@ -23,8 +25,8 @@
 #define PSX_SPU_STATUS_OFFSET 0x1aeu
 #define PSX_SPU_REVERB_REGISTER_START_OFFSET 0x1c0u
 #define PSX_SPU_REVERB_REGISTER_END_OFFSET 0x1feu
-#define PSX_SPU_REVERB_OUTPUT_VOLUME_LEFT_OFFSET 0x084u
-#define PSX_SPU_REVERB_OUTPUT_VOLUME_RIGHT_OFFSET 0x086u
+#define PSX_SPU_REVERB_OUTPUT_VOLUME_LEFT_OFFSET 0x184u
+#define PSX_SPU_REVERB_OUTPUT_VOLUME_RIGHT_OFFSET 0x186u
 #define PSX_SPU_REVERB_ENABLE_LOW_OFFSET 0x198u
 #define PSX_SPU_REVERB_ENABLE_HIGH_OFFSET 0x19au
 #define PSX_SPU_REVERB_WORK_AREA_START_OFFSET 0x1a2u
@@ -81,6 +83,12 @@ typedef enum {
 typedef struct {
     uint16_t volume_left;
     uint16_t volume_right;
+    int16_t volume_left_level;
+    int16_t volume_right_level;
+    uint32_t volume_left_counter;
+    uint32_t volume_right_counter;
+    bool volume_left_sweep_active;
+    bool volume_right_sweep_active;
     uint16_t pitch;
     uint16_t start_address;
     uint16_t adsr1;
@@ -109,6 +117,12 @@ typedef struct {
     uint32_t reverb_buffer_address;
     uint32_t active_voices;
     uint16_t control;
+    int16_t main_volume_left_level;
+    int16_t main_volume_right_level;
+    uint32_t main_volume_left_counter;
+    uint32_t main_volume_right_counter;
+    bool main_volume_left_sweep_active;
+    bool main_volume_right_sweep_active;
     bool initialized;
 } PsxSpu;
 
@@ -129,11 +143,27 @@ bool psx_spu_voice_render_sample(PsxSpu *spu, unsigned voice_index,
                                  int16_t *sample);
 bool psx_spu_voice_envelope_tick(PsxSpu *spu, unsigned voice_index,
                                  uint16_t *level);
+int16_t psx_spu_decode_direct_volume(uint16_t value);
+bool psx_spu_voice_volume_tick(PsxSpu *spu, unsigned voice_index);
+/* Mixes all active voices to dry stereo and routes voices selected by the
+ * 24-bit reverb-enable bitmap through the SPU wet DSP before final output. */
 bool psx_spu_mix_sample(PsxSpu *spu, int16_t *left, int16_t *right);
 int16_t psx_spu_reverb_saturate(int32_t value);
 int32_t psx_spu_reverb_multiply_q15(int16_t lhs, int16_t rhs);
 bool psx_spu_reverb_process_reflections(PsxSpu *spu, int16_t left_input,
                                        int16_t right_input);
+bool psx_spu_reverb_process_sample(PsxSpu *spu,
+                                      int16_t input_left,
+                                      int16_t input_right,
+                                      int16_t *wet_left,
+                                      int16_t *wet_right);
+bool psx_spu_reverb_process_allpass(PsxSpu *spu,
+                                    int16_t comb_left, int16_t comb_right,
+                                    int16_t *left_output,
+                                    int16_t *right_output);
+bool psx_spu_reverb_process_comb(const PsxSpu *spu,
+                                   int16_t *left_output,
+                                   int16_t *right_output);
 uint32_t psx_spu_reverb_resolve_address(const PsxSpu *spu,
                                         uint16_t relative_address);
 void psx_spu_reverb_advance(PsxSpu *spu);

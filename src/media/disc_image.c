@@ -146,129 +146,64 @@ bool psx_disc_mount_cue(PsxDiscImage *disc, const char *cue_text,
     return true;
 }
 
+bool psx_disc_mount_reader(PsxDiscImage *disc, size_t source_size, PsxDiscTrackMode mode, PsxDiscReadAt read_at, void *read_context)
+{
+    uint16_t sector_size, data_offset;
+    if (!disc) return false;
+    memset(disc, 0, sizeof(*disc));
+    if (!read_at || source_size == 0u) return false;
+    if (mode == PSX_DISC_MODE1_2048) { sector_size = 2048u; data_offset = 0u; }
+    else if (mode == PSX_DISC_MODE1_2352) { sector_size = 2352u; data_offset = 16u; }
+    else if (mode == PSX_DISC_MODE2_2352) { sector_size = 2352u; data_offset = 24u; }
+    else return false;
+    if (source_size % sector_size != 0u) return false;
+    disc->source_size = source_size; disc->source_sector_size = sector_size;
+    disc->user_data_offset = data_offset; disc->mode = mode;
+    disc->read_at = read_at; disc->read_context = read_context;
+    disc->sector_count = source_size / sector_size; disc->mounted = true;
+    return true;
+}
+
+static bool disc_read_raw_sector(const PsxDiscImage *disc, size_t lba, uint8_t raw[2352])
+{
+    size_t sector, offset;
+    if (!disc || !disc->mounted || lba >= disc->sector_count || disc->first_sector > SIZE_MAX - lba || (disc->source_sector_size != 2048u && disc->source_sector_size != 2352u) || disc->source_size % disc->source_sector_size != 0u || disc->first_sector > disc->source_size / disc->source_sector_size || disc->sector_count > disc->source_size / disc->source_sector_size - disc->first_sector) return false;
+    sector = disc->first_sector + lba;
+    if (sector > SIZE_MAX / disc->source_sector_size) return false;
+    offset = sector * disc->source_sector_size;
+    if (offset > disc->source_size || disc->source_size - offset < disc->source_sector_size) return false;
+    if (disc->read_at) return disc->read_at(disc->read_context, offset, raw, disc->source_sector_size);
+    if (!disc->source) return false;
+    memcpy(raw, disc->source + offset, disc->source_sector_size);
+    return true;
+}
 void psx_disc_unmount(PsxDiscImage *disc)
 {
     if (disc) memset(disc, 0, sizeof(*disc));
 }
 
-bool psx_disc_read_sector(const PsxDiscImage *disc, size_t lba,
-                          uint8_t destination[PSX_DISC_SECTOR_DATA_SIZE])
+bool psx_disc_read_sector(const PsxDiscImage *disc, size_t lba, uint8_t destination[PSX_DISC_SECTOR_DATA_SIZE])
 {
-    size_t source_sector, offset;
-    const uint8_t *sector;
-    if (!disc || !disc->mounted || !destination || !disc->source ||
-        lba >= disc->sector_count ||
-        disc->first_sector > SIZE_MAX - lba)
-        return false;
-
-    /* Validate the public descriptor before doing any pointer arithmetic.
-     * Mounted images are caller-owned, so reject corrupted/inconsistent
-     * metadata rather than trusting offsets copied into the descriptor. */
-    switch (disc->mode) {
-    case PSX_DISC_MODE1_2048:
-        if (disc->source_sector_size != 2048u ||
-            disc->user_data_offset != 0u)
-            return false;
-        break;
-    case PSX_DISC_MODE1_2352:
-        if (disc->source_sector_size != 2352u ||
-            disc->user_data_offset != 16u)
-            return false;
-        break;
-    case PSX_DISC_MODE2_2352:
-        if (disc->source_sector_size != 2352u ||
-            disc->user_data_offset != 24u)
-            return false;
-        break;
-    default:
-        return false;
-    }
-    if (disc->source_size % disc->source_sector_size != 0u ||
-        disc->first_sector >=
-            disc->source_size / disc->source_sector_size ||
-        disc->sector_count >
-            disc->source_size / disc->source_sector_size -
-                disc->first_sector)
-        return false;
-
-    source_sector = disc->first_sector + lba;
-    if (source_sector > SIZE_MAX / disc->source_sector_size)
-        return false;
-    offset = source_sector * disc->source_sector_size;
-    if (offset > disc->source_size ||
-        disc->source_size - offset < disc->source_sector_size)
-        return false;
-    sector = disc->source + offset;
-
-    if (disc->mode == PSX_DISC_MODE1_2048) {
-        memcpy(destination, sector, PSX_DISC_SECTOR_DATA_SIZE);
-        return true;
-    }
-    if (sector[0] != 0x00u || sector[11] != 0x00u ||
-        sector[1] != 0xffu || sector[10] != 0xffu)
-        return false;
-    for (unsigned i = 2u; i < 10u; ++i)
-        if (sector[i] != 0xffu) return false;
-    if ((disc->mode == PSX_DISC_MODE1_2352 && sector[15] != 1u) ||
-        (disc->mode == PSX_DISC_MODE2_2352 && sector[15] != 2u))
-        return false;
-    if (disc->mode == PSX_DISC_MODE2_2352) {
-        if (memcmp(sector + 16u, sector + 20u, 4u) != 0 ||
-            (sector[18] & 0x20u) != 0u)
-            return false; /* XA Form 2 does not contain 2048 user bytes. */
-    }
-    memcpy(destination, sector + disc->user_data_offset,
-           PSX_DISC_SECTOR_DATA_SIZE);
+    uint8_t raw[2352];
+    if (!disc || !disc->mounted || !destination || (!disc->source && !disc->read_at) || !disc_read_raw_sector(disc, lba, raw)) return false;
+    if (disc->mode == PSX_DISC_MODE1_2048 && disc->source_sector_size == 2048u && disc->user_data_offset == 0u) { memcpy(destination, raw, 2048u); return true; }
+    if (disc->mode == PSX_DISC_MODE1_2352 && disc->source_sector_size == 2352u && disc->user_data_offset == 16u && raw[15] == 1u) { }
+    else if (disc->mode == PSX_DISC_MODE2_2352 && disc->source_sector_size == 2352u && disc->user_data_offset == 24u && raw[15] == 2u && memcmp(raw + 16u, raw + 20u, 4u) == 0 && (raw[18] & 0x20u) == 0u) { }
+    else return false;
+    if (raw[0] != 0u || raw[11] != 0u || raw[1] != 0xffu || raw[10] != 0xffu) return false;
+    for (unsigned i = 2u; i < 10u; ++i) if (raw[i] != 0xffu) return false;
+    memcpy(destination, raw + disc->user_data_offset, 2048u);
     return true;
 }
 
-
-bool psx_disc_read_sector_form2_ex(
-    const PsxDiscImage *disc, size_t lba,
-    uint8_t destination[PSX_DISC_SECTOR_FORM2_DATA_SIZE],
-    PsxDiscXaSubheader *subheader)
+bool psx_disc_read_sector_form2_ex(const PsxDiscImage *disc, size_t lba, uint8_t destination[PSX_DISC_SECTOR_FORM2_DATA_SIZE], PsxDiscXaSubheader *subheader)
 {
-    size_t source_sector, offset;
-    const uint8_t *sector;
-
-    if (!disc || !disc->mounted || !destination || !disc->source ||
-        disc->mode != PSX_DISC_MODE2_2352 ||
-        disc->source_sector_size != 2352u ||
-        disc->user_data_offset != 24u ||
-        lba >= disc->sector_count ||
-        disc->first_sector > SIZE_MAX - lba ||
-        disc->source_size % 2352u != 0u ||
-        disc->first_sector >= disc->source_size / 2352u ||
-        disc->sector_count >
-            disc->source_size / 2352u - disc->first_sector)
-        return false;
-
-    source_sector = disc->first_sector + lba;
-    if (source_sector > SIZE_MAX / 2352u)
-        return false;
-    offset = source_sector * 2352u;
-    if (offset > disc->source_size ||
-        disc->source_size - offset < 2352u)
-        return false;
-    sector = disc->source + offset;
-
-    if (sector[0] != 0x00u || sector[11] != 0x00u ||
-        sector[1] != 0xffu || sector[10] != 0xffu)
-        return false;
-    for (unsigned i = 2u; i < 10u; ++i)
-        if (sector[i] != 0xffu) return false;
-    if (sector[15] != 2u ||
-        memcmp(sector + 16u, sector + 20u, 4u) != 0 ||
-        (sector[18] & 0x20u) == 0u)
-        return false;
-
-    memcpy(destination, sector + 24u, PSX_DISC_SECTOR_FORM2_DATA_SIZE);
-    if (subheader) {
-        subheader->file = sector[16];
-        subheader->channel = sector[17];
-        subheader->submode = sector[18];
-        subheader->coding = sector[19];
-    }
+    uint8_t raw[2352];
+    if (!disc || !disc->mounted || !destination || (!disc->source && !disc->read_at) || disc->mode != PSX_DISC_MODE2_2352 || disc->source_sector_size != 2352u || disc->user_data_offset != 24u || !disc_read_raw_sector(disc, lba, raw)) return false;
+    if (raw[0] != 0u || raw[11] != 0u || raw[1] != 0xffu || raw[10] != 0xffu || raw[15] != 2u || memcmp(raw + 16u, raw + 20u, 4u) != 0 || (raw[18] & 0x20u) == 0u) return false;
+    for (unsigned i = 2u; i < 10u; ++i) if (raw[i] != 0xffu) return false;
+    memcpy(destination, raw + 24u, PSX_DISC_SECTOR_FORM2_DATA_SIZE);
+    if (subheader) { subheader->file = raw[16]; subheader->channel = raw[17]; subheader->submode = raw[18]; subheader->coding = raw[19]; }
     return true;
 }
 

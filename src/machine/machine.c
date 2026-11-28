@@ -43,17 +43,15 @@ bool psx_machine_boot_from_disc(PsxMachine *machine, const uint8_t *image,
     return true;
 }
 
-bool psx_machine_boot_from_cue(PsxMachine *machine, const char *cue_text,
-                               size_t cue_size, const uint8_t *bin_data,
-                               size_t bin_size, PsxBootConfig *config)
+bool psx_machine_boot_from_disc_image(PsxMachine *machine,
+                                      const PsxDiscImage *disc,
+                                      PsxBootConfig *config)
 {
-    PsxDiscImage disc;
     PsxIso9660 iso;
     if (!machine || !machine->memory.initialized ||
         !machine->cdrom.initialized ||
-        !psx_disc_mount_cue(&disc, cue_text, cue_size, bin_data, bin_size) ||
-        !psx_iso9660_mount_disc(&iso, &disc) ||
-        !psx_cdrom_mount_disc(&machine->cdrom, &disc))
+        !psx_iso9660_mount_disc(&iso, disc) ||
+        !psx_cdrom_mount_disc(&machine->cdrom, disc))
         return false;
     if (!psx_machine_boot_from_iso(machine, &iso, config)) {
         psx_cdrom_unmount(&machine->cdrom);
@@ -65,6 +63,17 @@ bool psx_machine_boot_from_cue(PsxMachine *machine, const char *cue_text,
     return true;
 }
 
+bool psx_machine_boot_from_cue(PsxMachine *machine, const char *cue_text,
+                               size_t cue_size, const uint8_t *bin_data,
+                               size_t bin_size, PsxBootConfig *config)
+{
+    PsxDiscImage disc;
+    if (!machine ||
+        !psx_disc_mount_cue(&disc, cue_text, cue_size, bin_data, bin_size))
+        return false;
+    return psx_machine_boot_from_disc_image(machine, &disc, config);
+}
+
 bool psx_machine_init(PsxMachine *machine,
                       uint8_t *ram, size_t ram_size,
                       const uint8_t *bios, size_t bios_size,
@@ -73,9 +82,11 @@ bool psx_machine_init(PsxMachine *machine,
     if (!machine || !psx_memory_init(&machine->memory, ram, ram_size,
                                      bios, bios_size)) return false;
     if (!psx_gpu_init(&machine->gpu, gpu_vram, gpu_vram_pixels)) return false;
+    machine->gpu_video_clock_region = PSX_VIDEO_CLOCK_NTSC;
     if (!psx_dma_init(&machine->dma)) return false;
     if (!psx_cdrom_init(&machine->cdrom)) return false;
     if (!psx_spu_init(&machine->spu)) return false;
+    if (!psx_sio_init(&machine->sio)) return false;
     if (!psx_audio_buffer_init(&machine->audio_output)) return false;
     psx_machine_reset(machine);
     if (!psx_bus_init(&machine->bus, &machine->memory, &machine->irq,
@@ -84,6 +95,8 @@ bool psx_machine_init(PsxMachine *machine,
     psx_bus_attach_dma(&machine->bus, &machine->dma);
     psx_bus_attach_cdrom(&machine->bus, &machine->cdrom);
     machine->bus.spu = &machine->spu;
+    psx_bus_attach_sio(&machine->bus, &machine->sio);
+    psx_sio_attach_irq(&machine->sio, &machine->irq);
     return true;
 }
 
@@ -95,17 +108,49 @@ void psx_machine_reset(PsxMachine *machine)
     psx_gte_reset(&machine->gte);
     psx_gpu_reset(&machine->gpu);
     psx_timers_reset(&machine->timers);
+    /* The raster begins in horizontal blank before the first active line. */
+    machine->timers.timer[0].sync_signal_active = true;
     psx_dma_reset(&machine->dma);
     psx_cdrom_reset(&machine->cdrom);
     psx_spu_reset(&machine->spu);
+    psx_sio_reset(&machine->sio);
     psx_audio_buffer_reset(&machine->audio_output);
     machine->timer2_div8_phase = 0u;
+    machine->gpu_scanline_cycle_phase = 0u;
+    machine->gpu_scanline_cycle_remainder = 0u;
+    machine->gpu_scanline_mode = machine->gpu.display.mode;
+    machine->gpu_video_clock_phase = 0u;
+    machine->gpu_scanline_video_clock_phase = 0u;
+    machine->timer0_dot_phase = 0u;
+    {
+        PsxGpuDisplayModeInfo mode;
+        machine->timer0_dot_divisor =
+            psx_gpu_get_display_mode_info(&machine->gpu, &mode) ?
+            mode.dot_clock_divisor : 10u;
+    }
     machine->cdrom_sector_cycle_phase = 0u;
     machine->spu_audio_cycle_phase = 0u;
     machine->cop0_status = 0u;
     machine->cop0_cause = 0u;
     machine->cop0_epc = 0u;
     machine->cop0_badvaddr = 0u;
+}
+
+bool psx_machine_set_video_clock_region(PsxMachine *machine,
+                                        PsxVideoClockRegion region)
+{
+    if (!machine ||
+        (region != PSX_VIDEO_CLOCK_NTSC && region != PSX_VIDEO_CLOCK_PAL))
+        return false;
+    if (machine->gpu_video_clock_region != region) {
+        machine->gpu_video_clock_region = region;
+        machine->gpu_video_clock_phase = 0u;
+        machine->gpu_scanline_video_clock_phase = 0u;
+        machine->gpu_scanline_cycle_phase = 0u;
+        machine->gpu_scanline_cycle_remainder = 0u;
+        machine->timer0_dot_phase = 0u;
+    }
+    return true;
 }
 
 void psx_machine_refresh_interrupts(PsxMachine *machine)
@@ -136,6 +181,24 @@ bool psx_machine_cdrom_advance_sector(PsxMachine *machine)
     return advanced;
 }
 
+/* Convert a GP1 horizontal video-clock position into the first CPU
+ * cycle at or after that position, measured from the current scanline origin.
+ * The phase snapshot preserves the asynchronous GPU/CPU clock relationship.
+ */
+static uint32_t psx_machine_video_position_to_cpu_cycles(
+    uint32_t video_position, uint32_t line_cycles,
+    uint32_t video_clock_numerator,
+    uint32_t line_start_phase)
+{
+    const uint64_t required = (uint64_t)video_position * 451584u;
+    if (required <= line_start_phase)
+        return 0u;
+    const uint64_t remaining = required - line_start_phase;
+    const uint64_t cycles =
+        (remaining + video_clock_numerator - 1u) / video_clock_numerator;
+    return cycles > line_cycles ? line_cycles : (uint32_t)cycles;
+}
+
 /* Timer IRQs map to interrupt controller sources 4, 5 and 6. */
 bool psx_machine_timer_advance_clock(PsxMachine *machine, unsigned timer,
                                      PsxTimerClock clock, uint32_t ticks)
@@ -152,21 +215,166 @@ bool psx_machine_timer_advance_clock(PsxMachine *machine, unsigned timer,
     return true;
 }
 
-/* Feed elapsed system-clock cycles into the three root counters.
- * Timer2's divide-by-eight clock is modeled with a persistent remainder so
- * splitting the same interval across calls cannot change the result.
+/* Advance raster events and timers in chronological horizontal segments.
+ * GP1(06h) positions are GPU video-clock counts from HSYNC. Convert each
+ * edge using the exact rational CPU/GPU ratio and the phase at line origin.
+ */
+static bool psx_machine_advance_raster_timers(PsxMachine *machine,
+                                               uint32_t cycles)
+{
+    PsxGpuDisplayModeInfo mode;
+    const uint32_t current_mode = machine->gpu.display.mode;
+    const bool mode_valid =
+        psx_gpu_get_display_mode_info(&machine->gpu, &mode);
+    if (machine->gpu_scanline_mode != current_mode) {
+        /* GP1(08h) changes output format and dot-clock division, not the
+         * physical raster oscillator or the current scanline position.
+         * Preserve both CPU-cycle and GPU-clock line phases across the write.
+         */
+        machine->gpu_scanline_mode = current_mode;
+        machine->timer0_dot_phase = 0u;
+        machine->timer0_dot_divisor = mode_valid ? mode.dot_clock_divisor : 10u;
+        /* GP1(08h) resets the GPU's output scanline to zero. Reconcile
+         * Timer 1's external VBlank gate immediately, not one line later.
+         */
+        if (!psx_timers_set_sync_signal(
+                &machine->timers, 1u, machine->gpu.display.video_vblank))
+            return false;
+    }
+    const uint32_t video_clock_numerator =
+        machine->gpu_video_clock_region == PSX_VIDEO_CLOCK_PAL ?
+        709379u : 715909u;
+    const uint32_t line_video_clocks =
+        machine->gpu_video_clock_region == PSX_VIDEO_CLOCK_PAL ?
+        3406u : 3413u;
+    const uint32_t h_start = machine->gpu.display.horizontal_start;
+    const uint32_t h_end = machine->gpu.display.horizontal_end;
+
+    while (cycles != 0u) {
+        const uint64_t line_cycle_accumulated =
+            (uint64_t)line_video_clocks * 451584u +
+            machine->gpu_scanline_cycle_remainder;
+        const uint32_t line_cycle_quotient =
+            (uint32_t)(line_cycle_accumulated / video_clock_numerator);
+        const uint32_t line_cycle_fraction =
+            (uint32_t)(line_cycle_accumulated % video_clock_numerator);
+        /* Raster edges occur at the first CPU cycle that reaches the GPU
+         * line boundary. Carry the fractional remainder between lines.
+         */
+        const uint32_t line_cycles = line_cycle_quotient +
+            (line_cycle_fraction != 0u ? 1u : 0u) -
+            (machine->gpu_scanline_cycle_remainder != 0u ? 1u : 0u);
+        const uint32_t next_line_cycle_remainder = line_cycle_fraction;
+        uint32_t h_start_cycle =
+            psx_machine_video_position_to_cpu_cycles(
+                h_start, line_cycles, video_clock_numerator,
+                machine->gpu_scanline_video_clock_phase);
+        uint32_t h_end_cycle =
+            psx_machine_video_position_to_cpu_cycles(
+                h_end, line_cycles, video_clock_numerator,
+                machine->gpu_scanline_video_clock_phase);
+        if (h_start_cycle > line_cycles) h_start_cycle = line_cycles;
+        if (h_end_cycle > line_cycles) h_end_cycle = line_cycles;
+        if (h_end_cycle <= h_start_cycle) {
+            h_start_cycle = line_cycles / 4u;
+            h_end_cycle = (line_cycles * 3u) / 4u;
+        }
+        const uint32_t phase = machine->gpu_scanline_cycle_phase;
+        const bool hblank = phase < h_start_cycle || phase >= h_end_cycle;
+        if (!psx_timers_set_sync_signal(&machine->timers, 0u, hblank))
+            return false;
+
+        uint32_t boundary = line_cycles;
+        if (phase < h_start_cycle)
+            boundary = h_start_cycle;
+        else if (phase < h_end_cycle)
+            boundary = h_end_cycle;
+        const uint32_t until_boundary = boundary - phase;
+        const uint32_t step = cycles < until_boundary ? cycles : until_boundary;
+        if (step == 0u) {
+            /* Degenerate/clamped boundaries are consumed on the next pass. */
+            if (boundary == line_cycles) {
+                PsxGpuVideoState video;
+                machine->gpu_scanline_cycle_phase = 0u;
+                machine->gpu_scanline_cycle_remainder =
+                    next_line_cycle_remainder;
+                machine->gpu_scanline_video_clock_phase =
+                    machine->gpu_video_clock_phase;
+                if (!psx_machine_video_advance_scanline(machine, &video))
+                    return false;
+                continue;
+            }
+            return false;
+        }
+
+        for (unsigned timer = 0u; timer < 2u; ++timer) {
+            if (!psx_machine_timer_advance_clock(
+                    machine, timer, PSX_TIMER_CLOCK_SYSTEM, step))
+                return false;
+        }
+        /* The GPU video oscillator is asynchronous to the CPU clock.
+         * Keep its rational phase across every instruction-sized batch:
+         * NTSC 53.693175/33.8688 = 715909/451584,
+         * PAL 53.203425/33.8688 = 709379/451584.
+         * The physical oscillator region is explicit and independent of
+         * GP1(08h), which selects output timing only.
+         */
+        {
+            const uint64_t video_accumulated =
+                (uint64_t)machine->gpu_video_clock_phase +
+                (uint64_t)step * video_clock_numerator;
+            const uint32_t video_ticks = (uint32_t)(
+                video_accumulated / 451584u);
+            machine->gpu_video_clock_phase = (uint32_t)(
+                video_accumulated % 451584u);
+            if (machine->timer0_dot_divisor != 0u) {
+                const uint64_t dot_accumulated =
+                    (uint64_t)machine->timer0_dot_phase + video_ticks;
+                const uint32_t dot_ticks = (uint32_t)(
+                    dot_accumulated / machine->timer0_dot_divisor);
+                machine->timer0_dot_phase = (uint32_t)(
+                    dot_accumulated % machine->timer0_dot_divisor);
+                if (dot_ticks != 0u &&
+                    !psx_machine_timer_advance_clock(
+                        machine, 0u, PSX_TIMER_CLOCK_DOT, dot_ticks))
+                    return false;
+            }
+        }
+
+        machine->gpu_scanline_cycle_phase += step;
+        cycles -= step;
+        if (machine->gpu_scanline_cycle_phase == line_cycles) {
+            PsxGpuVideoState video;
+            machine->gpu_scanline_cycle_phase = 0u;
+            machine->gpu_scanline_cycle_remainder =
+                next_line_cycle_remainder;
+            machine->gpu_scanline_video_clock_phase =
+                machine->gpu_video_clock_phase;
+            if (!psx_machine_video_advance_scanline(machine, &video))
+                return false;
+        }
+    }
+    return true;
+}
+
+/* Feed elapsed system-clock cycles into clocked devices. Raster edges and
+ * Timer 0/1 clocks are interleaved at line boundaries; Timer2 /8 keeps its
+ * own fractional phase.
  */
 bool psx_machine_advance_system_cycles(PsxMachine *machine, uint32_t cycles)
 {
-    if (!machine) return false;
+    if (!machine || !psx_machine_advance_raster_timers(machine, cycles))
+        return false;
 
-    for (unsigned timer = 0u; timer < 3u; ++timer) {
-        if (!psx_machine_timer_advance_clock(machine, timer,
-                                              PSX_TIMER_CLOCK_SYSTEM,
-                                              cycles))
-            return false;
-    }
+    /* SIO serial transfers share the PS1 master-clock domain. */
+    psx_sio_advance_cycles(&machine->sio, cycles);
 
+    /* Timer 2 supports both the master clock and master clock /8. */
+    if (!psx_machine_timer_advance_clock(machine, 2u,
+                                         PSX_TIMER_CLOCK_SYSTEM, cycles))
+        return false;
+
+    /* Preserve Timer 2's fractional /8 clock phase across batches. */
     const uint64_t accumulated =
         (uint64_t)machine->timer2_div8_phase + (uint64_t)cycles;
     const uint32_t divided_ticks = (uint32_t)(accumulated / 8u);
@@ -177,11 +385,7 @@ bool psx_machine_advance_system_cycles(PsxMachine *machine, uint32_t cycles)
                                          divided_ticks))
         return false;
 
-    /* CD-ROM command completion and sector cadence share the PS1 clock. */
-    /* The PS1 master clock is 33.8688 MHz; the SPU output cadence is
-     * 44.1 kHz (one stereo frame per 768 master-clock cycles). Preserve
-     * fractional phase across calls so instruction-sized chunks do not drift.
-     */
+    /* Keep SPU output cadence stable across instruction-sized batches. */
     {
         const uint64_t audio_cycles =
             (uint64_t)machine->spu_audio_cycle_phase + (uint64_t)cycles;
@@ -194,6 +398,7 @@ bool psx_machine_advance_system_cycles(PsxMachine *machine, uint32_t cycles)
         }
     }
 
+    /* CD-ROM command completion, XA audio and sector cadence share the PS1 clock. */
     psx_cdrom_advance_cycles(&machine->cdrom, cycles);
     psx_cdrom_advance_xa_audio_cycles(&machine->cdrom, cycles);
     psx_irq_set_line(&machine->irq, 2u,
@@ -233,9 +438,15 @@ bool psx_machine_video_advance_scanline(PsxMachine *machine,
         !psx_gpu_video_advance_scanline(&machine->gpu, state))
         return false;
 
-    /* The current raster API advances one complete scanline at a time.
-     * Emit one abstract HBlank clock tick for Timer1 on each line. Exact
-     * horizontal phase/dot timing will be supplied by a finer scheduler.
+    /* Timer 1 synchronization follows the GPU's VBlank level. The
+     * raster scheduler updates it once per scanline; exact vertical-edge
+     * sub-line timing remains a future refinement.
+     */
+    if (!psx_timers_set_sync_signal(&machine->timers, 1u, state->vblank))
+        return false;
+
+    /* Timer 1 receives one abstract HBlank clock tick per completed line.
+     * Its VBlank synchronization gate is applied by the timer subsystem.
      */
     if (state->hblank_pulse &&
         !psx_machine_timer_advance_clock(machine, 1u,

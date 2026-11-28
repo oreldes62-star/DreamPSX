@@ -79,6 +79,107 @@ int main(void)
     assert(!psx_machine_video_advance_scanline(NULL, &video));
     assert(!psx_machine_video_advance_scanline(&machine, NULL));
 
+    /* CPU/master-clock cycles now drive the GPU raster automatically.
+     * Splitting one scanline across calls must preserve its fractional phase.
+     */
+    psx_gpu_reset(&machine.gpu);
+    machine.gpu_scanline_cycle_phase = 0u;
+    assert(psx_gpu_gp1_write(&machine.gpu,
+        0x07000000u | (256u << 10u) | 16u));
+    assert(psx_gpu_gp1_write(&machine.gpu, 0x08000000u));
+    assert(psx_machine_advance_system_cycles(&machine, 2152u));
+    assert(machine.gpu.display.video_scanline == 0u);
+    assert(machine.gpu_scanline_cycle_phase == 2152u);
+    assert(psx_machine_advance_system_cycles(&machine, 1u));
+    assert(machine.gpu.display.video_scanline == 1u);
+    assert(machine.gpu_scanline_cycle_phase == 0u);
+    assert(machine.gpu.display.video_vblank);
+
+    /* GP1(08h) changes output mode without restarting the physical PAL
+     * raster: the 1000-cycle position within the current line is retained.
+     */
+    psx_gpu_reset(&machine.gpu);
+    machine.gpu_scanline_cycle_phase = 0u;
+    assert(psx_machine_set_video_clock_region(
+        &machine, PSX_VIDEO_CLOCK_PAL));
+    assert(psx_gpu_gp1_write(&machine.gpu, 0x08000000u));
+    assert(psx_machine_advance_system_cycles(&machine, 1000u));
+    assert(machine.gpu_scanline_cycle_phase == 1000u);
+    assert(psx_gpu_gp1_write(&machine.gpu,
+        0x07000000u | (256u << 10u) | 16u));
+    assert(psx_gpu_gp1_write(&machine.gpu, 0x08000008u));
+    assert(psx_machine_advance_system_cycles(&machine, 1168u));
+    assert(machine.gpu.display.video_scanline == 0u);
+    assert(machine.gpu_scanline_cycle_phase == 2168u);
+    assert(psx_machine_advance_system_cycles(&machine, 1u));
+    assert(machine.gpu.display.video_scanline == 1u);
+    assert(machine.gpu_scanline_cycle_phase == 0u);
+
+    assert(psx_machine_set_video_clock_region(
+        &machine, PSX_VIDEO_CLOCK_NTSC));
+
+    /* Raster advancement must be independent of how the caller batches
+     * master-clock cycles, including intervals spanning many scanlines.
+     */
+    {
+        const uint32_t total_cycles = 2153u * 1000u + 123u;
+        unsigned expected_scanline;
+        uint32_t expected_phase;
+
+        psx_gpu_reset(&machine.gpu);
+        assert(psx_gpu_gp1_write(&machine.gpu, 0x08000000u));
+        machine.gpu_scanline_cycle_phase = 0u;
+        machine.gpu_scanline_cycle_remainder = 0u;
+        assert(psx_machine_advance_system_cycles(&machine, total_cycles));
+        expected_scanline = machine.gpu.display.video_scanline;
+        expected_phase = machine.gpu_scanline_cycle_phase;
+
+        psx_gpu_reset(&machine.gpu);
+        machine.gpu_scanline_cycle_phase = 0u;
+        machine.gpu_scanline_cycle_remainder = 0u;
+        assert(psx_machine_advance_system_cycles(&machine, 2153u * 333u + 1u));
+        assert(psx_machine_advance_system_cycles(&machine, 2153u * 400u + 77u));
+        assert(psx_machine_advance_system_cycles(
+            &machine, total_cycles - (2153u * 333u + 1u) -
+                      (2153u * 400u + 77u)));
+        assert(machine.gpu.display.video_scanline == expected_scanline);
+        assert(machine.gpu_scanline_cycle_phase == expected_phase);
+    }
+
+    /* Interlaced 480-line NTSC output alternates 262/263-line fields.
+     * A displayed frame completes only after the odd field returns to even.
+     */
+    psx_gpu_reset(&machine.gpu);
+    assert(psx_gpu_gp1_write(&machine.gpu, 0x08000024u));
+    assert(machine.gpu.display.video_frame_counter == 0u);
+    for (unsigned i = 0u; i < 262u; ++i)
+        assert(psx_gpu_video_advance_scanline(&machine.gpu, &video));
+    assert(video.field_started && video.field_odd);
+    assert(video.lines_per_field == 263u);
+    assert(video.frame_counter == 0u);
+    for (unsigned i = 0u; i < 262u; ++i)
+        assert(psx_gpu_video_advance_scanline(&machine.gpu, &video));
+    assert(!video.field_started && video.field_odd);
+    assert(video.frame_counter == 0u);
+    assert(psx_gpu_video_advance_scanline(&machine.gpu, &video));
+    assert(video.field_started && !video.field_odd);
+    assert(video.frame_started && video.frame_counter == 1u);
+    assert(video.lines_per_field == 262u);
+
+    /* PAL interlace uses 312/313-line fields with the same full-frame rule. */
+    psx_gpu_reset(&machine.gpu);
+    assert(psx_gpu_gp1_write(&machine.gpu, 0x0800002cu));
+    for (unsigned i = 0u; i < 312u; ++i)
+        assert(psx_gpu_video_advance_scanline(&machine.gpu, &video));
+    assert(video.field_started && video.field_odd);
+    assert(video.lines_per_field == 313u);
+    assert(video.frame_counter == 0u);
+    for (unsigned i = 0u; i < 313u; ++i)
+        assert(psx_gpu_video_advance_scanline(&machine.gpu, &video));
+    assert(video.field_started && !video.field_odd);
+    assert(video.frame_started && video.frame_counter == 1u);
+    assert(video.lines_per_field == 312u);
+
     /* GPU command IRQ1 reaches COP0 IP2 and is accepted at an instruction
      * boundary. Device acknowledge drops the source; I_STAT is separate. */
     psx_irq_write_mask(&machine.irq, (uint16_t)(1u << 1u));
