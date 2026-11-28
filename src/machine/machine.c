@@ -167,109 +167,56 @@ bool psx_machine_timer_advance_clock(PsxMachine *machine, unsigned timer,
     return true;
 }
 
-/* Feed elapsed system-clock cycles into the three root counters.
- * Timer2's divide-by-eight clock is modeled with a persistent remainder so
- * splitting the same interval across calls cannot change the result.
+/* Advance raster events and system-clocked Timer 0/1 chronologically.
+ * Timer clocks up to a line boundary are delivered before the HBlank/VBlank
+ * edge at that boundary. Horizontal blanking is still a line-level event,
+ * not yet a timed interval within the line.
  */
-bool psx_machine_advance_system_cycles(PsxMachine *machine, uint32_t cycles)
+static bool psx_machine_advance_raster_timers(PsxMachine *machine,
+                                               uint32_t cycles)
 {
-    if (!machine) return false;
+    PsxGpuDisplayModeInfo mode;
+    const uint32_t current_mode = machine->gpu.display.mode;
+    if (machine->gpu_scanline_mode != current_mode) {
+        machine->gpu_scanline_cycle_phase = 0u;
+        machine->gpu_scanline_mode = current_mode;
+    }
+    const bool mode_valid =
+        psx_gpu_get_display_mode_info(&machine->gpu, &mode);
+    const uint32_t line_cycles = mode_valid && mode.pal ? 2157u : 2148u;
 
-    /* The GPU raster shares the CPU master-clock domain. These integer
-     * line periods are a first-order PAL/NTSC approximation; horizontal
-     * dot timing and half-line interlace phase remain future refinements.
-     * Retaining the remainder makes cycle batching deterministic.
-     */
-    {
-        PsxGpuDisplayModeInfo mode;
-        const bool mode_valid =
-            psx_gpu_get_display_mode_info(&machine->gpu, &mode);
-        const uint32_t current_mode = machine->gpu.display.mode;
-        const uint32_t line_cycles = mode_valid && mode.pal ? 2157u : 2148u;
-
-        /* GP1 display-mode changes can switch PAL/NTSC or progressive/
-         * interlaced cadence. Do not carry a remainder measured in the old
-         * mode into the new raster period.
-         */
-        if (machine->gpu_scanline_mode != current_mode) {
-            machine->gpu_scanline_cycle_phase = 0u;
-            machine->gpu_scanline_mode = current_mode;
+    while (cycles != 0u) {
+        const uint32_t until_line =
+            line_cycles - machine->gpu_scanline_cycle_phase;
+        const uint32_t step = cycles < until_line ? cycles : until_line;
+        for (unsigned timer = 0u; timer < 2u; ++timer) {
+            if (!psx_machine_timer_advance_clock(
+                    machine, timer, PSX_TIMER_CLOCK_SYSTEM, step))
+                return false;
         }
-        uint64_t phase = (uint64_t)machine->gpu_scanline_cycle_phase +
-                         (uint64_t)cycles;
-        while (phase >= line_cycles) {
+        machine->gpu_scanline_cycle_phase += step;
+        cycles -= step;
+        if (machine->gpu_scanline_cycle_phase == line_cycles) {
             PsxGpuVideoState video;
-            phase -= line_cycles;
+            machine->gpu_scanline_cycle_phase = 0u;
             if (!psx_machine_video_advance_scanline(machine, &video))
                 return false;
         }
-        machine->gpu_scanline_cycle_phase = (uint32_t)phase;
-    }
-
-    /* SIO serial transfers share the PS1 master-clock domain. */
-    psx_sio_advance_cycles(&machine->sio, cycles);
-
-    for (unsigned timer = 0u; timer < 3u; ++timer) {
-        if (!psx_machine_timer_advance_clock(machine, timer,
-                                              PSX_TIMER_CLOCK_SYSTEM,
-                                              cycles))
-            return false;
-    }
-
-    const uint64_t accumulated =
-        (uint64_t)machine->timer2_div8_phase + (uint64_t)cycles;
-    const uint32_t divided_ticks = (uint32_t)(accumulated / 8u);
-    machine->timer2_div8_phase = (uint8_t)(accumulated % 8u);
-    if (divided_ticks != 0u &&
-        !psx_machine_timer_advance_clock(machine, 2u,
-                                         PSX_TIMER_CLOCK_SYSTEM_DIV8,
-                                         divided_ticks))
-        return false;
-
-    /* CD-ROM command completion and sector cadence share the PS1 clock. */
-    /* The PS1 master clock is 33.8688 MHz; the SPU output cadence is
-     * 44.1 kHz (one stereo frame per 768 master-clock cycles). Preserve
-     * fractional phase across calls so instruction-sized chunks do not drift.
-     */
-    {
-        const uint64_t audio_cycles =
-            (uint64_t)machine->spu_audio_cycle_phase + (uint64_t)cycles;
-        const size_t due_frames = (size_t)(audio_cycles / 768u);
-        machine->spu_audio_cycle_phase = (uint32_t)(audio_cycles % 768u);
-        if (due_frames != 0u) {
-            size_t queued = 0u;
-            if (!psx_machine_render_audio(machine, due_frames, &queued))
-                return false;
-        }
-    }
-
-    psx_cdrom_advance_cycles(&machine->cdrom, cycles);
-    psx_cdrom_advance_xa_audio_cycles(&machine->cdrom, cycles);
-    psx_irq_set_line(&machine->irq, 2u,
-                     psx_cdrom_irq_output(&machine->cdrom));
-    psx_machine_refresh_interrupts(machine);
-
-    if (machine->cdrom.read_active) {
-        const uint32_t sector_period =
-            psx_cdrom_sector_period_cycles(&machine->cdrom);
-        uint64_t phase = (uint64_t)machine->cdrom_sector_cycle_phase +
-                         (uint64_t)cycles;
-        if (sector_period != 0u && phase >= sector_period)
-            phase = sector_period;
-        machine->cdrom_sector_cycle_phase = (uint32_t)phase;
-        if (sector_period != 0u &&
-            machine->cdrom_sector_cycle_phase >= sector_period &&
-            machine->cdrom.data_count == 0u) {
-            if (psx_machine_cdrom_advance_sector(machine))
-                machine->cdrom_sector_cycle_phase = 0u;
-            else if (!machine->cdrom.read_active)
-                machine->cdrom_sector_cycle_phase = 0u;
-        }
-    } else {
-        machine->cdrom_sector_cycle_phase = 0u;
     }
     return true;
 }
+
+/* Feed elapsed system-clock cycles into clocked devices. Raster edges and
+ * Timer 0/1 clocks are interleaved at line boundaries; Timer2 /8 keeps its
+ * own fractional phase.
+ */
+bool psx_machine_advance_system_cycles(PsxMachine *machine, uint32_t cycles)
+{
+    if (!machine || !psx_machine_advance_raster_timers(machine, cycles))
+        return false;
+
+    /* SIO serial transfers share the PS1 master-clock domain. */
+    psx_sio_advance_cycles(&machine->sio, cycles);
 
 /* The PS1 interrupt controller maps VBlank to source 0 (IRQ0). Keep the
  * source level asserted for the complete blanking interval; the controller
