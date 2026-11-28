@@ -23,7 +23,7 @@ static uint16_t run_timer1_mode(PsxMachine *machine, unsigned sync_mode,
         PSX_TIMER_MODE_SYNC_ENABLE |
         (sync_mode << PSX_TIMER_MODE_SYNC_SHIFT) |
         (1u << PSX_TIMER_MODE_CLOCK_SHIFT));
-    const uint32_t line_cycles = 2148u;
+    const uint32_t line_cycles = 2153u;
     uint32_t remaining = line_cycles * lines;
     uint16_t counter = 0u;
 
@@ -32,7 +32,7 @@ static uint16_t run_timer1_mode(PsxMachine *machine, unsigned sync_mode,
         PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE + 4u, mode));
 
     if (chunked) {
-        const uint32_t chunks[] = {1u, 2147u, 3u, 1024u, 4096u, 17u};
+        const uint32_t chunks[] = {1u, 2152u, 3u, 1024u, 4096u, 17u};
         for (size_t i = 0u; i < sizeof(chunks) / sizeof(chunks[0]); ++i) {
             const uint32_t step = chunks[i] < remaining ?
                                   chunks[i] : remaining;
