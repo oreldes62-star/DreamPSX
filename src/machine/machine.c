@@ -227,9 +227,10 @@ static bool psx_machine_advance_raster_timers(PsxMachine *machine,
     const bool mode_valid =
         psx_gpu_get_display_mode_info(&machine->gpu, &mode);
     if (machine->gpu_scanline_mode != current_mode) {
-        machine->gpu_scanline_cycle_phase = 0u;
-        machine->gpu_scanline_video_clock_phase =
-            machine->gpu_video_clock_phase;
+        /* GP1(08h) changes output format and dot-clock division, not the
+         * physical raster oscillator or the current scanline position.
+         * Preserve both CPU-cycle and GPU-clock line phases across the write.
+         */
         machine->gpu_scanline_mode = current_mode;
         machine->timer0_dot_phase = 0u;
         machine->timer0_dot_divisor = mode_valid ? mode.dot_clock_divisor : 10u;
