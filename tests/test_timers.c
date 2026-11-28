@@ -55,6 +55,65 @@ int main(void)
     assert(psx_timers_advance_clock(&timers, 0u, PSX_TIMER_CLOCK_DOT,
                                     2u, &irq));
     assert(irq == 0u); /* one-shot IRQ */
+    /* Sync mode 0 pauses the system clock during blanking. */
+    psx_timers_reset(&timers);
+    assert(psx_timers_write16(&timers, PSX_TIMER_BASE_ADDR + 4u,
+        (uint16_t)(PSX_TIMER_MODE_SYNC_ENABLE |
+                   (0u << PSX_TIMER_MODE_SYNC_SHIFT))));
+    assert(psx_timers_set_sync_signal(&timers, 0u, true));
+    assert(psx_timers_advance_clock(&timers, 0u, PSX_TIMER_CLOCK_SYSTEM,
+                                    5u, &irq));
+    assert(timers.timer[0].counter == 0u);
+    assert(psx_timers_set_sync_signal(&timers, 0u, false));
+    assert(psx_timers_advance_clock(&timers, 0u, PSX_TIMER_CLOCK_SYSTEM,
+                                    3u, &irq));
+    assert(timers.timer[0].counter == 3u);
+
+    /* Mode 1 resets on the blanking edge, then continues counting. */
+    psx_timers_reset(&timers);
+    assert(psx_timers_write16(&timers, PSX_TIMER_BASE_ADDR + 4u,
+        (uint16_t)(PSX_TIMER_MODE_SYNC_ENABLE |
+                   (1u << PSX_TIMER_MODE_SYNC_SHIFT))));
+    assert(psx_timers_advance_clock(&timers, 0u, PSX_TIMER_CLOCK_SYSTEM,
+                                    4u, &irq));
+    assert(timers.timer[0].counter == 4u);
+    assert(psx_timers_set_sync_signal(&timers, 0u, true));
+    assert(timers.timer[0].counter == 0u);
+    assert(psx_timers_advance_clock(&timers, 0u, PSX_TIMER_CLOCK_SYSTEM,
+                                    2u, &irq));
+    assert(timers.timer[0].counter == 2u);
+
+    /* Mode 2 resets at blanking and counts only while blanking is active. */
+    psx_timers_reset(&timers);
+    assert(psx_timers_write16(&timers, PSX_TIMER_BASE_ADDR + 4u,
+        (uint16_t)(PSX_TIMER_MODE_SYNC_ENABLE |
+                   (2u << PSX_TIMER_MODE_SYNC_SHIFT))));
+    assert(psx_timers_advance_clock(&timers, 0u, PSX_TIMER_CLOCK_SYSTEM,
+                                    4u, &irq));
+    assert(timers.timer[0].counter == 0u);
+    assert(psx_timers_set_sync_signal(&timers, 0u, true));
+    assert(psx_timers_advance_clock(&timers, 0u, PSX_TIMER_CLOCK_SYSTEM,
+                                    3u, &irq));
+    assert(timers.timer[0].counter == 3u);
+    assert(psx_timers_set_sync_signal(&timers, 0u, false));
+    assert(psx_timers_advance_clock(&timers, 0u, PSX_TIMER_CLOCK_SYSTEM,
+                                    2u, &irq));
+    assert(timers.timer[0].counter == 3u);
+
+    /* Mode 3 waits for the first blanking edge, then runs freely. */
+    psx_timers_reset(&timers);
+    assert(psx_timers_write16(&timers, PSX_TIMER_BASE_ADDR + 4u,
+        (uint16_t)(PSX_TIMER_MODE_SYNC_ENABLE |
+                   (3u << PSX_TIMER_MODE_SYNC_SHIFT))));
+    assert(psx_timers_advance_clock(&timers, 0u, PSX_TIMER_CLOCK_SYSTEM,
+                                    4u, &irq));
+    assert(timers.timer[0].counter == 0u);
+    assert(psx_timers_set_sync_signal(&timers, 0u, true));
+    assert(psx_timers_set_sync_signal(&timers, 0u, false));
+    assert(psx_timers_advance_clock(&timers, 0u, PSX_TIMER_CLOCK_SYSTEM,
+                                    2u, &irq));
+    assert(timers.timer[0].counter == 2u);
+
     assert(!psx_timers_advance_clock(&timers, 3u, PSX_TIMER_CLOCK_SYSTEM,
                                      1u, &irq));
 
