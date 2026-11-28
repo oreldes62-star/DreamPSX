@@ -157,7 +157,7 @@ int main(int argc, char **argv)
         {
             PsxKosInputState input_state;
             if (!psx_kos_input_backend_poll(&input_backend, &input_state)) {
-                printf("ERROR: Maple controller polling failed\\n");
+                printf("ERROR: Maple controller polling failed\n");
                 shutdown_audio();
                 psx_kos_disc_file_close(&disc_file, &disc);
                 return 1;
