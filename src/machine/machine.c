@@ -117,6 +117,7 @@ void psx_machine_reset(PsxMachine *machine)
     machine->timer2_div8_phase = 0u;
     machine->gpu_scanline_cycle_phase = 0u;
     machine->gpu_scanline_mode = machine->gpu.display.mode;
+    machine->gpu_video_clock_phase = 0u;
     machine->timer0_dot_phase = 0u;
     {
         PsxGpuDisplayModeInfo mode;
@@ -239,17 +240,35 @@ static bool psx_machine_advance_raster_timers(PsxMachine *machine,
                     machine, timer, PSX_TIMER_CLOCK_SYSTEM, step))
                 return false;
         }
-        if (machine->timer0_dot_divisor != 0u) {
-            const uint64_t accumulated =
-                (uint64_t)machine->timer0_dot_phase + step;
-            const uint32_t dot_ticks = (uint32_t)(
-                accumulated / machine->timer0_dot_divisor);
-            machine->timer0_dot_phase = (uint32_t)(
-                accumulated % machine->timer0_dot_divisor);
-            if (dot_ticks != 0u &&
-                !psx_machine_timer_advance_clock(
-                    machine, 0u, PSX_TIMER_CLOCK_DOT, dot_ticks))
-                return false;
+        /* The GPU video oscillator is asynchronous to the CPU clock.
+         * Keep its rational phase across every instruction-sized batch:
+         * NTSC 53.693175/33.8688 = 715909/451584,
+         * PAL 53.203425/33.8688 = 709379/451584.
+         * GP1(08h)'s PAL bit selects the current emulated clock policy for
+         * now; a separate console-region setting is a later refinement.
+         */
+        {
+            const uint32_t video_clock_numerator =
+                mode_valid && mode.pal ? 709379u : 715909u;
+            const uint64_t video_accumulated =
+                (uint64_t)machine->gpu_video_clock_phase +
+                (uint64_t)step * video_clock_numerator;
+            const uint32_t video_ticks = (uint32_t)(
+                video_accumulated / 451584u);
+            machine->gpu_video_clock_phase = (uint32_t)(
+                video_accumulated % 451584u);
+            if (machine->timer0_dot_divisor != 0u) {
+                const uint64_t dot_accumulated =
+                    (uint64_t)machine->timer0_dot_phase + video_ticks;
+                const uint32_t dot_ticks = (uint32_t)(
+                    dot_accumulated / machine->timer0_dot_divisor);
+                machine->timer0_dot_phase = (uint32_t)(
+                    dot_accumulated % machine->timer0_dot_divisor);
+                if (dot_ticks != 0u &&
+                    !psx_machine_timer_advance_clock(
+                        machine, 0u, PSX_TIMER_CLOCK_DOT, dot_ticks))
+                    return false;
+            }
         }
 
         machine->gpu_scanline_cycle_phase += step;
