@@ -253,36 +253,31 @@ int main(void)
         assert(counter == 15u);
     }
 
-    /* Timer 0 receives the GPU HBlank edge. Mode 1 resets on that
-     * edge and continues counting; this direct event test deliberately
-     * avoids claiming a cycle-accurate HBlank duration.
+    /* Timer 0 mode 1 resets on the end-of-display HBlank edge, then
+     * continues counting through blanking and the next visible interval.
      */
     {
-        PsxGpuVideoState video;
+        uint16_t counter = 0u;
         const uint16_t mode = (uint16_t)(
             PSX_TIMER_MODE_SYNC_ENABLE |
             (1u << PSX_TIMER_MODE_SYNC_SHIFT));
 
         psx_machine_reset(&machine);
         assert(psx_timers_write16(&machine.timers,
-            PSX_TIMER_BASE_ADDR, 77u));
-        assert(psx_timers_write16(&machine.timers,
             PSX_TIMER_BASE_ADDR + 4u, mode));
         assert(psx_timers_write16(&machine.timers,
             PSX_TIMER_BASE_ADDR, 77u));
-        assert(psx_machine_video_advance_scanline(&machine, &video));
-        assert(video.hblank_pulse);
-        assert(!machine.timers.timer[0].sync_signal_active);
+        assert(psx_machine_advance_system_cycles(&machine, 2148u * 2u + 10u));
         assert(machine.timers.timer[0].sync_started);
-        assert(machine.timers.timer[0].counter == 0u);
+        assert(psx_timers_read16(&machine.timers,
+            PSX_TIMER_BASE_ADDR, &counter));
+        assert(counter == 541u);
     }
 
-    /* Timer 0 synchronization mode 3 waits for the first HBlank edge,
-     * then free-runs on the system clock. This verifies the GPU-to-timer
-     * edge wiring independently from the Timer subsystem unit test.
+    /* Timer 0 mode 3 starts on the first sampled HBlank level and
+     * then free-runs; the initial raster position is already blanking.
      */
     {
-        PsxGpuVideoState video;
         const uint16_t mode = (uint16_t)(
             PSX_TIMER_MODE_SYNC_ENABLE |
             (3u << PSX_TIMER_MODE_SYNC_SHIFT));
@@ -291,13 +286,10 @@ int main(void)
         assert(psx_timers_write16(&machine.timers,
             PSX_TIMER_BASE_ADDR + 4u, mode));
         assert(psx_machine_advance_system_cycles(&machine, 5u));
-        assert(machine.timers.timer[0].counter == 0u);
-        assert(psx_machine_video_advance_scanline(&machine, &video));
-        assert(video.hblank_pulse);
         assert(machine.timers.timer[0].sync_started);
-        assert(!machine.timers.timer[0].sync_signal_active);
+        assert(machine.timers.timer[0].counter == 5u);
         assert(psx_machine_advance_system_cycles(&machine, 3u));
-        assert(machine.timers.timer[0].counter == 3u);
+        assert(machine.timers.timer[0].counter == 8u);
     }
 
     /* Timer 0 mode 1 must reset at each raster HBlank edge, after the
