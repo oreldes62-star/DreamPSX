@@ -18,6 +18,11 @@
 #include "dreampsx/audio_buffer.h"
 #include "dreampsx/boot_config.h"
 
+typedef enum {
+    PSX_VIDEO_CLOCK_NTSC = 0,
+    PSX_VIDEO_CLOCK_PAL = 1
+} PsxVideoClockRegion;
+
 typedef struct {
     PsxIrqController irq;
     PsxMemory memory;
@@ -35,6 +40,7 @@ typedef struct {
     uint32_t gpu_scanline_cycle_phase;
     uint32_t gpu_scanline_mode;
     uint32_t gpu_video_clock_phase;
+    PsxVideoClockRegion gpu_video_clock_region;
     uint32_t timer0_dot_phase;
     uint32_t timer0_dot_divisor;
     uint32_t cdrom_sector_cycle_phase;
@@ -67,6 +73,9 @@ bool psx_machine_init(PsxMachine *machine,
                       const uint8_t *bios, size_t bios_size,
                       uint16_t *gpu_vram, size_t gpu_vram_pixels);
 void psx_machine_reset(PsxMachine *machine);
+/* Select physical GPU oscillator independently of GP1(08h) output mode. */
+bool psx_machine_set_video_clock_region(PsxMachine *machine,
+                                        PsxVideoClockRegion region);
 void psx_machine_refresh_interrupts(PsxMachine *machine);
 bool psx_machine_interrupt_eligible(const PsxMachine *machine);
 /* Advance one GPU scanline, route its HBlank pulse to Timer1, and route
