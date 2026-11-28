@@ -134,6 +134,46 @@ int main(void)
                                     2u, &irq));
     assert(timers.timer[0].counter == 2u);
 
+    /* Clock-source bit 1 mirrors bit 0 for each timer: source 2
+     * is the system clock and source 3 selects the external/divided clock.
+     */
+    psx_timers_reset(&timers);
+    assert(psx_timers_write16(&timers, PSX_TIMER_BASE_ADDR + 4u,
+        (uint16_t)(2u << PSX_TIMER_MODE_CLOCK_SHIFT)));
+    assert(psx_timers_advance_clock(&timers, 0u, PSX_TIMER_CLOCK_SYSTEM,
+                                    2u, &irq));
+    assert(timers.timer[0].counter == 2u);
+    assert(psx_timers_write16(&timers, PSX_TIMER_BASE_ADDR + 4u,
+        (uint16_t)(3u << PSX_TIMER_MODE_CLOCK_SHIFT)));
+    assert(psx_timers_advance_clock(&timers, 0u, PSX_TIMER_CLOCK_SYSTEM,
+                                    2u, &irq));
+    assert(timers.timer[0].counter == 2u);
+    assert(psx_timers_advance_clock(&timers, 0u, PSX_TIMER_CLOCK_DOT,
+                                    3u, &irq));
+    assert(timers.timer[0].counter == 5u);
+
+    psx_timers_reset(&timers);
+    assert(psx_timers_write16(&timers,
+        PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE + 4u,
+        (uint16_t)(3u << PSX_TIMER_MODE_CLOCK_SHIFT)));
+    assert(psx_timers_advance_clock(&timers, 1u, PSX_TIMER_CLOCK_SYSTEM,
+                                    2u, &irq));
+    assert(timers.timer[1].counter == 0u);
+    assert(psx_timers_advance_clock(&timers, 1u, PSX_TIMER_CLOCK_HBLANK,
+                                    3u, &irq));
+    assert(timers.timer[1].counter == 3u);
+
+    psx_timers_reset(&timers);
+    assert(psx_timers_write16(&timers,
+        PSX_TIMER_BASE_ADDR + 2u * PSX_TIMER_STRIDE + 4u,
+        (uint16_t)(3u << PSX_TIMER_MODE_CLOCK_SHIFT)));
+    assert(psx_timers_advance_clock(&timers, 2u, PSX_TIMER_CLOCK_SYSTEM,
+                                    2u, &irq));
+    assert(timers.timer[2].counter == 0u);
+    assert(psx_timers_advance_clock(&timers, 2u,
+                                    PSX_TIMER_CLOCK_SYSTEM_DIV8, 3u, &irq));
+    assert(timers.timer[2].counter == 3u);
+
     assert(!psx_timers_advance_clock(&timers, 3u, PSX_TIMER_CLOCK_SYSTEM,
                                      1u, &irq));
 
