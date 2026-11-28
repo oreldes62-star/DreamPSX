@@ -620,6 +620,46 @@ int main(void)
     assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) == 0u);
     assert(!psx_machine_interrupt_eligible(&machine));
 
+    /* GPU IRQ1 must coexist with all three timer IRQ sources while
+     * the mixed DOT/HBlank/SYSTEM/8 clocks advance one scanline. Device
+     * acknowledgement and I_STAT acknowledgement are independent. */
+    psx_machine_reset(&machine);
+    assert(psx_gpu_gp1_write(&machine.gpu, 0x08000001u));
+    psx_irq_write_mask(&machine.irq, (uint16_t)(0x0070u | (1u << 1u)));
+    machine.cop0_status = PSX_COP0_STATUS_IEC | (1u << 10u);
+    for (unsigned timer = 0u; timer < 3u; ++timer) {
+        const uint32_t base = PSX_TIMER_BASE_ADDR +
+                              timer * PSX_TIMER_STRIDE;
+        assert(psx_timers_write16(&machine.timers, base + 8u, 1u));
+        assert(psx_timers_write16(&machine.timers, base + 4u,
+            (uint16_t)((1u << PSX_TIMER_MODE_CLOCK_SHIFT) |
+                       PSX_TIMER_MODE_IRQ_TARGET |
+                       PSX_TIMER_MODE_IRQ_REPEAT)));
+    }
+    assert(psx_gpu_gp0_write(&machine.gpu, 0x1f000000u));
+    assert(psx_machine_advance_system_cycles(&machine, 2153u));
+    assert((psx_irq_read_stat(&machine.irq) & 0x0072u) == 0x0072u);
+    psx_machine_refresh_interrupts(&machine);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) != 0u);
+
+    assert(psx_gpu_gp1_write(&machine.gpu, 0x02000000u));
+    psx_irq_write_stat(&machine.irq, (uint16_t)~(1u << 1u));
+    psx_machine_refresh_interrupts(&machine);
+    assert((psx_irq_read_stat(&machine.irq) & (1u << 1u)) == 0u);
+    assert((psx_irq_read_stat(&machine.irq) & 0x0070u) == 0x0070u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) != 0u);
+
+    for (unsigned source = 4u; source <= 6u; ++source) {
+        psx_irq_write_stat(&machine.irq, (uint16_t)~(1u << source));
+        psx_machine_refresh_interrupts(&machine);
+        if (source != 6u) {
+            assert((psx_irq_read_stat(&machine.irq) & 0x0070u) != 0u);
+            assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) != 0u);
+        }
+    }
+    assert(psx_irq_read_stat(&machine.irq) == 0u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) == 0u);
+
     /* Simultaneous Timer0/1/2 IRQs raised by the branch instruction's
      * elapsed system cycles must all wait until its delay slot retires. */
     psx_machine_reset(&machine);
