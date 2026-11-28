@@ -73,9 +73,15 @@ static uint16_t run_timer0_active_dot_ticks(PsxMachine *machine,
         /* Split around the custom [1024,2048) GP1(06h) edges:
          * NTSC: 646/1292 CPU cycles; PAL: 652/1304 CPU cycles.
          */
-        const uint32_t ntsc_chunks[] = {645u, 1u, 645u, 1u, 861u};
-        const uint32_t pal_chunks[] = {651u, 1u, 651u, 1u, 865u};
-        const uint32_t *chunks = pal ? pal_chunks : ntsc_chunks;
+        const uint32_t ntsc_default[] = {322u, 1u, 1614u, 1u, 215u};
+        const uint32_t pal_default[] = {325u, 1u, 1629u, 1u, 213u};
+        const uint32_t ntsc_custom[] = {645u, 1u, 645u, 1u, 861u};
+        const uint32_t pal_custom[] = {651u, 1u, 651u, 1u, 865u};
+        const uint32_t *chunks;
+        if (horizontal_range == 0u)
+            chunks = pal ? pal_default : ntsc_default;
+        else
+            chunks = pal ? pal_custom : ntsc_custom;
         for (size_t i = 0u; i < 5u; ++i)
             assert(psx_machine_advance_system_cycles(machine, chunks[i]));
     } else {
