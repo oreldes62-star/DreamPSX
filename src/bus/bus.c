@@ -1,5 +1,6 @@
 #include "dreampsx/bus.h"
 #include "dreampsx/irq_mmio.h"
+#include "dreampsx/sio.h"
 
 #define PSX_GPU_GP0_ADDR 0x1f801810u
 #define PSX_GPU_GP1_ADDR 0x1f801814u
@@ -12,6 +13,11 @@ void psx_bus_attach_dma(PsxBus *bus, PsxDmaController *dma)
 void psx_bus_attach_cdrom(PsxBus *bus, PsxCdrom *cdrom)
 {
     if (bus && bus->initialized) bus->cdrom = cdrom;
+}
+
+void psx_bus_attach_sio(PsxBus *bus, PsxSio *sio)
+{
+    if (bus && bus->initialized) bus->sio = sio;
 }
 
 static uint32_t physical_address(uint32_t address)
@@ -40,6 +46,7 @@ bool psx_bus_read8(const PsxBus *bus, uint32_t address, uint8_t *value)
 {
     if (!bus || !bus->initialized || !value) return false;
     address = physical_address(address);
+    if (bus->sio && psx_sio_read8(bus->sio, address, value)) return true;
     if (bus->cdrom && psx_cdrom_read8(bus->cdrom, address, value)) return true;
     if (bus->spu && psx_spu_read8(bus->spu, address, value)) return true;
     if (psx_irq_mmio_read8(bus->irq, address, value)) return true;
@@ -50,6 +57,7 @@ bool psx_bus_read16(const PsxBus *bus, uint32_t address, uint16_t *value)
 {
     if (!bus || !bus->initialized || !value) return false;
     address = physical_address(address);
+    if (bus->sio && psx_sio_read16(bus->sio, address, value)) return true;
     if (bus->spu && psx_spu_read16(bus->spu, address, value)) return true;
     if (psx_irq_mmio_read16(bus->irq, address, value)) return true;
     if (psx_timers_read16(bus->timers, address, value)) return true;
@@ -86,6 +94,7 @@ bool psx_bus_write8(PsxBus *bus, uint32_t address, uint8_t value)
 {
     if (!bus || !bus->initialized) return false;
     address = physical_address(address);
+    if (bus->sio && psx_sio_write8(bus->sio, address, value)) return true;
     if (bus->cdrom && psx_cdrom_write8(bus->cdrom, address, value)) {
         psx_irq_set_line(bus->irq, 2u, psx_cdrom_irq_output(bus->cdrom));
         return true;
@@ -99,6 +108,7 @@ bool psx_bus_write16(PsxBus *bus, uint32_t address, uint16_t value)
 {
     if (!bus || !bus->initialized) return false;
     address = physical_address(address);
+    if (bus->sio && psx_sio_write16(bus->sio, address, value)) return true;
     if (bus->spu && psx_spu_write16(bus->spu, address, value)) return true;
     if (psx_irq_mmio_write16(bus->irq, address, value)) return true;
     if (psx_timers_write16(bus->timers, address, value)) return true;
