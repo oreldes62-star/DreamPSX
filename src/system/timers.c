@@ -160,14 +160,14 @@ static bool timer_sync_allows_clock(const PsxTimer *timer, unsigned index)
     }
 }
 
-bool psx_timers_advance_clock(PsxTimers *timers, unsigned index,
-                              PsxTimerClock clock, uint32_t ticks,
-                              uint8_t *irq_sources)
+bool psx_timers_advance_clock_events(PsxTimers *timers, unsigned index,
+                                     PsxTimerClock clock, uint32_t ticks,
+                                     uint32_t *irq_event_count)
 {
     if (!timers || index >= PSX_TIMER_COUNT ||
         clock > PSX_TIMER_CLOCK_SYSTEM_DIV8)
         return false;
-    if (irq_sources) *irq_sources = 0u;
+    if (irq_event_count) *irq_event_count = 0u;
     PsxTimer *timer = &timers->timer[index];
     if (selected_clock(index, timer->mode) != clock ||
         !timer_sync_allows_clock(timer, index)) return true;
@@ -196,8 +196,22 @@ bool psx_timers_advance_clock(PsxTimers *timers, unsigned index,
             ((timer->mode & PSX_TIMER_MODE_IRQ_REPEAT) != 0u ||
              !timer->irq_fired)) {
             timer->irq_fired = true;
-            if (irq_sources) *irq_sources |= (uint8_t)(1u << index);
+            if (irq_event_count) ++*irq_event_count;
         }
     }
+    return true;
+}
+
+bool psx_timers_advance_clock(PsxTimers *timers, unsigned index,
+                              PsxTimerClock clock, uint32_t ticks,
+                              uint8_t *irq_sources)
+{
+    uint32_t event_count = 0u;
+    if (irq_sources) *irq_sources = 0u;
+    if (!psx_timers_advance_clock_events(timers, index, clock, ticks,
+                                         &event_count))
+        return false;
+    if (irq_sources && event_count != 0u)
+        *irq_sources = (uint8_t)(1u << index);
     return true;
 }
