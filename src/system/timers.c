@@ -149,8 +149,8 @@ static bool timer_sync_allows_clock(const PsxTimer *timer, unsigned index)
         PSX_TIMER_MODE_SYNC_SHIFT;
     switch (sync_mode) {
     case 0u: return !timer->sync_signal_active;
-    case 1u: return !timer->sync_signal_active;
-    case 2u: return !timer->sync_signal_active;
+    case 1u: return true;
+    case 2u: return timer->sync_signal_active;
     default: return timer->sync_started;
     }
 }
