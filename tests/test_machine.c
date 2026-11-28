@@ -55,6 +55,26 @@ int main(void)
         assert(psx_timers_read16(&machine.timers,
             PSX_TIMER_BASE_ADDR, &counter));
         assert(counter == 1u);
+
+        /* All five supported horizontal modes feed their own dot divisor. */
+        {
+            static const unsigned modes[] = {0u, 1u, 2u, 3u, 0x40u};
+            static const unsigned divisors[] = {10u, 8u, 5u, 4u, 7u};
+            for (size_t i = 0u; i < sizeof(modes) / sizeof(modes[0]); ++i) {
+                psx_machine_reset(&machine);
+                assert(psx_gpu_gp1_write(&machine.gpu,
+                    0x08000000u | modes[i]));
+                assert(psx_timers_write16(&machine.timers,
+                    PSX_TIMER_BASE_ADDR + 4u,
+                    (uint16_t)(1u << PSX_TIMER_MODE_CLOCK_SHIFT)));
+                assert(psx_machine_advance_system_cycles(
+                    &machine, divisors[i] * 4u - 1u));
+                assert(psx_timers_read16(&machine.timers,
+                    PSX_TIMER_BASE_ADDR, &counter));
+                assert(counter == 3u);
+                assert(machine.timer0_dot_phase == divisors[i] - 1u);
+            }
+        }
     }
 
     /* Machine-level GPU raster timing must be invariant to cycle batching. */
