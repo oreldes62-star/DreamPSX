@@ -82,6 +82,7 @@ bool psx_machine_init(PsxMachine *machine,
     if (!machine || !psx_memory_init(&machine->memory, ram, ram_size,
                                      bios, bios_size)) return false;
     if (!psx_gpu_init(&machine->gpu, gpu_vram, gpu_vram_pixels)) return false;
+    machine->gpu_video_clock_region = PSX_VIDEO_CLOCK_NTSC;
     if (!psx_dma_init(&machine->dma)) return false;
     if (!psx_cdrom_init(&machine->cdrom)) return false;
     if (!psx_spu_init(&machine->spu)) return false;
@@ -131,6 +132,20 @@ void psx_machine_reset(PsxMachine *machine)
     machine->cop0_cause = 0u;
     machine->cop0_epc = 0u;
     machine->cop0_badvaddr = 0u;
+}
+
+bool psx_machine_set_video_clock_region(PsxMachine *machine,
+                                        PsxVideoClockRegion region)
+{
+    if (!machine ||
+        (region != PSX_VIDEO_CLOCK_NTSC && region != PSX_VIDEO_CLOCK_PAL))
+        return false;
+    if (machine->gpu_video_clock_region != region) {
+        machine->gpu_video_clock_region = region;
+        machine->gpu_video_clock_phase = 0u;
+        machine->timer0_dot_phase = 0u;
+    }
+    return true;
 }
 
 void psx_machine_refresh_interrupts(PsxMachine *machine)
@@ -244,12 +259,13 @@ static bool psx_machine_advance_raster_timers(PsxMachine *machine,
          * Keep its rational phase across every instruction-sized batch:
          * NTSC 53.693175/33.8688 = 715909/451584,
          * PAL 53.203425/33.8688 = 709379/451584.
-         * GP1(08h)'s PAL bit selects the current emulated clock policy for
-         * now; a separate console-region setting is a later refinement.
+         * The physical oscillator region is explicit and independent of
+         * GP1(08h), which selects output timing only.
          */
         {
             const uint32_t video_clock_numerator =
-                mode_valid && mode.pal ? 709379u : 715909u;
+                machine->gpu_video_clock_region == PSX_VIDEO_CLOCK_PAL ?
+                709379u : 715909u;
             const uint64_t video_accumulated =
                 (uint64_t)machine->gpu_video_clock_phase +
                 (uint64_t)step * video_clock_numerator;
