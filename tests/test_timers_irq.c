@@ -124,6 +124,35 @@ int main(void)
     assert(machine.cop0_epc == 4u);
     assert((machine.cop0_status & PSX_COP0_STATUS_IEC) == 0u);
 
+    /* An IRQ arriving after a taken branch must not split its delay slot.
+     * The delay-slot instruction retires first; the interrupt is accepted
+     * at the following boundary with EPC pointing at the branch target. */
+    psx_machine_reset(&machine);
+    assert(psx_bus_write16(&machine.bus, PSX_IRQ_MASK_ADDR,
+                           (uint16_t)(1u << 4u)));
+    assert(psx_bus_write32(&machine.bus, 0u, 0x10000001u)); /* BEQ zero,zero,+1 */
+    assert(psx_bus_write32(&machine.bus, 4u, 0x24090007u)); /* ADDIU t1,zero,7 */
+    assert(psx_bus_write32(&machine.bus, 8u, 0x240a0009u)); /* ADDIU t2,zero,9 */
+    assert(psx_bus_write16(&machine.bus, PSX_TIMER_BASE_ADDR + 8u, 1u));
+    assert(psx_bus_write16(&machine.bus, PSX_TIMER_BASE_ADDR + 4u,
+                           PSX_TIMER_MODE_IRQ_TARGET));
+    machine.cop0_status = PSX_COP0_STATUS_IEC | (1u << 10u);
+    machine.cpu.pc = 0u;
+    machine.cpu.next_pc = 4u;
+    assert(psx_machine_step(&machine)); /* Branch raises Timer 0 IRQ */
+    assert(machine.cpu.delay_slot_pending);
+    assert(machine.cpu.pc == 4u && machine.cpu.next_pc == 8u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) != 0u);
+    assert(psx_machine_step(&machine)); /* IRQ deferred: execute delay slot */
+    assert(!machine.cpu.delay_slot_pending);
+    assert(psx_cpu_read_gpr(&machine.cpu, 9u) == 7u);
+    assert(machine.cpu.pc == 8u && machine.cpu.next_pc == 12u);
+    assert(psx_machine_step(&machine)); /* Now accept interrupt */
+    assert(machine.cpu.pc == 0x80000080u);
+    assert(machine.cop0_epc == 8u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_BD) == 0u);
+    assert(psx_cpu_read_gpr(&machine.cpu, 10u) == 0u);
+
     /* Clearing I_STAT removes IP2; a fresh edge is required to retrigger. */
     psx_irq_write_stat(&machine.irq, (uint16_t)~(1u << 4u));
     psx_machine_refresh_interrupts(&machine);
