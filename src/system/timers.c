@@ -22,6 +22,7 @@ void psx_timers_reset(PsxTimers *timers)
         timers->timer[i].mode = 0u;
         timers->timer[i].target = 0u;
         timers->timer[i].irq_fired = false;
+        timers->timer[i].irq_toggle_state = false;
         timers->timer[i].sync_signal_active = false;
         timers->timer[i].sync_started = false;
     }
@@ -70,6 +71,7 @@ bool psx_timers_write16(PsxTimers *timers, uint32_t address,
         timer->counter = 0u;
         timer->mode = (uint16_t)(value & 0x03ffu);
         timer->irq_fired = false;
+        timer->irq_toggle_state = false;
         /* The external blanking signal is independent of MODE writes. */
         timer->sync_started = false;
     } else {
