@@ -127,13 +127,15 @@ int main(void)
         psx_gpu_reset(&machine.gpu);
         assert(psx_gpu_gp1_write(&machine.gpu, 0x08000000u));
         machine.gpu_scanline_cycle_phase = 0u;
+        machine.gpu_scanline_cycle_remainder = 0u;
         assert(psx_machine_advance_system_cycles(&machine, total_cycles));
         expected_scanline = machine.gpu.display.video_scanline;
         expected_phase = machine.gpu_scanline_cycle_phase;
 
         psx_gpu_reset(&machine.gpu);
         machine.gpu_scanline_cycle_phase = 0u;
-        assert(psx_machine_advance_system_cycles(&machine, 2148u * 333u + 1u));
+        machine.gpu_scanline_cycle_remainder = 0u;
+        assert(psx_machine_advance_system_cycles(&machine, 2153u * 333u + 1u));
         assert(psx_machine_advance_system_cycles(&machine, 2148u * 400u + 77u));
         assert(psx_machine_advance_system_cycles(
             &machine, total_cycles - (2148u * 333u + 1u) -
