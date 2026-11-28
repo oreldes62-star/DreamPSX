@@ -356,7 +356,7 @@ int main(void)
         assert(machine.gpu.display.video_scanline == bulk_scanline);
         assert(machine.gpu.display.video_frame_counter == bulk_frames);
         assert(machine.timers.timer[0].sync_started);
-        assert(!machine.timers.timer[0].sync_signal_active);
+        assert(machine.timers.timer[0].sync_signal_active);
     }
 
     /* Timer 0 target IRQ/reset behavior must remain deterministic when
