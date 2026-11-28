@@ -28,14 +28,19 @@ bool psx_kos_video_backend_present(PsxKosVideoBackend *backend,
     unsigned source_height;
 
     if (!backend || !backend->initialized || !gpu ||
-        !psx_gpu_get_display_mode_info(gpu, &info) ||
-        info.width == 0u || info.height == 0u ||
-        info.width > PSX_KOS_VIDEO_MAX_SOURCE_WIDTH ||
-        info.height > PSX_KOS_VIDEO_MAX_SOURCE_HEIGHT)
+        !psx_gpu_get_display_mode_info(gpu, &info))
         return false;
 
-    source_width = info.width;
-    source_height = info.height;
+    /* GP1(06h/07h) define the active display window. Prefer those measured
+       dimensions when programmed; fall back to the selected video mode for
+       software that leaves the range registers at their reset values. */
+    source_width = info.range_valid ? info.range_width : info.width;
+    source_height = info.range_valid ? info.range_height : info.height;
+    if (source_width == 0u || source_height == 0u ||
+        source_width > PSX_KOS_VIDEO_MAX_SOURCE_WIDTH ||
+        source_height > PSX_KOS_VIDEO_MAX_SOURCE_HEIGHT)
+        return false;
+
     if (!psx_gpu_scanout_rgb565(gpu, source_width, source_height,
                                 backend->scanout, source_width))
         return false;
