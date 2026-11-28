@@ -95,7 +95,9 @@ int main(void)
     assert(machine.gpu_scanline_cycle_phase == 0u);
     assert(machine.gpu.display.video_vblank);
 
-    /* A PAL mode switch discards the old NTSC fractional line remainder. */
+    /* GP1(08h) changes output mode without restarting the physical PAL
+     * raster: the 1000-cycle position within the current line is retained.
+     */
     psx_gpu_reset(&machine.gpu);
     machine.gpu_scanline_cycle_phase = 0u;
     assert(psx_machine_set_video_clock_region(
@@ -106,7 +108,7 @@ int main(void)
     assert(psx_gpu_gp1_write(&machine.gpu,
         0x07000000u | (256u << 10u) | 16u));
     assert(psx_gpu_gp1_write(&machine.gpu, 0x08000008u));
-    assert(psx_machine_advance_system_cycles(&machine, 2168u));
+    assert(psx_machine_advance_system_cycles(&machine, 1168u));
     assert(machine.gpu.display.video_scanline == 0u);
     assert(machine.gpu_scanline_cycle_phase == 2168u);
     assert(psx_machine_advance_system_cycles(&machine, 1u));
