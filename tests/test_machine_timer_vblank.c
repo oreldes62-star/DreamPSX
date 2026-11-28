@@ -136,16 +136,16 @@ int main(void)
     /* A custom [1024,2048) display interval is 1024 video clocks,
      * therefore 128 Timer 0 dots in 320-pixel mode.
      */
-    assert(run_timer0_active_dot_ticks(&machine, 0x06080400u,
+    assert(run_timer0_active_dot_ticks(&machine, 0x06800400u,
                                         false, false) == 128u);
-    assert(run_timer0_active_dot_ticks(&machine, 0x06080400u,
+    assert(run_timer0_active_dot_ticks(&machine, 0x06800400u,
                                         false, true) == 128u);
     /* Repeat the custom range with the PAL physical oscillator. The
      * CPU-cycle boundaries differ, but the GPU-dot count must not.
      */
-    assert(run_timer0_active_dot_ticks(&machine, 0x06080400u,
+    assert(run_timer0_active_dot_ticks(&machine, 0x06800400u,
                                         true, false) == 128u);
-    assert(run_timer0_active_dot_ticks(&machine, 0x06080400u,
+    assert(run_timer0_active_dot_ticks(&machine, 0x06800400u,
                                         true, true) == 128u);
 
     /* Every tested mode must be invariant to how master-clock cycles are
