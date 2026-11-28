@@ -115,6 +115,30 @@ int main(void)
         assert((expected_irq_status & PSX_TIMER_MODE_REACHED_TARGET) != 0u);
         assert((psx_irq_read_stat(&machine.irq) & (1u << 5u)) != 0u);
     }
+    /* Timer 1 VBlank synchronization is wired to the GPU raster.
+     * With sync mode 2 it counts HBlank ticks during VBlank only. The
+     * default visible range starts at scanline 16: lines 1..15 are blank,
+     * then line 16 leaves VBlank and must stop the counter.
+     */
+    {
+        uint16_t counter = 0u;
+        const uint16_t mode = (uint16_t)(
+            PSX_TIMER_MODE_SYNC_ENABLE |
+            (2u << PSX_TIMER_MODE_SYNC_SHIFT) |
+            (1u << PSX_TIMER_MODE_CLOCK_SHIFT));
+
+        psx_machine_reset(&machine);
+        assert(psx_timers_write16(&machine.timers,
+            PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE + 4u, mode));
+        assert(psx_machine_advance_system_cycles(&machine, 2148u * 16u));
+        assert(machine.gpu.display.video_scanline == 16u);
+        assert(!machine.gpu.display.video_vblank);
+        assert(!machine.timers.timer[1].sync_signal_active);
+        assert(psx_timers_read16(&machine.timers,
+            PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE, &counter));
+        assert(counter == 15u);
+    }
+
     psx_machine_reset(&machine);
     /* SPU output cadence is clocked at 44.1 kHz: 768 master cycles/frame. */
     {
