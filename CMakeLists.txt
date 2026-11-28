@@ -80,6 +80,7 @@ set(DREAMPSX_TESTS
     test_gpu_display_mode
     test_gpu_video_timing
     test_machine_video_irq
+    test_machine_timer_vblank
     test_timers
     test_timers_bus
     test_timers_irq
