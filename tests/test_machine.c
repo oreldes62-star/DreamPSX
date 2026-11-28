@@ -567,7 +567,7 @@ int main(void)
             (1u << PSX_TIMER_MODE_SYNC_SHIFT) |
             PSX_TIMER_MODE_RESET_AT_TARGET |
             PSX_TIMER_MODE_IRQ_TARGET);
-        const uint32_t chunks[] = {2152u, 1u, 3u, 2145u, 5u, 2u};
+        const uint32_t chunks[] = {2152u, 1u, 3u, 2145u, 5u, 7u};
         uint16_t bulk_counter = 0u;
         uint16_t chunk_counter = 0u;
         uint16_t bulk_irq = 0u;
