@@ -147,10 +147,10 @@ int main(void)
         (uint16_t)(3u << PSX_TIMER_MODE_CLOCK_SHIFT)));
     assert(psx_timers_advance_clock(&timers, 0u, PSX_TIMER_CLOCK_SYSTEM,
                                     2u, &irq));
-    assert(timers.timer[0].counter == 2u);
+    assert(timers.timer[0].counter == 0u); /* MODE write resets */
     assert(psx_timers_advance_clock(&timers, 0u, PSX_TIMER_CLOCK_DOT,
                                     3u, &irq));
-    assert(timers.timer[0].counter == 5u);
+    assert(timers.timer[0].counter == 3u);
 
     psx_timers_reset(&timers);
     assert(psx_timers_write16(&timers,
