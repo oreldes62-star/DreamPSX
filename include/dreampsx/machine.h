@@ -38,6 +38,7 @@ typedef struct {
     PsxAudioBuffer audio_output;
     uint8_t timer2_div8_phase;
     uint32_t gpu_scanline_cycle_phase;
+    uint32_t gpu_scanline_cycle_remainder;
     uint32_t gpu_scanline_mode;
     uint32_t gpu_video_clock_phase;
     PsxVideoClockRegion gpu_video_clock_region;
