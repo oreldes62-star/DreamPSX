@@ -117,6 +117,7 @@ void psx_machine_reset(PsxMachine *machine)
     psx_audio_buffer_reset(&machine->audio_output);
     machine->timer2_div8_phase = 0u;
     machine->gpu_scanline_cycle_phase = 0u;
+    machine->gpu_scanline_cycle_remainder = 0u;
     machine->gpu_scanline_mode = machine->gpu.display.mode;
     machine->gpu_video_clock_phase = 0u;
     machine->timer0_dot_phase = 0u;
@@ -211,13 +212,25 @@ static bool psx_machine_advance_raster_timers(PsxMachine *machine,
         machine->timer0_dot_phase = 0u;
         machine->timer0_dot_divisor = mode_valid ? mode.dot_clock_divisor : 10u;
     }
-    const uint32_t line_cycles = mode_valid && mode.pal ? 2157u : 2148u;
+    const uint32_t video_clock_numerator =
+        machine->gpu_video_clock_region == PSX_VIDEO_CLOCK_PAL ?
+        709379u : 715909u;
+    const uint32_t line_video_clocks =
+        machine->gpu_video_clock_region == PSX_VIDEO_CLOCK_PAL ?
+        3406u : 3413u;
+    const uint64_t line_cycle_accumulated =
+        (uint64_t)line_video_clocks * 451584u +
+        machine->gpu_scanline_cycle_remainder;
+    const uint32_t line_cycles =
+        (uint32_t)(line_cycle_accumulated / video_clock_numerator);
+    const uint32_t next_line_cycle_remainder =
+        (uint32_t)(line_cycle_accumulated % video_clock_numerator);
     const uint32_t h_start = machine->gpu.display.horizontal_start;
     const uint32_t h_end = machine->gpu.display.horizontal_end;
     uint32_t h_start_cycle = (uint32_t)(
-        ((uint64_t)h_start * line_cycles) / 3413u);
+        ((uint64_t)h_start * line_cycles) / line_video_clocks);
     uint32_t h_end_cycle = (uint32_t)(
-        ((uint64_t)h_end * line_cycles) / 3413u);
+        ((uint64_t)h_end * line_cycles) / line_video_clocks);
     if (h_start_cycle > line_cycles) h_start_cycle = line_cycles;
     if (h_end_cycle > line_cycles) h_end_cycle = line_cycles;
     if (h_end_cycle <= h_start_cycle) {
@@ -243,6 +256,8 @@ static bool psx_machine_advance_raster_timers(PsxMachine *machine,
             if (boundary == line_cycles) {
                 PsxGpuVideoState video;
                 machine->gpu_scanline_cycle_phase = 0u;
+                machine->gpu_scanline_cycle_remainder =
+                    next_line_cycle_remainder;
                 if (!psx_machine_video_advance_scanline(machine, &video))
                     return false;
                 continue;
@@ -263,9 +278,6 @@ static bool psx_machine_advance_raster_timers(PsxMachine *machine,
          * GP1(08h), which selects output timing only.
          */
         {
-            const uint32_t video_clock_numerator =
-                machine->gpu_video_clock_region == PSX_VIDEO_CLOCK_PAL ?
-                709379u : 715909u;
             const uint64_t video_accumulated =
                 (uint64_t)machine->gpu_video_clock_phase +
                 (uint64_t)step * video_clock_numerator;
@@ -292,6 +304,8 @@ static bool psx_machine_advance_raster_timers(PsxMachine *machine,
         if (machine->gpu_scanline_cycle_phase == line_cycles) {
             PsxGpuVideoState video;
             machine->gpu_scanline_cycle_phase = 0u;
+            machine->gpu_scanline_cycle_remainder =
+                next_line_cycle_remainder;
             if (!psx_machine_video_advance_scanline(machine, &video))
                 return false;
         }
