@@ -204,18 +204,22 @@ static void run_mixed_timer_clocks(PsxMachine *machine, bool pal,
         machine, pal ? PSX_VIDEO_CLOCK_PAL : PSX_VIDEO_CLOCK_NTSC));
     psx_machine_reset(machine);
     assert(psx_gpu_gp1_write(&machine->gpu, 0x08000001u));
+    assert(psx_irq_write_mask(&machine->irq, 0x0070u));
+    machine->cop0_status = PSX_COP0_STATUS_IEC | (1u << 10u);
 
     /* Run all three hardware clock domains at once:
      * Timer 0 = GPU dot clock, Timer 1 = HBlank pulses,
-     * Timer 2 = system clock divided by eight.
+     * Timer 2 = system clock divided by eight. Each must independently
+     * latch its IRQ while the other two clocks are also advancing.
      */
-    assert(psx_timers_write16(&machine->timers,
-        PSX_TIMER_BASE_ADDR + 4u, external_clock));
-    assert(psx_timers_write16(&machine->timers,
-        PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE + 4u, external_clock));
-    assert(psx_timers_write16(&machine->timers,
-        PSX_TIMER_BASE_ADDR + 2u * PSX_TIMER_STRIDE + 4u,
-        external_clock));
+    for (unsigned timer = 0u; timer < 3u; ++timer) {
+        const uint32_t base = PSX_TIMER_BASE_ADDR +
+                              timer * PSX_TIMER_STRIDE;
+        assert(psx_timers_write16(&machine->timers, base + 8u, 1u));
+        assert(psx_timers_write16(&machine->timers, base + 4u,
+            (uint16_t)(external_clock | PSX_TIMER_MODE_IRQ_TARGET |
+                       PSX_TIMER_MODE_IRQ_REPEAT)));
+    }
 
     if (!chunked) {
         assert(psx_machine_advance_system_cycles(machine, line_cycles));
@@ -233,6 +237,20 @@ static void run_mixed_timer_clocks(PsxMachine *machine, bool pal,
     assert(machine->timers.timer[1].counter == 1u);
     assert(machine->timers.timer[2].counter == line_cycles / 8u);
     assert(machine->timer2_div8_phase == line_cycles % 8u);
+
+    assert((psx_irq_read_stat(&machine->irq) & 0x0070u) == 0x0070u);
+    psx_machine_refresh_interrupts(machine);
+    assert((machine->cop0_cause & PSX_COP0_CAUSE_IP2) != 0u);
+    for (unsigned source = 4u; source <= 6u; ++source) {
+        psx_irq_write_stat(&machine->irq, (uint16_t)~(1u << source));
+        psx_machine_refresh_interrupts(machine);
+        if (source != 6u) {
+            assert((psx_irq_read_stat(&machine->irq) & 0x0070u) != 0u);
+            assert((machine->cop0_cause & PSX_COP0_CAUSE_IP2) != 0u);
+        }
+    }
+    assert((psx_irq_read_stat(&machine->irq) & 0x0070u) == 0u);
+    assert((machine->cop0_cause & PSX_COP0_CAUSE_IP2) == 0u);
 }
 
 static void test_mixed_timer_clock_batch_invariance(void)
