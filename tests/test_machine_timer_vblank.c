@@ -158,6 +158,11 @@ int main(void)
      */
     assert(run_timer0_active_dot_ticks(&machine, 0u, false, false) == 320u);
     assert(run_timer0_active_dot_ticks(&machine, 0u, false, true) == 320u);
+    /* The default interval must produce the same number of GPU dots on
+     * the PAL oscillator, even when execution is split at both HBlank edges.
+     */
+    assert(run_timer0_active_dot_ticks(&machine, 0u, true, false) == 320u);
+    assert(run_timer0_active_dot_ticks(&machine, 0u, true, true) == 320u);
 
     /* A custom [1024,2048) display interval is 1024 video clocks,
      * therefore 128 Timer 0 dots in 320-pixel mode.
