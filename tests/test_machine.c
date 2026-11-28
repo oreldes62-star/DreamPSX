@@ -15,6 +15,48 @@ int main(void)
     assert(ram && bios && gpu_vram);
     assert(psx_machine_init(&machine, ram, PSX_RAM_SIZE, bios, PSX_BIOS_SIZE,
                             gpu_vram, PSX_GPU_VRAM_WIDTH * PSX_GPU_VRAM_HEIGHT));
+    /* Timer 0 receives the GPU dot clock with a fractional master-clock
+     * phase that is stable across batching and resets when GP1 mode changes.
+     */
+    {
+        const uint32_t chunks[] = {3u, 7u, 1u, 14u};
+        uint16_t counter = 0u;
+
+        psx_machine_reset(&machine);
+        assert(psx_timers_write16(&machine.timers,
+            PSX_TIMER_BASE_ADDR + 4u,
+            (uint16_t)(1u << PSX_TIMER_MODE_CLOCK_SHIFT)));
+        assert(psx_machine_advance_system_cycles(&machine, 25u));
+        assert(psx_timers_read16(&machine.timers,
+            PSX_TIMER_BASE_ADDR, &counter));
+        assert(counter == 2u);
+        assert(machine.timer0_dot_phase == 5u);
+
+        psx_machine_reset(&machine);
+        assert(psx_timers_write16(&machine.timers,
+            PSX_TIMER_BASE_ADDR + 4u,
+            (uint16_t)(1u << PSX_TIMER_MODE_CLOCK_SHIFT)));
+        for (size_t i = 0u; i < sizeof(chunks) / sizeof(chunks[0]); ++i)
+            assert(psx_machine_advance_system_cycles(&machine, chunks[i]));
+        assert(psx_timers_read16(&machine.timers,
+            PSX_TIMER_BASE_ADDR, &counter));
+        assert(counter == 2u);
+        assert(machine.timer0_dot_phase == 5u);
+
+        psx_machine_reset(&machine);
+        assert(psx_timers_write16(&machine.timers,
+            PSX_TIMER_BASE_ADDR + 4u,
+            (uint16_t)(1u << PSX_TIMER_MODE_CLOCK_SHIFT)));
+        assert(psx_machine_advance_system_cycles(&machine, 9u));
+        assert(machine.timer0_dot_phase == 9u);
+        assert(psx_gpu_gp1_write(&machine.gpu, 0x08000001u)); /* 320 / 8 */
+        assert(psx_machine_advance_system_cycles(&machine, 8u));
+        assert(machine.timer0_dot_phase == 0u);
+        assert(psx_timers_read16(&machine.timers,
+            PSX_TIMER_BASE_ADDR, &counter));
+        assert(counter == 1u);
+    }
+
     /* Machine-level GPU raster timing must be invariant to cycle batching. */
     {
         const uint32_t total_cycles = 2148u * 3u + 517u;
