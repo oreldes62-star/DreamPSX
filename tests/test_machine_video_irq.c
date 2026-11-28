@@ -620,6 +620,43 @@ int main(void)
     assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) == 0u);
     assert(!psx_machine_interrupt_eligible(&machine));
 
+    /* Simultaneous Timer0/1/2 IRQs raised by the branch instruction's
+     * elapsed system cycles must all wait until its delay slot retires. */
+    psx_machine_reset(&machine);
+    psx_irq_write_mask(&machine.irq, 0x0070u);
+    for (unsigned timer = 0u; timer < 3u; ++timer) {
+        const uint32_t base = PSX_TIMER_BASE_ADDR +
+                              timer * PSX_TIMER_STRIDE;
+        assert(psx_timers_write16(&machine.timers, base + 8u, 1u));
+        assert(psx_timers_write16(&machine.timers, base + 4u,
+            (uint16_t)(PSX_TIMER_MODE_IRQ_TARGET |
+                       PSX_TIMER_MODE_IRQ_REPEAT)));
+    }
+    assert(psx_bus_write32(&machine.bus, 0u, 0x10000001u)); /* BEQ zero,zero,+1 */
+    assert(psx_bus_write32(&machine.bus, 4u, 0x24090007u)); /* delay: t1 = 7 */
+    assert(psx_bus_write32(&machine.bus, 8u, 0x240a0009u)); /* target: t2 = 9 */
+    machine.cpu.pc = 0u;
+    machine.cpu.next_pc = 4u;
+    machine.cop0_status = PSX_COP0_STATUS_IEC | (1u << 10u);
+
+    assert(psx_machine_step(&machine)); /* Branch retires, timers advance. */
+    assert(machine.cpu.delay_slot_pending);
+    assert((psx_irq_read_stat(&machine.irq) & 0x0070u) == 0x0070u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) != 0u);
+    assert(machine.cpu.pc == 4u && machine.cpu.next_pc == 8u);
+
+    assert(psx_machine_step(&machine)); /* All three IRQs defer for delay slot. */
+    assert(!machine.cpu.delay_slot_pending);
+    assert(psx_cpu_read_gpr(&machine.cpu, 9u) == 7u);
+    assert(machine.cpu.pc == 8u && machine.cpu.next_pc == 12u);
+
+    assert(psx_machine_step(&machine)); /* IRQ accepted at next boundary. */
+    assert(machine.cpu.pc == 0x80000080u);
+    assert(machine.cop0_epc == 8u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_BD) == 0u);
+    assert(psx_cpu_read_gpr(&machine.cpu, 10u) == 0u);
+    assert((psx_irq_read_stat(&machine.irq) & 0x0070u) == 0x0070u);
+
     free(vram);
     free(bios);
     free(ram);
