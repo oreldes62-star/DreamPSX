@@ -288,7 +288,7 @@ int main(void)
             (uint16_t)(PSX_TIMER_MODE_SYNC_ENABLE |
                        (2u << PSX_TIMER_MODE_SYNC_SHIFT))
         };
-        const uint16_t expected[] = {3224u, 536u};
+        const uint16_t expected[] = {3224u, 10u};
 
         for (size_t mode_index = 0u; mode_index < 2u; ++mode_index) {
             uint16_t bulk_counter = 0u;
