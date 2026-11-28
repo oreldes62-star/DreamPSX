@@ -193,6 +193,85 @@ static void test_shared_clock_batch_invariance(void)
     free(bulk_vram); free(bulk_bios); free(bulk_ram);
 }
 
+static void run_mixed_timer_clocks(PsxMachine *machine, bool pal,
+                                   bool chunked)
+{
+    const uint32_t line_cycles = pal ? 2169u : 2153u;
+    const uint16_t external_clock = (uint16_t)(
+        1u << PSX_TIMER_MODE_CLOCK_SHIFT);
+
+    assert(psx_machine_set_video_clock_region(
+        machine, pal ? PSX_VIDEO_CLOCK_PAL : PSX_VIDEO_CLOCK_NTSC));
+    psx_machine_reset(machine);
+    assert(psx_gpu_gp1_write(&machine->gpu, 0x08000001u));
+
+    /* Run all three hardware clock domains at once:
+     * Timer 0 = GPU dot clock, Timer 1 = HBlank pulses,
+     * Timer 2 = system clock divided by eight.
+     */
+    assert(psx_timers_write16(&machine->timers,
+        PSX_TIMER_BASE_ADDR + 4u, external_clock));
+    assert(psx_timers_write16(&machine->timers,
+        PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE + 4u, external_clock));
+    assert(psx_timers_write16(&machine->timers,
+        PSX_TIMER_BASE_ADDR + 2u * PSX_TIMER_STRIDE + 4u,
+        external_clock));
+
+    if (!chunked) {
+        assert(psx_machine_advance_system_cycles(machine, line_cycles));
+    } else if (pal) {
+        const uint32_t chunks[] = {325u, 1u, 700u, 930u, 1u, 212u};
+        for (size_t i = 0u; i < sizeof(chunks) / sizeof(chunks[0]); ++i)
+            assert(psx_machine_advance_system_cycles(machine, chunks[i]));
+    } else {
+        const uint32_t chunks[] = {322u, 1u, 700u, 914u, 1u, 214u};
+        for (size_t i = 0u; i < sizeof(chunks) / sizeof(chunks[0]); ++i)
+            assert(psx_machine_advance_system_cycles(machine, chunks[i]));
+    }
+
+    assert(machine->timers.timer[0].counter != 0u);
+    assert(machine->timers.timer[1].counter == 1u);
+    assert(machine->timers.timer[2].counter == line_cycles / 8u);
+    assert(machine->timer2_div8_phase == line_cycles % 8u);
+}
+
+static void test_mixed_timer_clock_batch_invariance(void)
+{
+    PsxMachine bulk;
+    PsxMachine chunked;
+    uint8_t *bulk_ram;
+    uint8_t *bulk_bios;
+    uint16_t *bulk_vram;
+    uint8_t *chunk_ram;
+    uint8_t *chunk_bios;
+    uint16_t *chunk_vram;
+
+    init_machine(&bulk, &bulk_ram, &bulk_bios, &bulk_vram);
+    init_machine(&chunked, &chunk_ram, &chunk_bios, &chunk_vram);
+
+    for (unsigned region = 0u; region < 2u; ++region) {
+        const bool pal = region != 0u;
+        run_mixed_timer_clocks(&bulk, pal, false);
+        run_mixed_timer_clocks(&chunked, pal, true);
+
+        for (unsigned timer = 0u; timer < 3u; ++timer)
+            assert(bulk.timers.timer[timer].counter ==
+                   chunked.timers.timer[timer].counter);
+        assert(bulk.timer0_dot_phase == chunked.timer0_dot_phase);
+        assert(bulk.timer2_div8_phase == chunked.timer2_div8_phase);
+        assert(bulk.gpu_scanline_cycle_phase ==
+               chunked.gpu_scanline_cycle_phase);
+        assert(bulk.gpu_video_clock_phase == chunked.gpu_video_clock_phase);
+    }
+
+    free(chunk_vram);
+    free(chunk_bios);
+    free(chunk_ram);
+    free(bulk_vram);
+    free(bulk_bios);
+    free(bulk_ram);
+}
+
 int main(void)
 {
     PsxMachine machine;
@@ -201,6 +280,7 @@ int main(void)
     uint16_t *vram;
     init_machine(&machine, &ram, &bios, &vram);
     test_shared_clock_batch_invariance();
+    test_mixed_timer_clock_batch_invariance();
     test_timer2_div8_instruction_boundaries(&machine);
 
     /* Timer 1 synchronization is driven by VBlank, while its selected
