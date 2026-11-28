@@ -108,14 +108,8 @@ void psx_machine_reset(PsxMachine *machine)
     psx_gte_reset(&machine->gte);
     psx_gpu_reset(&machine->gpu);
     psx_timers_reset(&machine->timers);
-    /* Line zero is outside the default visible range, so initialize
-     * Timer 1's VBlank synchronization level from the GPU's actual state.
-     * The raster also begins in horizontal blank before the active display.
-     */
+    /* The raster begins in horizontal blank before the first active line. */
     machine->timers.timer[0].sync_signal_active = true;
-    if (!psx_timers_set_sync_signal(&machine->timers, 1u,
-                                    machine->gpu.display.video_vblank))
-        return;
     psx_dma_reset(&machine->dma);
     psx_cdrom_reset(&machine->cdrom);
     psx_spu_reset(&machine->spu);
