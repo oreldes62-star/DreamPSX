@@ -61,9 +61,9 @@ int main(void)
     assert(psx_kos_video_backend_present(&backend, &gpu));
     assert(backend.presented_frames == 1u);
     assert(waitvbl_count == 1u);
-    assert(dreamcast_framebuffer[0] == 0x001fu);
-    assert(dreamcast_framebuffer[1] == 0x001fu);
-    assert(dreamcast_framebuffer[2] == 0x03e0u);
+    assert(dreamcast_framebuffer[0] == 0xf800u);
+    assert(dreamcast_framebuffer[1] == 0xf800u);
+    assert(dreamcast_framebuffer[2] == 0x07e0u);
 
     assert(!psx_kos_video_backend_present(NULL, &gpu));
     assert(!psx_kos_video_backend_present(&backend, NULL));
