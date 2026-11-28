@@ -162,6 +162,7 @@ int main(void)
         uint64_t frames;
         bool vblank;
 
+        psx_machine_reset(&machine);
         assert(psx_gpu_gp1_write(&machine.gpu, 0x08000000u));
         assert(psx_machine_advance_system_cycles(&machine, total_cycles));
         scanline = machine.gpu.display.video_scanline;
