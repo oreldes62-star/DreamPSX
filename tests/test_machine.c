@@ -530,8 +530,8 @@ int main(void)
     }
 
     /* Timer 0 mode 1 must reset at each raster HBlank edge, after the
-     * system clocks preceding that edge have elapsed. Ten cycles after the
-     * second HBlank edge therefore leave 541 elapsed system ticks.
+     * system clocks preceding that edge have elapsed. The counter reports elapsed system ticks since the second
+     * rising HBlank edge.
      */
     {
         const uint16_t mode = (uint16_t)(
@@ -546,7 +546,7 @@ int main(void)
         assert(psx_machine_advance_system_cycles(&machine,
                                                    2153u * 2u + 10u));
         assert(machine.timers.timer[0].sync_started);
-        assert(machine.timers.timer[0].counter == 226u);
+        assert(machine.timers.timer[0].counter == 225u);
     }
 
     /* Timer 0 raster synchronization must be invariant to how the CPU
@@ -566,6 +566,8 @@ int main(void)
         uint32_t bulk_frames;
 
         psx_machine_reset(&machine);
+        assert(psx_machine_set_video_clock_region(
+            &machine, PSX_VIDEO_CLOCK_NTSC));
         assert(psx_timers_write16(&machine.timers,
             PSX_TIMER_BASE_ADDR + 4u, mode));
         assert(psx_timers_write16(&machine.timers,
@@ -579,6 +581,8 @@ int main(void)
         bulk_frames = machine.gpu.display.video_frame_counter;
 
         psx_machine_reset(&machine);
+        assert(psx_machine_set_video_clock_region(
+            &machine, PSX_VIDEO_CLOCK_NTSC));
         assert(psx_timers_write16(&machine.timers,
             PSX_TIMER_BASE_ADDR + 4u, mode));
         assert(psx_timers_write16(&machine.timers,
