@@ -899,6 +899,26 @@ int main(void)
     assert(psx_irq_read_stat(&machine.irq) == (1u << 1u));
     assert(psx_cpu_read_gpr(&machine.cpu, 10u) == (1u << 1u));
 
+    /* The upper byte lane must use address bit 0 correctly too. Guest SB
+     * clears source 10 while preserving the pending GPU request in byte 0. */
+    psx_machine_reset(&machine);
+    assert(psx_gpu_gp0_write(&machine.gpu, 0x1f000000u));
+    psx_irq_set_line(&machine.irq, 10u, true);
+    assert((psx_irq_read_stat(&machine.irq) & 0x0402u) == 0x0402u);
+    assert(psx_bus_write32(&machine.bus, 0u, 0x3c081f80u)); /* LUI t0,1f80 */
+    assert(psx_bus_write32(&machine.bus, 4u, 0x35081071u)); /* ORI t0,t0,1071 */
+    assert(psx_bus_write32(&machine.bus, 8u, 0x240900fbu)); /* ADDIU t1,zero,fb */
+    assert(psx_bus_write32(&machine.bus, 12u, 0xa1090000u)); /* SB t1,0(t0) */
+    assert(psx_bus_write32(&machine.bus, 16u, 0x910a0000u)); /* LBU t2,0(t0) */
+    assert(psx_bus_write32(&machine.bus, 20u, 0x00000000u)); /* load delay */
+    machine.cpu.pc = 0u;
+    machine.cpu.next_pc = 4u;
+    machine.cop0_status = 0u;
+    for (unsigned step = 0u; step < 6u; ++step)
+        assert(psx_machine_step(&machine));
+    assert(psx_irq_read_stat(&machine.irq) == (1u << 1u));
+    assert(psx_cpu_read_gpr(&machine.cpu, 10u) == 0u);
+
     free(vram);
     free(bios);
     free(ram);
