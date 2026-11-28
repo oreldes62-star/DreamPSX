@@ -51,6 +51,7 @@ static uint16_t run_timer1_mode(PsxMachine *machine, unsigned sync_mode,
 }
 
 static uint16_t run_timer0_active_dot_ticks(PsxMachine *machine,
+                                                  uint32_t horizontal_range,
                                                   bool chunked)
 {
     uint16_t counter = 0u;
@@ -125,8 +126,14 @@ int main(void)
      * mode 0. GP1(06h)'s default [512,3072) interval is 2560 video
      * clocks, or exactly 320 dots in 320-pixel mode (divider 8).
      */
-    assert(run_timer0_active_dot_ticks(&machine, false) == 320u);
-    assert(run_timer0_active_dot_ticks(&machine, true) == 320u);
+    assert(run_timer0_active_dot_ticks(&machine, 0u, false) == 320u);
+    assert(run_timer0_active_dot_ticks(&machine, 0u, true) == 320u);
+
+    /* A custom [1024,2048) display interval is 1024 video clocks,
+     * therefore 128 Timer 0 dots in 320-pixel mode.
+     */
+    assert(run_timer0_active_dot_ticks(&machine, 0x06080400u, false) == 128u);
+    assert(run_timer0_active_dot_ticks(&machine, 0x06080400u, true) == 128u);
 
     /* Every tested mode must be invariant to how master-clock cycles are
      * batched around the raster's scanline boundaries. */
