@@ -70,7 +70,7 @@ bool psx_timers_write16(PsxTimers *timers, uint32_t address,
         timer->counter = 0u;
         timer->mode = (uint16_t)(value & 0x03ffu);
         timer->irq_fired = false;
-        timer->sync_signal_active = false;
+        /* The external blanking signal is independent of MODE writes. */
         timer->sync_started = false;
     } else {
         timer->target = value;
