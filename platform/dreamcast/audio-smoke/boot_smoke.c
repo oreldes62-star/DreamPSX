@@ -13,7 +13,6 @@
 
 #define PSX_BIOS_PATH "/cd/PSX/BIOS.BIN"
 #define PSX_CUE_PATH  "/cd/PSX/GAME.CUE"
-#define PS1_CYCLES_PER_MILLISECOND 33869u
 #define PS1_RAM_VRAM_PIXELS (1024u * 512u)
 
 static PsxMachine machine;
@@ -71,8 +70,9 @@ static void shutdown_audio(void)
 int main(int argc, char **argv)
 {
     PsxBootConfig boot_config;
+    PsxGpuDisplay display;
+    uint64_t emulated_frame;
     uint32_t report_counter = 0u;
-    uint32_t video_frame_divider = 0u;
 
     (void)argc;
     (void)argv;
@@ -122,14 +122,21 @@ int main(int argc, char **argv)
         psx_kos_disc_file_close(&disc_file, &disc);
         return 1;
     }
-    printf("Dreamcast video output: 320x240 RGB565\n");
+    printf("Dreamcast video output: 320x240 RGB565, double-buffered\n");
 
-    /* Execute approximately one millisecond of PS1 master-clock cycles per
-       loop. The machine clock schedules SPU samples and CD-ROM events. */
+    if (!psx_gpu_get_display(&machine.gpu, &display)) {
+        printf("ERROR: cannot read initial PS1 GPU display state\n");
+        shutdown_audio();
+        psx_kos_disc_file_close(&disc_file, &disc);
+        return 1;
+    }
+    emulated_frame = display.video_frame_counter;
+
+    /* Run the PS1 CPU until its raster scheduler completes one emulated
+       frame. The Dreamcast VBlank paces presentation without an unrelated
+       millisecond sleep or fixed frame-divider. */
     for (;;) {
-        uint32_t elapsed_cycles = 0u;
-
-        while (elapsed_cycles < PS1_CYCLES_PER_MILLISECOND) {
+        do {
             if (!psx_machine_step(&machine)) {
                 printf("ERROR: PS1 CPU execution stopped at 0x%08lx\n",
                        (unsigned long)machine.cpu.pc);
@@ -137,8 +144,15 @@ int main(int argc, char **argv)
                 psx_kos_disc_file_close(&disc_file, &disc);
                 return 1;
             }
-            elapsed_cycles += psx_cpu_last_step_cycles(&machine.cpu);
-        }
+            if (!psx_gpu_get_display(&machine.gpu, &display)) {
+                printf("ERROR: cannot read PS1 GPU display state\n");
+                shutdown_audio();
+                psx_kos_disc_file_close(&disc_file, &disc);
+                return 1;
+            }
+        } while (display.video_frame_counter == emulated_frame);
+
+        emulated_frame = display.video_frame_counter;
 
         {
             PsxKosInputState input_state;
@@ -159,25 +173,20 @@ int main(int argc, char **argv)
             return 1;
         }
 
-        if (++video_frame_divider >= 16u) {
-            PsxGpuDisplay display;
-            video_frame_divider = 0u;
-            if (psx_gpu_get_display(&machine.gpu, &display) &&
-                !display.disabled &&
-                !psx_kos_video_backend_present(&video_backend, &machine.gpu)) {
-                printf("ERROR: GPU framebuffer presentation failed\n");
-                shutdown_audio();
-                psx_kos_disc_file_close(&disc_file, &disc);
-                return 1;
-            }
+        if (!display.disabled &&
+            !psx_kos_video_backend_present(&video_backend, &machine.gpu)) {
+            printf("ERROR: GPU framebuffer presentation failed\n");
+            shutdown_audio();
+            psx_kos_disc_file_close(&disc_file, &disc);
+            return 1;
         }
 
         if (++report_counter >= 1000u) {
-            printf("RUNNING: PC=0x%08lx audio-callbacks=%llu\n",
+            printf("RUNNING: PC=0x%08lx frame=%llu audio-callbacks=%llu\n",
                    (unsigned long)machine.cpu.pc,
+                   (unsigned long long)emulated_frame,
                    (unsigned long long)audio_stream.callback_count);
             report_counter = 0u;
         }
-        thd_sleep(1);
     }
 }
