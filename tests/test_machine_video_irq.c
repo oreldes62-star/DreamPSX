@@ -919,6 +919,28 @@ int main(void)
     assert(psx_irq_read_stat(&machine.irq) == (1u << 1u));
     assert(psx_cpu_read_gpr(&machine.cpu, 10u) == 0u);
 
+    /* Guest byte stores to both I_MASK lanes must merge rather than
+     * overwrite the other byte. LBU verifies each lane through the CPU bus. */
+    psx_machine_reset(&machine);
+    assert(psx_bus_write32(&machine.bus, 0u, 0x3c081f80u)); /* LUI t0,1f80 */
+    assert(psx_bus_write32(&machine.bus, 4u, 0x35081074u)); /* ORI t0,t0,1074 */
+    assert(psx_bus_write32(&machine.bus, 8u, 0x24090012u)); /* ADDIU t1,zero,12 */
+    assert(psx_bus_write32(&machine.bus, 12u, 0xa1090000u)); /* SB low byte */
+    assert(psx_bus_write32(&machine.bus, 16u, 0x910a0000u)); /* LBU t2,low */
+    assert(psx_bus_write32(&machine.bus, 20u, 0x00000000u)); /* load delay */
+    assert(psx_bus_write32(&machine.bus, 24u, 0x240b0004u)); /* ADDIU t3,zero,4 */
+    assert(psx_bus_write32(&machine.bus, 28u, 0xa10b0001u)); /* SB high byte */
+    assert(psx_bus_write32(&machine.bus, 32u, 0x910c0001u)); /* LBU t4,high */
+    assert(psx_bus_write32(&machine.bus, 36u, 0x00000000u)); /* load delay */
+    machine.cpu.pc = 0u;
+    machine.cpu.next_pc = 4u;
+    machine.cop0_status = 0u;
+    for (unsigned step = 0u; step < 10u; ++step)
+        assert(psx_machine_step(&machine));
+    assert(psx_cpu_read_gpr(&machine.cpu, 10u) == 0x12u);
+    assert(psx_cpu_read_gpr(&machine.cpu, 12u) == 0x04u);
+    assert(psx_irq_read_mask(&machine.irq) == 0x0412u);
+
     free(vram);
     free(bios);
     free(ram);
