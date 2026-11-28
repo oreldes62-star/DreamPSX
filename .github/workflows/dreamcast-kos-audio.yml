@@ -16,8 +16,12 @@ on:
     paths:
       - "platform/dreamcast/**"
       - "src/audio/**"
+      - "src/bus/**"
       - "src/platform/dreamcast/**"
+      - "src/media/**"
       - "include/dreampsx/**"
+      - "tests/**"
+      - "CMakeLists.txt"
       - ".github/workflows/dreamcast-kos-audio.yml"
   workflow_dispatch:
 
@@ -28,6 +32,12 @@ jobs:
     steps:
       - name: Check out DreamPSX
         uses: actions/checkout@v4
+
+      - name: Run host regression suite
+        run: |
+          cmake -S . -B build
+          cmake --build build --parallel 2
+          ctest --test-dir build --output-on-failure
 
       - name: Check out pinned KallistiOS source
         uses: actions/checkout@v4
