@@ -96,6 +96,9 @@ int main(void)
     assert(machine.gpu.display.video_vblank);
 
     /* PAL uses its own line cadence and likewise survives split intervals. */
+    psx_gpu_reset(&machine.gpu);
+    assert(psx_gpu_gp1_write(&machine.gpu,
+        0x07000000u | (256u << 10u) | 16u));
     assert(psx_gpu_gp1_write(&machine.gpu, 0x08000008u));
     machine.gpu_scanline_cycle_phase = 0u;
     assert(psx_machine_advance_system_cycles(&machine, 2156u));
