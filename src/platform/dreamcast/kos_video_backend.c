@@ -10,10 +10,16 @@ bool psx_kos_video_backend_start(PsxKosVideoBackend *backend)
     if (!backend) return false;
 
     memset(backend, 0, sizeof(*backend));
-    vid_set_mode(DM_320x240, PM_RGB565);
+    /* KOS multibuffering makes vram_s the backbuffer. vid_flip(-1)
+       publishes it and advances vram_s to the next drawing buffer. */
+    vid_set_mode(DM_320x240 | DM_MULTIBUFFER, PM_RGB565);
     vid_set_dithering(false);
     if (!vram_s) return false;
 
+    /* Initialize both buffers so the first flip cannot expose stale VRAM. */
+    vid_clear(0u, 0u, 0u);
+    vid_waitvbl();
+    vid_flip(-1);
     vid_clear(0u, 0u, 0u);
     backend->initialized = true;
     return true;
@@ -49,7 +55,7 @@ bool psx_kos_video_backend_present(PsxKosVideoBackend *backend,
     if (!framebuffer) return false;
 
     /* Nearest-neighbour scaling keeps the frontend deterministic and avoids
-       floating-point work on the SH-4. */
+       floating-point work on the SH-4. Draw only into the non-visible buffer. */
     for (unsigned y = 0u; y < PSX_KOS_VIDEO_HEIGHT; ++y) {
         const unsigned source_y =
             (unsigned)(((uint64_t)y * source_height) /
@@ -63,7 +69,10 @@ bool psx_kos_video_backend_present(PsxKosVideoBackend *backend,
         }
     }
 
+    /* Switch only during vertical blank; KOS then points vram_s at the
+       alternate backbuffer for the next frame. */
     vid_waitvbl();
+    vid_flip(-1);
     ++backend->presented_frames;
     return true;
 }
