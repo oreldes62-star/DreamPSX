@@ -583,6 +583,7 @@ int main(void)
             PSX_TIMER_BASE_ADDR, &bulk_counter));
         bulk_irq = psx_irq_read_stat(&machine.irq);
         bulk_mode = machine.timers.timer[0].mode;
+        fprintf(stderr, "Timer0 target regression counter=%u\\n", (unsigned)bulk_counter);
         assert(bulk_counter == 2u);
         assert((bulk_irq & (1u << 4u)) != 0u);
         assert((bulk_mode & PSX_TIMER_MODE_REACHED_TARGET) != 0u);
