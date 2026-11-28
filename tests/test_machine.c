@@ -56,25 +56,33 @@ int main(void)
         const uint32_t total_cycles = 2148u * 5u + 123u;
         const uint32_t chunks[] = {17u, 1000u, 3001u, 2048u, 3000u, 2100u};
         uint32_t expected_counter;
+        uint16_t expected_irq_status;
         uint32_t remaining = total_cycles;
         uint16_t counter = 0u;
+        const uint16_t timer1_mode =
+            (uint16_t)((1u << PSX_TIMER_MODE_CLOCK_SHIFT) |
+                       PSX_TIMER_MODE_IRQ_TARGET);
 
         psx_machine_reset(&machine);
         assert(psx_gpu_gp1_write(&machine.gpu, 0x08000000u));
         assert(psx_timers_write16(&machine.timers,
-            PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE + 4u,
-            (uint16_t)(1u << PSX_TIMER_MODE_CLOCK_SHIFT)));
+            PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE + 8u, 3u));
+        assert(psx_timers_write16(&machine.timers,
+            PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE + 4u, timer1_mode));
         assert(psx_machine_advance_system_cycles(&machine, total_cycles));
         assert(psx_timers_read16(&machine.timers,
             PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE, &counter));
         expected_counter = counter;
+        expected_irq_status = psx_irq_read_stat(&machine.irq);
         assert(expected_counter == 5u);
+        assert((expected_irq_status & (1u << 5u)) != 0u);
 
         psx_machine_reset(&machine);
         assert(psx_gpu_gp1_write(&machine.gpu, 0x08000000u));
         assert(psx_timers_write16(&machine.timers,
-            PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE + 4u,
-            (uint16_t)(1u << PSX_TIMER_MODE_CLOCK_SHIFT)));
+            PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE + 8u, 3u));
+        assert(psx_timers_write16(&machine.timers,
+            PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE + 4u, timer1_mode));
         for (unsigned i = 0u; i < sizeof(chunks) / sizeof(chunks[0]); ++i) {
             const uint32_t step = chunks[i] < remaining ? chunks[i] : remaining;
             if (step != 0u) {
@@ -87,6 +95,8 @@ int main(void)
         assert(psx_timers_read16(&machine.timers,
             PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE, &counter));
         assert(counter == expected_counter);
+        assert(psx_irq_read_stat(&machine.irq) == expected_irq_status);
+        assert((expected_irq_status & (1u << 5u)) != 0u);
     }
     psx_machine_reset(&machine);
     /* SPU output cadence is clocked at 44.1 kHz: 768 master cycles/frame. */
