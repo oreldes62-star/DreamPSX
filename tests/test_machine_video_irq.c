@@ -108,6 +108,32 @@ int main(void)
     assert(machine.gpu.display.video_scanline == 1u);
     assert(machine.gpu_scanline_cycle_phase == 0u);
 
+    /* Raster advancement must be independent of how the caller batches
+     * master-clock cycles, including intervals spanning many scanlines.
+     */
+    {
+        const uint32_t total_cycles = 2148u * 1000u + 123u;
+        unsigned expected_scanline;
+        uint32_t expected_phase;
+
+        psx_gpu_reset(&machine.gpu);
+        assert(psx_gpu_gp1_write(&machine.gpu, 0x08000000u));
+        machine.gpu_scanline_cycle_phase = 0u;
+        assert(psx_machine_advance_system_cycles(&machine, total_cycles));
+        expected_scanline = machine.gpu.display.video_scanline;
+        expected_phase = machine.gpu_scanline_cycle_phase;
+
+        psx_gpu_reset(&machine.gpu);
+        machine.gpu_scanline_cycle_phase = 0u;
+        assert(psx_machine_advance_system_cycles(&machine, 2148u * 333u + 1u));
+        assert(psx_machine_advance_system_cycles(&machine, 2148u * 400u + 77u));
+        assert(psx_machine_advance_system_cycles(
+            &machine, total_cycles - (2148u * 333u + 1u) -
+                      (2148u * 400u + 77u)));
+        assert(machine.gpu.display.video_scanline == expected_scanline);
+        assert(machine.gpu_scanline_cycle_phase == expected_phase);
+    }
+
     /* Interlaced 480-line NTSC output alternates 262/263-line fields.
      * A displayed frame completes only after the odd field returns to even.
      */
