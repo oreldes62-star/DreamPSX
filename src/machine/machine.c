@@ -113,6 +113,7 @@ void psx_machine_reset(PsxMachine *machine)
     psx_sio_reset(&machine->sio);
     psx_audio_buffer_reset(&machine->audio_output);
     machine->timer2_div8_phase = 0u;
+    machine->gpu_scanline_cycle_phase = 0u;
     machine->cdrom_sector_cycle_phase = 0u;
     machine->spu_audio_cycle_phase = 0u;
     machine->cop0_status = 0u;
@@ -172,6 +173,27 @@ bool psx_machine_timer_advance_clock(PsxMachine *machine, unsigned timer,
 bool psx_machine_advance_system_cycles(PsxMachine *machine, uint32_t cycles)
 {
     if (!machine) return false;
+
+    /* The GPU raster shares the CPU master-clock domain. These integer
+     * line periods are a first-order PAL/NTSC approximation; horizontal
+     * dot timing and half-line interlace phase remain future refinements.
+     * Retaining the remainder makes cycle batching deterministic.
+     */
+    {
+        PsxGpuDisplayModeInfo mode;
+        const uint32_t line_cycles =
+            psx_gpu_get_display_mode_info(&machine->gpu, &mode) && mode.pal ?
+            2157u : 2148u;
+        uint64_t phase = (uint64_t)machine->gpu_scanline_cycle_phase +
+                         (uint64_t)cycles;
+        while (phase >= line_cycles) {
+            PsxGpuVideoState video;
+            phase -= line_cycles;
+            if (!psx_machine_video_advance_scanline(machine, &video))
+                return false;
+        }
+        machine->gpu_scanline_cycle_phase = (uint32_t)phase;
+    }
 
     /* SIO serial transfers share the PS1 master-clock domain. */
     psx_sio_advance_cycles(&machine->sio, cycles);
