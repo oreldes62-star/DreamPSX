@@ -22,6 +22,7 @@ int main(void)
                         PSX_GPU_VRAM_WIDTH * PSX_GPU_VRAM_HEIGHT));
     assert(psx_gpu_get_display_mode_info(&gpu, &info));
     assert(info.width == 256u && info.height == 240u);
+    assert(info.dot_clock_divisor == 10u);
     assert(!info.pal && !info.color_24bit);
     assert(!info.interlaced && !info.reverse);
     assert(info.range_valid && info.range_width == 256u &&
@@ -79,21 +80,25 @@ int main(void)
     set_range(&gpu, 100u, 2644u, 20u, 260u);
     assert(psx_gpu_get_display_mode_info(&gpu, &info));
     assert(info.range_width == 320u && info.range_height == 240u);
+    assert(info.dot_clock_divisor == 8u);
 
     assert(psx_gpu_gp1_write(&gpu, 0x08000002u)); /* 512, /5 */
     set_range(&gpu, 100u, 2650u, 30u, 270u);
     assert(psx_gpu_get_display_mode_info(&gpu, &info));
     assert(info.range_width == 512u && info.range_height == 240u);
+    assert(info.dot_clock_divisor == 5u);
 
     assert(psx_gpu_gp1_write(&gpu, 0x08000003u)); /* 640, /4 */
     set_range(&gpu, 100u, 2652u, 40u, 280u);
     assert(psx_gpu_get_display_mode_info(&gpu, &info));
     assert(info.range_width == 640u && info.range_height == 240u);
+    assert(info.dot_clock_divisor == 4u);
 
     assert(psx_gpu_gp1_write(&gpu, 0x08000040u)); /* 368, /7 */
     set_range(&gpu, 100u, 2662u, 50u, 530u);
     assert(psx_gpu_get_display_mode_info(&gpu, &info));
     assert(info.range_width == 368u && info.range_height == 480u);
+    assert(info.dot_clock_divisor == 7u);
 
     /* Overscan is preserved; reversed or empty ranges are reported invalid. */
     set_range(&gpu, 100u, 2740u, 10u, 270u);
