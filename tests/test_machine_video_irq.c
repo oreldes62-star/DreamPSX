@@ -841,6 +841,7 @@ int main(void)
     /* Guest SW to I_STAT clears only Timer0 (write-zero-to-clear); GPU IRQ1
      * must remain pending and visible to a guest LW of the same register. */
     psx_machine_reset(&machine);
+    psx_irq_write_mask(&machine.irq, 0x0012u);
     assert(psx_gpu_gp0_write(&machine.gpu, 0x1f000000u));
     assert(psx_timers_write16(&machine.timers,
         PSX_TIMER_BASE_ADDR + 8u, 1u));
