@@ -494,6 +494,27 @@ int main(void)
     assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) != 0u);
     assert(psx_machine_interrupt_eligible(&machine));
 
+
+    /* A guest LW of Timer0 MODE must observe the latched reached-target
+     * flag, then clear that read-to-clear flag in the peripheral. */
+    psx_machine_reset(&machine);
+    assert(psx_bus_write16(&machine.bus, PSX_TIMER_BASE_ADDR + 8u, 1u));
+    assert(psx_machine_timer_advance_clock(&machine, 0u,
+        PSX_TIMER_CLOCK_SYSTEM, 1u));
+    assert((machine.timers.timer[0].mode &
+            PSX_TIMER_MODE_REACHED_TARGET) != 0u);
+    assert(psx_bus_write32(&machine.bus, 0u, 0x3c081f80u)); /* LUI t0,1f80 */
+    assert(psx_bus_write32(&machine.bus, 4u, 0x35081104u)); /* ORI t0,t0,1104 */
+    assert(psx_bus_write32(&machine.bus, 8u, 0x8d090000u)); /* LW t1,0(t0) */
+    machine.cpu.pc = 0u;
+    machine.cpu.next_pc = 4u;
+    for (unsigned i = 0u; i < 3u; ++i)
+        assert(psx_machine_step(&machine));
+    assert((psx_cpu_read_gpr(&machine.cpu, 9u) &
+            PSX_TIMER_MODE_REACHED_TARGET) != 0u);
+    assert((machine.timers.timer[0].mode &
+            PSX_TIMER_MODE_REACHED_TARGET) == 0u);
+
     free(vram);
     free(bios);
     free(ram);
