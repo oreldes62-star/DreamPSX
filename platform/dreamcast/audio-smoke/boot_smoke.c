@@ -144,14 +144,14 @@ int main(int argc, char **argv)
                 psx_kos_disc_file_close(&disc_file, &disc);
                 return 1;
             }
-            if (!psx_gpu_get_display(&machine.gpu, &display)) {
-                printf("ERROR: cannot read PS1 GPU display state\n");
-                shutdown_audio();
-                psx_kos_disc_file_close(&disc_file, &disc);
-                return 1;
-            }
-        } while (display.video_frame_counter == emulated_frame);
+        } while (machine.gpu.display.video_frame_counter == emulated_frame);
 
+        if (!psx_gpu_get_display(&machine.gpu, &display)) {
+            printf("ERROR: cannot read PS1 GPU display state\n");
+            shutdown_audio();
+            psx_kos_disc_file_close(&disc_file, &disc);
+            return 1;
+        }
         emulated_frame = display.video_frame_counter;
 
         {
