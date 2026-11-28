@@ -196,8 +196,8 @@ static bool psx_machine_advance_raster_timers(PsxMachine *machine,
         machine->timer0_dot_divisor = mode_valid ? mode.dot_clock_divisor : 10u;
     }
     const uint32_t line_cycles = mode_valid && mode.pal ? 2157u : 2148u;
-    const uint32_t h_start = mode_valid ? mode.horizontal_start : 0x200u;
-    const uint32_t h_end = mode_valid ? mode.horizontal_end : 0xc00u;
+    const uint32_t h_start = machine->gpu.display.horizontal_start;
+    const uint32_t h_end = machine->gpu.display.horizontal_end;
     uint32_t h_start_cycle = (uint32_t)(
         ((uint64_t)h_start * line_cycles) / 3413u);
     uint32_t h_end_cycle = (uint32_t)(
