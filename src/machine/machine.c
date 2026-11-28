@@ -187,7 +187,7 @@ bool psx_machine_cdrom_advance_sector(PsxMachine *machine)
  */
 static uint32_t psx_machine_video_position_to_cpu_cycles(
     uint32_t video_position, uint32_t line_cycles,
-    uint32_t line_video_clocks, uint32_t video_clock_numerator,
+    uint32_t video_clock_numerator,
     uint32_t line_start_phase)
 {
     const uint64_t required = (uint64_t)video_position * 451584u;
@@ -260,13 +260,11 @@ static bool psx_machine_advance_raster_timers(PsxMachine *machine,
         const uint32_t next_line_cycle_remainder = line_cycle_fraction;
         uint32_t h_start_cycle =
             psx_machine_video_position_to_cpu_cycles(
-                h_start, line_cycles, line_video_clocks,
-                video_clock_numerator,
+                h_start, line_cycles, video_clock_numerator,
                 machine->gpu_scanline_video_clock_phase);
         uint32_t h_end_cycle =
             psx_machine_video_position_to_cpu_cycles(
-                h_end, line_cycles, line_video_clocks,
-                video_clock_numerator,
+                h_end, line_cycles, video_clock_numerator,
                 machine->gpu_scanline_video_clock_phase);
         if (h_start_cycle > line_cycles) h_start_cycle = line_cycles;
         if (h_end_cycle > line_cycles) h_end_cycle = line_cycles;
