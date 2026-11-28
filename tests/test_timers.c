@@ -114,7 +114,7 @@ int main(void)
     assert(psx_timers_write16(&timers, PSX_TIMER_BASE_ADDR + 4u,
         (uint16_t)(PSX_TIMER_MODE_SYNC_ENABLE |
                    (0u << PSX_TIMER_MODE_SYNC_SHIFT))));
-    assert(!timers.timer[0].sync_signal_active);
+    assert(timers.timer[0].sync_signal_active);
     assert(!timers.timer[0].sync_started);
     assert(psx_timers_advance_clock(&timers, 0u, PSX_TIMER_CLOCK_SYSTEM,
                                     3u, &irq));
