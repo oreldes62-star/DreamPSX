@@ -85,6 +85,7 @@ bool psx_machine_init(PsxMachine *machine,
     if (!psx_dma_init(&machine->dma)) return false;
     if (!psx_cdrom_init(&machine->cdrom)) return false;
     if (!psx_spu_init(&machine->spu)) return false;
+    if (!psx_sio_init(&machine->sio)) return false;
     if (!psx_audio_buffer_init(&machine->audio_output)) return false;
     psx_machine_reset(machine);
     if (!psx_bus_init(&machine->bus, &machine->memory, &machine->irq,
@@ -93,6 +94,7 @@ bool psx_machine_init(PsxMachine *machine,
     psx_bus_attach_dma(&machine->bus, &machine->dma);
     psx_bus_attach_cdrom(&machine->bus, &machine->cdrom);
     machine->bus.spu = &machine->spu;
+    psx_bus_attach_sio(&machine->bus, &machine->sio);
     return true;
 }
 
