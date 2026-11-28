@@ -55,6 +55,43 @@ int main(void)
     assert(psx_timers_advance_clock(&timers, 0u, PSX_TIMER_CLOCK_DOT,
                                     2u, &irq));
     assert(irq == 0u); /* one-shot IRQ */
+    /* Repeat mode must emit a fresh IRQ for every target match, including
+     * matches separated by reset-at-target counter restarts.
+     */
+    psx_timers_reset(&timers);
+    irq = 0u;
+    assert(psx_timers_write16(&timers, PSX_TIMER_BASE_ADDR + 8u, 2u));
+    assert(psx_timers_write16(&timers, PSX_TIMER_BASE_ADDR + 4u,
+        (uint16_t)(PSX_TIMER_MODE_RESET_AT_TARGET |
+                   PSX_TIMER_MODE_IRQ_TARGET |
+                   PSX_TIMER_MODE_IRQ_REPEAT)));
+    assert(psx_timers_advance_clock(&timers, 0u, PSX_TIMER_CLOCK_SYSTEM,
+                                    5u, &irq));
+    assert(irq == 1u);
+    assert(timers.timer[0].counter == 1u);
+    irq = 0u;
+    assert(psx_timers_advance_clock(&timers, 0u, PSX_TIMER_CLOCK_SYSTEM,
+                                    1u, &irq));
+    assert(irq == 1u);
+    assert(timers.timer[0].counter == 0u);
+
+    /* Overflow IRQ is generated on the 0xffff -> 0 transition, not on
+     * an ordinary target match, and one-shot mode suppresses repeats.
+     */
+    psx_timers_reset(&timers);
+    irq = 0u;
+    assert(psx_timers_write16(&timers, PSX_TIMER_BASE_ADDR, 0xfffeu));
+    assert(psx_timers_write16(&timers, PSX_TIMER_BASE_ADDR + 4u,
+                              PSX_TIMER_MODE_IRQ_OVERFLOW));
+    assert(psx_timers_advance_clock(&timers, 0u, PSX_TIMER_CLOCK_SYSTEM,
+                                    2u, &irq));
+    assert(irq == 1u);
+    assert(timers.timer[0].counter == 0u);
+    irq = 0u;
+    assert(psx_timers_advance_clock(&timers, 0u, PSX_TIMER_CLOCK_SYSTEM,
+                                    2u, &irq));
+    assert(irq == 0u);
+
     /* Sync mode 0 pauses the system clock during blanking. */
     psx_timers_reset(&timers);
     assert(psx_timers_write16(&timers, PSX_TIMER_BASE_ADDR + 4u,
