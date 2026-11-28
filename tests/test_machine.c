@@ -602,8 +602,8 @@ int main(void)
 
     /* Timer 0 target IRQ/reset behavior must remain deterministic when
      * master-clock batches straddle HBlank boundaries. The target is reached
-     * five clocks after each HBlank reset; after the second line and seven
-     * more clocks, the counter must therefore read three and IRQ4 be pending.
+     * five clocks after each HBlank reset; 222 clocks after the second
+     * reset, the counter must read two and IRQ4 must be pending.
      */
     {
         const uint16_t mode = (uint16_t)(
@@ -627,7 +627,7 @@ int main(void)
             PSX_TIMER_BASE_ADDR, &bulk_counter));
         bulk_irq = psx_irq_read_stat(&machine.irq);
         bulk_mode = machine.timers.timer[0].mode;
-        assert(bulk_counter == 3u);
+        assert(bulk_counter == 2u);
         assert((bulk_irq & (1u << 4u)) != 0u);
         assert((bulk_mode & PSX_TIMER_MODE_REACHED_TARGET) != 0u);
 
