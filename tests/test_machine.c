@@ -89,6 +89,51 @@ int main(void)
         }
     }
 
+    /* Long-run Timer 0 dot-clock phase must remain exact in both
+     * emulated video-clock modes, independent of CPU-cycle batching.
+     */
+    {
+        static const unsigned modes[] = {0u, 8u}; /* NTSC 256, PAL 256 */
+        const uint32_t total_cycles = 1000003u;
+        for (size_t i = 0u; i < sizeof(modes) / sizeof(modes[0]); ++i) {
+            uint16_t bulk_counter = 0u;
+            uint32_t bulk_dot_phase = 0u;
+            uint32_t bulk_video_phase = 0u;
+
+            psx_machine_reset(&machine);
+            assert(psx_gpu_gp1_write(&machine.gpu, 0x08000000u | modes[i]));
+            assert(psx_timers_write16(&machine.timers,
+                PSX_TIMER_BASE_ADDR + 4u,
+                (uint16_t)(1u << PSX_TIMER_MODE_CLOCK_SHIFT)));
+            assert(psx_machine_advance_system_cycles(&machine, total_cycles));
+            assert(psx_timers_read16(&machine.timers,
+                PSX_TIMER_BASE_ADDR, &bulk_counter));
+            bulk_dot_phase = machine.timer0_dot_phase;
+            bulk_video_phase = machine.gpu_video_clock_phase;
+
+            psx_machine_reset(&machine);
+            assert(psx_gpu_gp1_write(&machine.gpu, 0x08000000u | modes[i]));
+            assert(psx_timers_write16(&machine.timers,
+                PSX_TIMER_BASE_ADDR + 4u,
+                (uint16_t)(1u << PSX_TIMER_MODE_CLOCK_SHIFT)));
+            for (uint32_t elapsed = 0u; elapsed < total_cycles;) {
+                const uint32_t step =
+                    (total_cycles - elapsed > 9973u) ?
+                    9973u : total_cycles - elapsed;
+                assert(psx_machine_advance_system_cycles(&machine, step));
+                elapsed += step;
+            }
+            {
+                uint16_t chunk_counter = 0u;
+                assert(psx_timers_read16(&machine.timers,
+                    PSX_TIMER_BASE_ADDR, &chunk_counter));
+                assert(chunk_counter == bulk_counter);
+                assert(machine.timer0_dot_phase == bulk_dot_phase);
+                assert(machine.gpu_video_clock_phase == bulk_video_phase);
+            }
+        }
+    }
+
     /* Machine-level GPU raster timing must be invariant to cycle batching. */
     {
         const uint32_t total_cycles = 2148u * 3u + 517u;
