@@ -206,6 +206,52 @@ int main(void)
         assert(machine.timers.timer[0].counter == 10u);
     }
 
+    /* Timer 0 raster synchronization must be invariant to how the CPU
+     * batches elapsed master-clock cycles around HBlank boundaries.
+     */
+    {
+        const uint16_t mode = (uint16_t)(
+            PSX_TIMER_MODE_SYNC_ENABLE |
+            (1u << PSX_TIMER_MODE_SYNC_SHIFT));
+        const uint32_t chunks[] = {1u, 2147u, 2u, 2148u, 8u};
+        const uint32_t total_cycles = 2148u * 2u + 10u;
+        uint16_t bulk_counter = 0u;
+        uint16_t bulk_irq = 0u;
+        uint32_t bulk_phase;
+        uint32_t bulk_scanline;
+        uint32_t bulk_frames;
+
+        psx_machine_reset(&machine);
+        assert(psx_timers_write16(&machine.timers,
+            PSX_TIMER_BASE_ADDR + 4u, mode));
+        assert(psx_timers_write16(&machine.timers,
+            PSX_TIMER_BASE_ADDR, 77u));
+        assert(psx_machine_advance_system_cycles(&machine, total_cycles));
+        assert(psx_timers_read16(&machine.timers,
+            PSX_TIMER_BASE_ADDR, &bulk_counter));
+        bulk_irq = psx_irq_read_stat(&machine.irq);
+        bulk_phase = machine.gpu_scanline_cycle_phase;
+        bulk_scanline = machine.gpu.display.video_scanline;
+        bulk_frames = machine.gpu.display.video_frame_counter;
+
+        psx_machine_reset(&machine);
+        assert(psx_timers_write16(&machine.timers,
+            PSX_TIMER_BASE_ADDR + 4u, mode));
+        assert(psx_timers_write16(&machine.timers,
+            PSX_TIMER_BASE_ADDR, 77u));
+        for (size_t i = 0u; i < sizeof(chunks) / sizeof(chunks[0]); ++i)
+            assert(psx_machine_advance_system_cycles(&machine, chunks[i]));
+        assert(psx_timers_read16(&machine.timers,
+            PSX_TIMER_BASE_ADDR, &counter));
+        assert(counter == bulk_counter);
+        assert(psx_irq_read_stat(&machine.irq) == bulk_irq);
+        assert(machine.gpu_scanline_cycle_phase == bulk_phase);
+        assert(machine.gpu.display.video_scanline == bulk_scanline);
+        assert(machine.gpu.display.video_frame_counter == bulk_frames);
+        assert(machine.timers.timer[0].sync_started);
+        assert(!machine.timers.timer[0].sync_signal_active);
+    }
+
     psx_machine_reset(&machine);
     /* SPU output cadence is clocked at 44.1 kHz: 768 master cycles/frame. */
     {
