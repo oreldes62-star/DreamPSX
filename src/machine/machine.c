@@ -227,10 +227,17 @@ static bool psx_machine_advance_raster_timers(PsxMachine *machine,
         const uint64_t line_cycle_accumulated =
             (uint64_t)line_video_clocks * 451584u +
             machine->gpu_scanline_cycle_remainder;
-        const uint32_t line_cycles =
+        const uint32_t line_cycle_quotient =
             (uint32_t)(line_cycle_accumulated / video_clock_numerator);
-        const uint32_t next_line_cycle_remainder =
+        const uint32_t line_cycle_fraction =
             (uint32_t)(line_cycle_accumulated % video_clock_numerator);
+        /* Raster edges occur at the first CPU cycle that reaches the GPU
+         * line boundary. Carry the fractional remainder between lines.
+         */
+        const uint32_t line_cycles = line_cycle_quotient +
+            (line_cycle_fraction != 0u ? 1u : 0u) -
+            (machine->gpu_scanline_cycle_remainder != 0u ? 1u : 0u);
+        const uint32_t next_line_cycle_remainder = line_cycle_fraction;
         uint32_t h_start_cycle = (uint32_t)(
             ((uint64_t)h_start * line_cycles) / line_video_clocks);
         uint32_t h_end_cycle = (uint32_t)(
