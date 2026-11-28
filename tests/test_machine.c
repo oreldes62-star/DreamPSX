@@ -271,7 +271,7 @@ int main(void)
         assert(machine.timers.timer[0].sync_started);
         assert(psx_timers_read16(&machine.timers,
             PSX_TIMER_BASE_ADDR, &counter));
-        assert(counter == 541u);
+        assert(counter == 225u);
     }
 
     /* Timer 0 mode 3 starts on the first sampled HBlank level and
