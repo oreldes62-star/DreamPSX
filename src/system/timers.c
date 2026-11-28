@@ -108,10 +108,13 @@ static PsxTimerClock selected_clock(unsigned index, uint16_t mode)
 {
     const unsigned source = (mode >> PSX_TIMER_MODE_CLOCK_SHIFT) & 3u;
     if (index == 0u)
-        return source == 1u ? PSX_TIMER_CLOCK_DOT : PSX_TIMER_CLOCK_SYSTEM;
+        return (source & 1u) != 0u ?
+               PSX_TIMER_CLOCK_DOT : PSX_TIMER_CLOCK_SYSTEM;
     if (index == 1u)
-        return source == 1u ? PSX_TIMER_CLOCK_HBLANK : PSX_TIMER_CLOCK_SYSTEM;
-    return source == 1u ? PSX_TIMER_CLOCK_SYSTEM_DIV8 : PSX_TIMER_CLOCK_SYSTEM;
+        return (source & 1u) != 0u ?
+               PSX_TIMER_CLOCK_HBLANK : PSX_TIMER_CLOCK_SYSTEM;
+    return (source & 1u) != 0u ?
+           PSX_TIMER_CLOCK_SYSTEM_DIV8 : PSX_TIMER_CLOCK_SYSTEM;
 }
 
 bool psx_timers_set_sync_signal(PsxTimers *timers, unsigned index,
