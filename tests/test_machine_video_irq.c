@@ -434,6 +434,30 @@ int main(void)
     assert(!psx_machine_interrupt_eligible(&machine));
     assert(machine.cpu.pc == 24u);
 
+    /* A Timer0 event occurring in the CPU instruction's elapsed cycles is
+     * sampled only after that instruction retires, then accepted at the
+     * following instruction boundary. */
+    psx_machine_reset(&machine);
+    psx_irq_write_mask(&machine.irq, (uint16_t)(1u << 4u));
+    assert(psx_timers_write16(&machine.timers, 0x1f801108u, 1u));
+    assert(psx_timers_write16(&machine.timers, 0x1f801104u,
+        (uint16_t)(PSX_TIMER_MODE_IRQ_TARGET | PSX_TIMER_MODE_IRQ_REPEAT)));
+    assert(psx_bus_write32(&machine.bus, 0u, 0x240b002au)); /* ADDIU t3,zero,42 */
+    machine.cpu.pc = 0u;
+    machine.cpu.next_pc = 4u;
+    machine.cop0_status = PSX_COP0_STATUS_IEC | (1u << 10u);
+    assert(psx_machine_step(&machine));
+    assert(psx_cpu_read_gpr(&machine.cpu, 11u) == 42u);
+    assert(machine.cpu.pc == 4u);
+    assert((psx_irq_read_stat(&machine.irq) & (1u << 4u)) != 0u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) != 0u);
+    assert(psx_machine_interrupt_eligible(&machine));
+    assert(psx_machine_step(&machine)); /* IRQ accepted at next boundary */
+    assert(machine.cpu.pc == 0x80000080u);
+    assert(machine.cop0_epc == 4u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_BD) == 0u);
+    assert(psx_cpu_read_gpr(&machine.cpu, 11u) == 42u);
+
     free(vram);
     free(bios);
     free(ram);
