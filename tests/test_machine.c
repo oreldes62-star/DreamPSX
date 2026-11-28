@@ -57,7 +57,7 @@ int main(void)
         assert(machine.gpu_video_clock_phase == 429269u);
         assert(psx_timers_read16(&machine.timers,
             PSX_TIMER_BASE_ADDR, &counter));
-        assert(counter == 1u);
+        assert(counter == 2u); /* one dot tick before the mode switch, one after */
 
         /* All five supported horizontal modes feed their own dot divisor. */
         {
