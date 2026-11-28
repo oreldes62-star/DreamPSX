@@ -108,6 +108,40 @@ int main(void)
     assert(machine.gpu.display.video_scanline == 1u);
     assert(machine.gpu_scanline_cycle_phase == 0u);
 
+    /* Interlaced 480-line NTSC output alternates 262/263-line fields.
+     * A displayed frame completes only after the odd field returns to even.
+     */
+    psx_gpu_reset(&machine.gpu);
+    assert(psx_gpu_gp1_write(&machine.gpu, 0x08000024u));
+    assert(machine.gpu.display.video_frame_counter == 0u);
+    for (unsigned i = 0u; i < 262u; ++i)
+        assert(psx_gpu_video_advance_scanline(&machine.gpu, &video));
+    assert(video.field_started && video.field_odd);
+    assert(video.lines_per_field == 263u);
+    assert(video.frame_counter == 0u);
+    for (unsigned i = 0u; i < 262u; ++i)
+        assert(psx_gpu_video_advance_scanline(&machine.gpu, &video));
+    assert(!video.field_started && video.field_odd);
+    assert(video.frame_counter == 0u);
+    assert(psx_gpu_video_advance_scanline(&machine.gpu, &video));
+    assert(video.field_started && !video.field_odd);
+    assert(video.frame_started && video.frame_counter == 1u);
+    assert(video.lines_per_field == 262u);
+
+    /* PAL interlace uses 312/313-line fields with the same full-frame rule. */
+    psx_gpu_reset(&machine.gpu);
+    assert(psx_gpu_gp1_write(&machine.gpu, 0x0800002cu));
+    for (unsigned i = 0u; i < 312u; ++i)
+        assert(psx_gpu_video_advance_scanline(&machine.gpu, &video));
+    assert(video.field_started && video.field_odd);
+    assert(video.lines_per_field == 313u);
+    assert(video.frame_counter == 0u);
+    for (unsigned i = 0u; i < 313u; ++i)
+        assert(psx_gpu_video_advance_scanline(&machine.gpu, &video));
+    assert(video.field_started && !video.field_odd);
+    assert(video.frame_started && video.frame_counter == 1u);
+    assert(video.lines_per_field == 312u);
+
     /* GPU command IRQ1 reaches COP0 IP2 and is accepted at an instruction
      * boundary. Device acknowledge drops the source; I_STAT is separate. */
     psx_irq_write_mask(&machine.irq, (uint16_t)(1u << 1u));
