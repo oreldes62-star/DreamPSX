@@ -14,6 +14,7 @@ add_library(dreampsx_core STATIC
     src/bus/irq_mmio.c
     src/bus/memory.c
     src/bus/spu.c
+    src/bus/sio.c
     src/audio/spu_adpcm.c
     src/audio/audio_buffer.c
     src/audio/dreamcast_audio_stream.c
@@ -88,6 +89,7 @@ set(DREAMPSX_TESTS
     test_machine_boot
     test_memory
     test_spu
+    test_sio
     test_audio_buffer
     test_dreamcast_audio_stream
 )
