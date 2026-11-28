@@ -932,14 +932,19 @@ int main(void)
     assert(psx_bus_write32(&machine.bus, 28u, 0xa10b0001u)); /* SB high byte */
     assert(psx_bus_write32(&machine.bus, 32u, 0x910c0001u)); /* LBU t4,high */
     assert(psx_bus_write32(&machine.bus, 36u, 0x00000000u)); /* load delay */
+    assert(psx_bus_write32(&machine.bus, 40u, 0x24090000u)); /* clear low value */
+    assert(psx_bus_write32(&machine.bus, 44u, 0xa1090000u)); /* SB low byte */
+    assert(psx_bus_write32(&machine.bus, 48u, 0x910d0001u)); /* LBU t5,high */
+    assert(psx_bus_write32(&machine.bus, 52u, 0x00000000u)); /* load delay */
     machine.cpu.pc = 0u;
     machine.cpu.next_pc = 4u;
     machine.cop0_status = 0u;
-    for (unsigned step = 0u; step < 10u; ++step)
+    for (unsigned step = 0u; step < 14u; ++step)
         assert(psx_machine_step(&machine));
     assert(psx_cpu_read_gpr(&machine.cpu, 10u) == 0x12u);
     assert(psx_cpu_read_gpr(&machine.cpu, 12u) == 0x04u);
-    assert(psx_irq_read_mask(&machine.irq) == 0x0412u);
+    assert(psx_cpu_read_gpr(&machine.cpu, 13u) == 0x04u);
+    assert(psx_irq_read_mask(&machine.irq) == 0x0400u);
 
     free(vram);
     free(bios);
