@@ -64,12 +64,14 @@ static uint16_t run_timer0_active_dot_ticks(PsxMachine *machine,
         machine, pal ? PSX_VIDEO_CLOCK_PAL : PSX_VIDEO_CLOCK_NTSC));
     psx_machine_reset(machine);
     assert(psx_gpu_gp1_write(&machine->gpu, 0x08000001u));
+    if (horizontal_range != 0u)
+        assert(psx_gpu_gp1_write(&machine->gpu, horizontal_range));
     assert(psx_timers_write16(&machine->timers,
         PSX_TIMER_BASE_ADDR + 4u, mode));
 
     if (chunked) {
-        /* Split immediately around the default GP1(06h) HBlank edges:
-         * x1=512 video clocks (323 CPU cycles), x2=3072 (1938 cycles).
+        /* Split around the custom [1024,2048) GP1(06h) edges:
+         * NTSC: 646/1292 CPU cycles; PAL: 652/1304 CPU cycles.
          */
         const uint32_t ntsc_chunks[] = {645u, 1u, 645u, 1u, 861u};
         const uint32_t pal_chunks[] = {651u, 1u, 651u, 1u, 865u};
