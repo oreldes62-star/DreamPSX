@@ -277,7 +277,7 @@ int main(void)
     /* Timer 0 modes 0 and 2 must gate system-clock ticks over the
      * horizontal blanking interval, independent of CPU batch boundaries.
      * With the default GP1(06h) range, the modeled visible interval is
-     * 1612 cycles and the two blanking portions total 536 cycles per line.
+     * 1611 cycles and the two blanking portions total 537 cycles per line.
      */
     {
         const uint32_t chunks[] = {
@@ -288,7 +288,7 @@ int main(void)
             (uint16_t)(PSX_TIMER_MODE_SYNC_ENABLE |
                        (2u << PSX_TIMER_MODE_SYNC_SHIFT))
         };
-        const uint16_t expected[] = {3224u, 10u};
+        const uint16_t expected[] = {3222u, 10u};
 
         for (size_t mode_index = 0u; mode_index < 2u; ++mode_index) {
             uint16_t bulk_counter = 0u;
