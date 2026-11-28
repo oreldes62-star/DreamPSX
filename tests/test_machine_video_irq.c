@@ -136,10 +136,10 @@ int main(void)
         machine.gpu_scanline_cycle_phase = 0u;
         machine.gpu_scanline_cycle_remainder = 0u;
         assert(psx_machine_advance_system_cycles(&machine, 2153u * 333u + 1u));
-        assert(psx_machine_advance_system_cycles(&machine, 2148u * 400u + 77u));
+        assert(psx_machine_advance_system_cycles(&machine, 2153u * 400u + 77u));
         assert(psx_machine_advance_system_cycles(
-            &machine, total_cycles - (2148u * 333u + 1u) -
-                      (2148u * 400u + 77u)));
+            &machine, total_cycles - (2153u * 333u + 1u) -
+                      (2153u * 400u + 77u)));
         assert(machine.gpu.display.video_scanline == expected_scanline);
         assert(machine.gpu_scanline_cycle_phase == expected_phase);
     }
