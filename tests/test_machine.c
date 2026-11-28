@@ -216,6 +216,7 @@ int main(void)
         const uint32_t chunks[] = {1u, 2147u, 2u, 2148u, 8u};
         const uint32_t total_cycles = 2148u * 2u + 10u;
         uint16_t bulk_counter = 0u;
+        uint16_t chunk_counter = 0u;
         uint16_t bulk_irq = 0u;
         uint32_t bulk_phase;
         uint32_t bulk_scanline;
@@ -242,8 +243,8 @@ int main(void)
         for (size_t i = 0u; i < sizeof(chunks) / sizeof(chunks[0]); ++i)
             assert(psx_machine_advance_system_cycles(&machine, chunks[i]));
         assert(psx_timers_read16(&machine.timers,
-            PSX_TIMER_BASE_ADDR, &counter));
-        assert(counter == bulk_counter);
+            PSX_TIMER_BASE_ADDR, &chunk_counter));
+        assert(chunk_counter == bulk_counter);
         assert(psx_irq_read_stat(&machine.irq) == bulk_irq);
         assert(machine.gpu_scanline_cycle_phase == bulk_phase);
         assert(machine.gpu.display.video_scanline == bulk_scanline);
