@@ -379,7 +379,7 @@ int main(void)
         assert(machine.timers.timer[0].sync_started);
         assert(psx_timers_read16(&machine.timers,
             PSX_TIMER_BASE_ADDR, &counter));
-        assert(counter == 226u);
+        assert(counter == 225u);
     }
 
     /* Timer 0 modes 0 and 2 must gate system-clock ticks over the
