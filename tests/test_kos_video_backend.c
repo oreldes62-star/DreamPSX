@@ -98,6 +98,26 @@ int main(void)
     assert(framebuffer_a[PSX_KOS_VIDEO_WIDTH - 1u] == 0x07e0u);
     assert(vram_s == framebuffer_b);
 
+    /* 480i is presented as a bob-deinterlaced 240-line field. Each field
+       must select its own alternating VRAM rows, not blend the two fields. */
+    assert(psx_gpu_gp1_write(&gpu, 0x08000024u));
+    assert(psx_gpu_gp1_write(&gpu, 0x060c0200u));
+    assert(psx_gpu_gp1_write(&gpu, 0x07078000u));
+    for (unsigned x = 0u; x < 256u; ++x) {
+        psx_vram[x] = 0x001fu;                           /* even line 0: red */
+        psx_vram[PSX_GPU_VRAM_WIDTH + x] = 0x03e0u;     /* odd line 1: green */
+        psx_vram[2u * PSX_GPU_VRAM_WIDTH + x] = 0x7c00u;
+        psx_vram[3u * PSX_GPU_VRAM_WIDTH + x] = 0x7fffu;
+    }
+    assert(psx_gpu_set_display_field(&gpu, false));
+    assert(psx_kos_video_backend_present(&backend, &gpu));
+    assert(displayed_framebuffer[0] == 0xf800u);
+    assert(displayed_framebuffer[PSX_KOS_VIDEO_WIDTH] == 0x001fu);
+    assert(psx_gpu_set_display_field(&gpu, true));
+    assert(psx_kos_video_backend_present(&backend, &gpu));
+    assert(displayed_framebuffer[0] == 0x07e0u);
+    assert(displayed_framebuffer[PSX_KOS_VIDEO_WIDTH] == 0xffffu);
+
     assert(!psx_kos_video_backend_present(NULL, &gpu));
     assert(!psx_kos_video_backend_present(&backend, NULL));
 
