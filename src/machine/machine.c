@@ -218,7 +218,12 @@ bool psx_machine_advance_system_cycles(PsxMachine *machine, uint32_t cycles)
     /* SIO serial transfers share the PS1 master-clock domain. */
     psx_sio_advance_cycles(&machine->sio, cycles);
 
-    /* Timer 2 can select the master clock divided by eight. */
+    /* Timer 2 supports both the master clock and master clock /8. */
+    if (!psx_machine_timer_advance_clock(machine, 2u,
+                                         PSX_TIMER_CLOCK_SYSTEM, cycles))
+        return false;
+
+    /* Preserve Timer 2's fractional /8 clock phase across batches. */
     const uint64_t accumulated =
         (uint64_t)machine->timer2_div8_phase + (uint64_t)cycles;
     const uint32_t divided_ticks = (uint32_t)(accumulated / 8u);
