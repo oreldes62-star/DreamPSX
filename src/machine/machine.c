@@ -108,8 +108,14 @@ void psx_machine_reset(PsxMachine *machine)
     psx_gte_reset(&machine->gte);
     psx_gpu_reset(&machine->gpu);
     psx_timers_reset(&machine->timers);
-    /* The raster begins in horizontal blank before the first active line. */
+    /* Line zero is outside the default visible range, so initialize
+     * Timer 1's VBlank synchronization level from the GPU's actual state.
+     * The raster also begins in horizontal blank before the active display.
+     */
     machine->timers.timer[0].sync_signal_active = true;
+    if (!psx_timers_set_sync_signal(&machine->timers, 1u,
+                                    machine->gpu.display.video_vblank))
+        return;
     psx_dma_reset(&machine->dma);
     psx_cdrom_reset(&machine->cdrom);
     psx_spu_reset(&machine->spu);
@@ -234,6 +240,12 @@ static bool psx_machine_advance_raster_timers(PsxMachine *machine,
         machine->gpu_scanline_mode = current_mode;
         machine->timer0_dot_phase = 0u;
         machine->timer0_dot_divisor = mode_valid ? mode.dot_clock_divisor : 10u;
+        /* GP1(08h) resets the GPU's output scanline to zero. Reconcile
+         * Timer 1's external VBlank gate immediately, not one line later.
+         */
+        if (!psx_timers_set_sync_signal(
+                &machine->timers, 1u, machine->gpu.display.video_vblank))
+            return false;
     }
     const uint32_t video_clock_numerator =
         machine->gpu_video_clock_region == PSX_VIDEO_CLOCK_PAL ?
