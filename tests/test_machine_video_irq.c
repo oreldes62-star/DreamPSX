@@ -506,14 +506,36 @@ int main(void)
     assert(psx_bus_write32(&machine.bus, 0u, 0x3c081f80u)); /* LUI t0,1f80 */
     assert(psx_bus_write32(&machine.bus, 4u, 0x35081104u)); /* ORI t0,t0,1104 */
     assert(psx_bus_write32(&machine.bus, 8u, 0x8d090000u)); /* LW t1,0(t0) */
+    assert(psx_bus_write32(&machine.bus, 12u, 0x00000000u)); /* NOP: load delay */
     machine.cpu.pc = 0u;
     machine.cpu.next_pc = 4u;
-    for (unsigned i = 0u; i < 3u; ++i)
+    for (unsigned i = 0u; i < 4u; ++i)
         assert(psx_machine_step(&machine));
     assert((psx_cpu_read_gpr(&machine.cpu, 9u) &
             PSX_TIMER_MODE_REACHED_TARGET) != 0u);
     assert((machine.timers.timer[0].mode &
             PSX_TIMER_MODE_REACHED_TARGET) == 0u);
+
+    /* The same guest read path must clear OVERFLOW independently. */
+    psx_machine_reset(&machine);
+    assert(psx_bus_write16(&machine.bus, PSX_TIMER_BASE_ADDR, 0xffffu));
+    assert(psx_bus_write16(&machine.bus, PSX_TIMER_BASE_ADDR + 8u, 0x1234u));
+    assert(psx_machine_timer_advance_clock(&machine, 0u,
+        PSX_TIMER_CLOCK_SYSTEM, 1u));
+    assert((machine.timers.timer[0].mode &
+            PSX_TIMER_MODE_REACHED_OVERFLOW) != 0u);
+    assert(psx_bus_write32(&machine.bus, 0u, 0x3c081f80u)); /* LUI t0,1f80 */
+    assert(psx_bus_write32(&machine.bus, 4u, 0x35081104u)); /* ORI t0,t0,1104 */
+    assert(psx_bus_write32(&machine.bus, 8u, 0x8d090000u)); /* LW t1,0(t0) */
+    assert(psx_bus_write32(&machine.bus, 12u, 0x00000000u)); /* NOP */
+    machine.cpu.pc = 0u;
+    machine.cpu.next_pc = 4u;
+    for (unsigned i = 0u; i < 4u; ++i)
+        assert(psx_machine_step(&machine));
+    assert((psx_cpu_read_gpr(&machine.cpu, 9u) &
+            PSX_TIMER_MODE_REACHED_OVERFLOW) != 0u);
+    assert((machine.timers.timer[0].mode &
+            PSX_TIMER_MODE_REACHED_OVERFLOW) == 0u);
 
     free(vram);
     free(bios);
