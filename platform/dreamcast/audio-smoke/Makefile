@@ -27,7 +27,8 @@ CORE_SOURCES = \
     ../../../src/system/timers.c \
     ../../../src/platform/dreamcast/kos_audio_backend.c \
     ../../../src/platform/dreamcast/kos_disc_file.c \
-    ../../../src/platform/dreamcast/kos_video_backend.c
+    ../../../src/platform/dreamcast/kos_video_backend.c \
+    ../../../src/platform/dreamcast/kos_input_backend.c
 
 CORE_OBJECTS = $(CORE_SOURCES:.c=.o)
 
