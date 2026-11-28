@@ -361,6 +361,44 @@ int main(void)
         assert(counter == 15u);
     }
 
+    /* GP1(06h) positions are video-clock counts, not pixel or
+     * normalized line fractions. Verify the resulting visible interval
+     * against the exact rational CPU/GPU conversion in both regions.
+     */
+    {
+        static const PsxVideoClockRegion regions[] = {
+            PSX_VIDEO_CLOCK_NTSC, PSX_VIDEO_CLOCK_PAL
+        };
+        for (size_t i = 0u; i < sizeof(regions) / sizeof(regions[0]); ++i) {
+            const uint32_t numerator =
+                regions[i] == PSX_VIDEO_CLOCK_PAL ? 709379u : 715909u;
+            const uint32_t line_clocks =
+                regions[i] == PSX_VIDEO_CLOCK_PAL ? 3406u : 3413u;
+            const uint32_t line_cycles = (uint32_t)(
+                ((uint64_t)line_clocks * 451584u + numerator - 1u) /
+                numerator);
+            const uint32_t h_start_cycles = (uint32_t)(
+                ((uint64_t)1000u * 451584u + numerator - 1u) /
+                numerator);
+            const uint32_t h_end_cycles = (uint32_t)(
+                ((uint64_t)2000u * 451584u + numerator - 1u) /
+                numerator);
+            uint16_t counter = 0u;
+
+            psx_machine_reset(&machine);
+            assert(psx_machine_set_video_clock_region(&machine, regions[i]));
+            assert(psx_gpu_gp1_write(&machine.gpu,
+                0x06000000u | 1000u | (2000u << 12u)));
+            assert(psx_timers_write16(&machine.timers,
+                PSX_TIMER_BASE_ADDR + 4u, PSX_TIMER_MODE_SYNC_ENABLE));
+            assert(psx_machine_advance_system_cycles(&machine, line_cycles));
+            assert(psx_timers_read16(&machine.timers,
+                PSX_TIMER_BASE_ADDR, &counter));
+            assert(counter == h_end_cycles - h_start_cycles);
+            assert(machine.gpu_scanline_cycle_phase == 0u);
+        }
+    }
+
     /* Timer 0 mode 1 resets on the end-of-display HBlank edge, then
      * continues counting through blanking and the next visible interval.
      */
