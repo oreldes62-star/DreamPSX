@@ -114,6 +114,14 @@ int main(int argc, char **argv)
         return 1;
     }
 
+    if (!psx_kos_video_backend_start(&video_backend)) {
+        printf("ERROR: Dreamcast framebuffer initialization failed\n");
+        shutdown_audio();
+        psx_kos_disc_file_close(&disc_file, &disc);
+        return 1;
+    }
+    printf("Dreamcast video output: 320x240 RGB565\n");
+
     /* Execute approximately one millisecond of PS1 master-clock cycles per
        loop. The machine clock schedules SPU samples and CD-ROM events. */
     for (;;) {
@@ -137,7 +145,19 @@ int main(int argc, char **argv)
             return 1;
         }
 
-        if (++video_frame_divider >= 16u) {\n            PsxGpuDisplay display;\n            video_frame_divider = 0u;\n            if (psx_gpu_get_display(&machine.gpu, &display) &&\n                !display.disabled &&\n                !psx_kos_video_backend_present(&video_backend, &machine.gpu)) {\n                printf("ERROR: GPU framebuffer presentation failed\\n");\n                shutdown_audio();\n                psx_kos_disc_file_close(&disc_file, &disc);\n                return 1;\n            }\n        }\n\n        if (++report_counter >= 1000u) {
+        if (++video_frame_divider >= 16u) {
+            PsxGpuDisplay display;
+            video_frame_divider = 0u;
+            if (psx_gpu_get_display(&machine.gpu, &display) &&
+                !display.disabled &&
+                !psx_kos_video_backend_present(&video_backend, &machine.gpu)) {
+                printf("ERROR: GPU framebuffer presentation failed\n");
+                shutdown_audio();
+                psx_kos_disc_file_close(&disc_file, &disc);
+                return 1;
+            }
+        }
+\n        if (++report_counter >= 1000u) {
             printf("RUNNING: PC=0x%08lx audio-callbacks=%llu\n",
                    (unsigned long)machine.cpu.pc,
                    (unsigned long long)audio_stream.callback_count);
