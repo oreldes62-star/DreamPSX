@@ -65,6 +65,17 @@ int main(void)
     assert(dreamcast_framebuffer[1] == 0xf800u);
     assert(dreamcast_framebuffer[2] == 0x07e0u);
 
+    /* A 320-pixel active range must be used instead of the reset 256-pixel
+       mode width, otherwise the right edge is sampled from the wrong texel. */
+    assert(psx_gpu_gp1_write(&gpu, 0x08000001u));
+    assert(psx_gpu_gp1_write(&gpu, 0x06a00000u));
+    assert(psx_gpu_gp1_write(&gpu, 0x0703c000u));
+    psx_vram[319] = 0x03e0u;
+    assert(psx_kos_video_backend_present(&backend, &gpu));
+    assert(backend.presented_frames == 2u);
+    assert(waitvbl_count == 2u);
+    assert(dreamcast_framebuffer[PSX_KOS_VIDEO_WIDTH - 1u] == 0x07e0u);
+
     assert(!psx_kos_video_backend_present(NULL, &gpu));
     assert(!psx_kos_video_backend_present(&backend, NULL));
 
