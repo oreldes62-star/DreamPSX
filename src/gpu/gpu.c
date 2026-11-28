@@ -630,17 +630,7 @@ void psx_gpu_reset(PsxGpu *gpu)
     gpu->display.field_odd = false;
     gpu->display.video_scanline = 0u;
     gpu->display.video_frame_counter = 0u;
-    /* Line zero lies outside the default visible range [16, 256), so
-     * reset begins in VBlank and GPUSTAT bit 10 must reflect that level.
-     */
-    gpu->display.video_vblank =
-        !(gpu->display.vertical_end > gpu->display.vertical_start &&
-          gpu->display.video_scanline >= gpu->display.vertical_start &&
-          gpu->display.video_scanline < gpu->display.vertical_end);
-    if (gpu->display.video_vblank)
-        gpu->status |= 1u << 10u;
-    else
-        gpu->status &= ~(1u << 10u);
+    gpu->display.video_vblank = false;
 }
 
 bool psx_gpu_irq_output(const PsxGpu *gpu)
@@ -849,14 +839,8 @@ bool psx_gpu_gp1_write(PsxGpu *gpu, uint32_t value)
         gpu->status &= ~(1u << 31u);
         gpu->display.video_scanline = 0u;
         gpu->display.video_frame_counter = 0u;
-        gpu->display.video_vblank =
-            !(gpu->display.vertical_end > gpu->display.vertical_start &&
-              gpu->display.video_scanline >= gpu->display.vertical_start &&
-              gpu->display.video_scanline < gpu->display.vertical_end);
-        if (gpu->display.video_vblank)
-            gpu->status |= 1u << 10u;
-        else
-            gpu->status &= ~(1u << 10u);
+        gpu->display.video_vblank = false;
+        gpu->status &= ~(1u << 10u);
         break;
     case 0x01u: /* GP1(01h): reset command buffer and pending transfer. */
         gpu->command = 0u;
