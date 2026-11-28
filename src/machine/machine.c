@@ -218,6 +218,59 @@ bool psx_machine_advance_system_cycles(PsxMachine *machine, uint32_t cycles)
     /* SIO serial transfers share the PS1 master-clock domain. */
     psx_sio_advance_cycles(&machine->sio, cycles);
 
+    /* Timer 2 can select the master clock divided by eight. */
+    const uint64_t accumulated =
+        (uint64_t)machine->timer2_div8_phase + (uint64_t)cycles;
+    const uint32_t divided_ticks = (uint32_t)(accumulated / 8u);
+    machine->timer2_div8_phase = (uint8_t)(accumulated % 8u);
+    if (divided_ticks != 0u &&
+        !psx_machine_timer_advance_clock(machine, 2u,
+                                         PSX_TIMER_CLOCK_SYSTEM_DIV8,
+                                         divided_ticks))
+        return false;
+
+    /* Keep SPU output cadence stable across instruction-sized batches. */
+    {
+        const uint64_t audio_cycles =
+            (uint64_t)machine->spu_audio_cycle_phase + (uint64_t)cycles;
+        const size_t due_frames = (size_t)(audio_cycles / 768u);
+        machine->spu_audio_cycle_phase = (uint32_t)(audio_cycles % 768u);
+        if (due_frames != 0u) {
+            size_t queued = 0u;
+            if (!psx_machine_render_audio(machine, due_frames, &queued))
+                return false;
+        }
+    }
+
+    /* CD-ROM command completion, XA audio and sector cadence share the PS1 clock. */
+    psx_cdrom_advance_cycles(&machine->cdrom, cycles);
+    psx_cdrom_advance_xa_audio_cycles(&machine->cdrom, cycles);
+    psx_irq_set_line(&machine->irq, 2u,
+                     psx_cdrom_irq_output(&machine->cdrom));
+    psx_machine_refresh_interrupts(machine);
+
+    if (machine->cdrom.read_active) {
+        const uint32_t sector_period =
+            psx_cdrom_sector_period_cycles(&machine->cdrom);
+        uint64_t phase = (uint64_t)machine->cdrom_sector_cycle_phase +
+                         (uint64_t)cycles;
+        if (sector_period != 0u && phase >= sector_period)
+            phase = sector_period;
+        machine->cdrom_sector_cycle_phase = (uint32_t)phase;
+        if (sector_period != 0u &&
+            machine->cdrom_sector_cycle_phase >= sector_period &&
+            machine->cdrom.data_count == 0u) {
+            if (psx_machine_cdrom_advance_sector(machine))
+                machine->cdrom_sector_cycle_phase = 0u;
+            else if (!machine->cdrom.read_active)
+                machine->cdrom_sector_cycle_phase = 0u;
+        }
+    } else {
+        machine->cdrom_sector_cycle_phase = 0u;
+    }
+    return true;
+}
+
 /* The PS1 interrupt controller maps VBlank to source 0 (IRQ0). Keep the
  * source level asserted for the complete blanking interval; the controller
  * latches the rising edge and software acknowledges it through I_STAT.
