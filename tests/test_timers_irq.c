@@ -40,6 +40,38 @@ int main(void)
         PSX_TIMER_CLOCK_SYSTEM, 2u));
     assert((psx_irq_read_stat(&machine.irq) & (1u << 5u)) == 0u);
 
+    /* A counter wrap with TARGET=0 reaches target and overflow on the
+     * same tick. Both mode flags are read-to-clear, but I_STAT is independent. */
+    psx_machine_reset(&machine);
+    assert(psx_bus_write16(&machine.bus, PSX_IRQ_MASK_ADDR,
+                           (uint16_t)(1u << 4u)));
+    assert(psx_bus_write16(&machine.bus, PSX_TIMER_BASE_ADDR, 0xffffu));
+    assert(psx_bus_write16(&machine.bus, PSX_TIMER_BASE_ADDR + 8u, 0u));
+    assert(psx_bus_write16(&machine.bus, PSX_TIMER_BASE_ADDR + 4u,
+        (uint16_t)(PSX_TIMER_MODE_IRQ_TARGET |
+                   PSX_TIMER_MODE_IRQ_OVERFLOW)));
+    /* MODE writes reset the counter, so position it at FFFF afterwards. */
+    assert(psx_bus_write16(&machine.bus, PSX_TIMER_BASE_ADDR, 0xffffu));
+    assert(psx_machine_timer_advance_clock(&machine, 0u,
+        PSX_TIMER_CLOCK_SYSTEM, 1u));
+    assert(machine.timers.timer[0].counter == 0u);
+    assert((psx_irq_read_stat(&machine.irq) & (1u << 4u)) != 0u);
+    {
+        uint16_t mode = 0u;
+        assert(psx_bus_read16(&machine.bus, PSX_TIMER_BASE_ADDR + 4u, &mode));
+        assert((mode & (PSX_TIMER_MODE_REACHED_TARGET |
+                        PSX_TIMER_MODE_REACHED_OVERFLOW)) ==
+               (PSX_TIMER_MODE_REACHED_TARGET |
+                PSX_TIMER_MODE_REACHED_OVERFLOW));
+        assert(psx_bus_read16(&machine.bus, PSX_TIMER_BASE_ADDR + 4u, &mode));
+        assert((mode & (PSX_TIMER_MODE_REACHED_TARGET |
+                        PSX_TIMER_MODE_REACHED_OVERFLOW)) == 0u);
+    }
+    assert((psx_irq_read_stat(&machine.irq) & (1u << 4u)) != 0u);
+    psx_irq_write_stat(&machine.irq, (uint16_t)~(1u << 4u));
+    psx_machine_refresh_interrupts(&machine);
+    assert((psx_irq_read_stat(&machine.irq) & (1u << 4u)) == 0u);
+
     /* Timer2's divide-by-eight source retains sub-tick phase across calls. */
     assert(psx_bus_write16(&machine.bus,
         PSX_TIMER_BASE_ADDR + 2u * PSX_TIMER_STRIDE + 8u, 1u));
