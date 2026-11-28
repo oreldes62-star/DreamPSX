@@ -99,6 +99,9 @@ int main(void)
     assert(psx_gpu_gp1_write(&machine.gpu, 0x08000008u));
     machine.gpu_scanline_cycle_phase = 0u;
     assert(psx_machine_advance_system_cycles(&machine, 2156u));
+    assert(machine.gpu.display.video_scanline == 0u);
+    assert(machine.gpu_scanline_cycle_phase == 2156u);
+    assert(psx_machine_advance_system_cycles(&machine, 1u));
     assert(machine.gpu.display.video_scanline == 1u);
     assert(machine.gpu_scanline_cycle_phase == 0u);
 
