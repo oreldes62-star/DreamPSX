@@ -115,6 +115,13 @@ void psx_machine_reset(PsxMachine *machine)
     machine->timer2_div8_phase = 0u;
     machine->gpu_scanline_cycle_phase = 0u;
     machine->gpu_scanline_mode = machine->gpu.display.mode;
+    machine->timer0_dot_phase = 0u;
+    {
+        PsxGpuDisplayModeInfo mode;
+        machine->timer0_dot_divisor =
+            psx_gpu_get_display_mode_info(&machine->gpu, &mode) ?
+            mode.dot_clock_divisor : 10u;
+    }
     machine->cdrom_sector_cycle_phase = 0u;
     machine->spu_audio_cycle_phase = 0u;
     machine->cop0_status = 0u;
@@ -177,12 +184,14 @@ static bool psx_machine_advance_raster_timers(PsxMachine *machine,
 {
     PsxGpuDisplayModeInfo mode;
     const uint32_t current_mode = machine->gpu.display.mode;
+    const bool mode_valid =
+        psx_gpu_get_display_mode_info(&machine->gpu, &mode);
     if (machine->gpu_scanline_mode != current_mode) {
         machine->gpu_scanline_cycle_phase = 0u;
         machine->gpu_scanline_mode = current_mode;
+        machine->timer0_dot_phase = 0u;
+        machine->timer0_dot_divisor = mode_valid ? mode.dot_clock_divisor : 10u;
     }
-    const bool mode_valid =
-        psx_gpu_get_display_mode_info(&machine->gpu, &mode);
     const uint32_t line_cycles = mode_valid && mode.pal ? 2157u : 2148u;
 
     while (cycles != 0u) {
@@ -192,6 +201,20 @@ static bool psx_machine_advance_raster_timers(PsxMachine *machine,
         for (unsigned timer = 0u; timer < 2u; ++timer) {
             if (!psx_machine_timer_advance_clock(
                     machine, timer, PSX_TIMER_CLOCK_SYSTEM, step))
+                return false;
+        }
+        /* Timer 0's dot clock is derived from the active GP1 display mode.
+         * Preserve the fractional master-clock remainder across calls. */
+        if (machine->timer0_dot_divisor != 0u) {
+            const uint64_t accumulated =
+                (uint64_t)machine->timer0_dot_phase + step;
+            const uint32_t dot_ticks = (uint32_t)(
+                accumulated / machine->timer0_dot_divisor);
+            machine->timer0_dot_phase = (uint32_t)(
+                accumulated % machine->timer0_dot_divisor);
+            if (dot_ticks != 0u &&
+                !psx_machine_timer_advance_clock(
+                    machine, 0u, PSX_TIMER_CLOCK_DOT, dot_ticks))
                 return false;
         }
         machine->gpu_scanline_cycle_phase += step;
