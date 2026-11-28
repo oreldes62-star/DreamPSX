@@ -738,6 +738,36 @@ int main(void)
     assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) != 0u);
     assert((psx_irq_read_stat(&machine.irq) & 0x0072u) == 0x0072u);
 
+    /* Acknowledge the GPU device and all four I_STAT sources after the
+     * exception path. The shared CPU interrupt must drop only after the
+     * final source is cleared, then a fresh GPU and Timer0 event must relatch. */
+    assert(psx_gpu_gp1_write(&machine.gpu, 0x02000000u));
+    psx_irq_write_stat(&machine.irq, (uint16_t)~(1u << 1u));
+    psx_machine_refresh_interrupts(&machine);
+    assert((psx_irq_read_stat(&machine.irq) & 0x0070u) == 0x0070u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) != 0u);
+    for (unsigned source = 4u; source <= 6u; ++source) {
+        psx_irq_write_stat(&machine.irq, (uint16_t)~(1u << source));
+        psx_machine_refresh_interrupts(&machine);
+        if (source != 6u) {
+            assert((psx_irq_read_stat(&machine.irq) & 0x0070u) != 0u);
+            assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) != 0u);
+        }
+    }
+    assert(psx_irq_read_stat(&machine.irq) == 0u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) == 0u);
+    assert(!psx_machine_interrupt_eligible(&machine));
+
+    assert(psx_gpu_gp0_write(&machine.gpu, 0x1f000000u));
+    assert((psx_irq_read_stat(&machine.irq) & (1u << 1u)) != 0u);
+    assert(psx_bus_write16(&machine.bus, PSX_TIMER_BASE_ADDR, 0u));
+    assert(psx_machine_timer_advance_clock(&machine, 0u,
+        PSX_TIMER_CLOCK_SYSTEM, 1u));
+    assert((psx_irq_read_stat(&machine.irq) & ((1u << 1u) | (1u << 4u))) ==
+           ((1u << 1u) | (1u << 4u)));
+    psx_machine_refresh_interrupts(&machine);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) != 0u);
+
     free(vram);
     free(bios);
     free(ram);
