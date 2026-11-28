@@ -15,6 +15,42 @@ int main(void)
     assert(ram && bios && gpu_vram);
     assert(psx_machine_init(&machine, ram, PSX_RAM_SIZE, bios, PSX_BIOS_SIZE,
                             gpu_vram, PSX_GPU_VRAM_WIDTH * PSX_GPU_VRAM_HEIGHT));
+    /* Machine-level GPU raster timing must be invariant to cycle batching. */
+    {
+        const uint32_t total_cycles = 2148u * 3u + 517u;
+        const uint32_t chunks[] = {1u, 37u, 211u, 1024u, 3000u, 669u};
+        unsigned remaining;
+        uint32_t scanline;
+        uint32_t phase;
+        uint64_t frames;
+        bool vblank;
+
+        assert(psx_gpu_gp1_write(&machine.gpu, 0x08000000u));
+        assert(psx_machine_advance_system_cycles(&machine, total_cycles));
+        scanline = machine.gpu.display.video_scanline;
+        phase = machine.gpu_scanline_cycle_phase;
+        frames = machine.gpu.display.video_frame_counter;
+        vblank = machine.gpu.display.video_vblank;
+
+        psx_machine_reset(&machine);
+        assert(psx_gpu_gp1_write(&machine.gpu, 0x08000000u));
+        remaining = total_cycles;
+        for (unsigned i = 0u; i < sizeof(chunks) / sizeof(chunks[0]); ++i) {
+            const uint32_t step = chunks[i] < remaining ?
+                                  chunks[i] : remaining;
+            if (step != 0u) {
+                assert(psx_machine_advance_system_cycles(&machine, step));
+                remaining -= step;
+            }
+        }
+        if (remaining != 0u)
+            assert(psx_machine_advance_system_cycles(&machine, remaining));
+        assert(machine.gpu.display.video_scanline == scanline);
+        assert(machine.gpu_scanline_cycle_phase == phase);
+        assert(machine.gpu.display.video_frame_counter == frames);
+        assert(machine.gpu.display.video_vblank == vblank);
+    }
+    psx_machine_reset(&machine);
     /* SPU output cadence is clocked at 44.1 kHz: 768 master cycles/frame. */
     {
         int16_t frame[2] = {1, 1};
