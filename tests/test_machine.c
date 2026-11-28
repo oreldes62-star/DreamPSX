@@ -63,7 +63,7 @@ int main(void)
         {
             static const unsigned modes[] = {0u, 1u, 2u, 3u, 0x40u};
             static const unsigned divisors[] = {10u, 8u, 5u, 4u, 7u};
-            for (size_t i = 0u; i < sizeof(output_modes) / sizeof(output_modes[0]); ++i) {
+            for (size_t i = 0u; i < sizeof(modes) / sizeof(modes[0]); ++i) {
                 psx_machine_reset(&machine);
                 assert(psx_gpu_gp1_write(&machine.gpu,
                     0x08000000u | modes[i]));
@@ -95,7 +95,7 @@ int main(void)
     {
         static const unsigned output_modes[] = {8u, 0u}; /* deliberately cross-region */
         const uint32_t total_cycles = 1000003u;
-        for (size_t i = 0u; i < sizeof(modes) / sizeof(modes[0]); ++i) {
+        for (size_t i = 0u; i < sizeof(output_modes) / sizeof(output_modes[0]); ++i) {
             uint16_t bulk_counter = 0u;
             uint32_t bulk_dot_phase = 0u;
             uint32_t bulk_video_phase = 0u;
