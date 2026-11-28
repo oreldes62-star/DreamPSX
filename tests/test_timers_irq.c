@@ -90,6 +90,22 @@ int main(void)
     assert((psx_irq_read_stat(&machine.irq) & (1u << 4u)) != 0u);
     assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) != 0u);
 
+    /* The timer request must reach the R3000A exception boundary. The
+     * first instruction raises Timer 0; the following step takes the
+     * external interrupt before executing the next instruction. */
+    machine.cop0_status = PSX_COP0_STATUS_IEC | (1u << 10u);
+    machine.cpu.pc = 4u;
+    machine.cpu.next_pc = 8u;
+    assert(psx_machine_step(&machine));
+    assert(machine.cpu.pc == 0x80000080u);
+    assert(machine.cop0_epc == 4u);
+    assert((machine.cop0_status & PSX_COP0_STATUS_IEC) == 0u);
+
+    /* Clearing I_STAT removes IP2; a fresh edge is required to retrigger. */
+    psx_irq_write_stat(&machine.irq, (uint16_t)~(1u << 4u));
+    psx_machine_refresh_interrupts(&machine);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) == 0u);
+
     free(vram);
     free(bios);
     free(ram);
