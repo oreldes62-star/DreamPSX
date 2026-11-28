@@ -97,6 +97,79 @@ static uint16_t run_timer0_active_dot_ticks(PsxMachine *machine,
     return counter;
 }
 
+static void configure_timing_invariance_machine(PsxMachine *machine)
+{
+    const uint16_t timer_mode = (uint16_t)(
+        PSX_TIMER_MODE_IRQ_TARGET | PSX_TIMER_MODE_IRQ_REPEAT);
+    const uint16_t timer2_mode = (uint16_t)(
+        timer_mode | (1u << PSX_TIMER_MODE_CLOCK_SHIFT));
+    psx_machine_reset(machine);
+    assert(psx_bus_write16(&machine->bus, PSX_IRQ_MASK_ADDR,
+                           (uint16_t)((1u << 4u) | (1u << 5u) | (1u << 6u))));
+    assert(psx_timers_write16(&machine->timers, PSX_TIMER_BASE_ADDR + 8u, 997u));
+    assert(psx_timers_write16(&machine->timers,
+        PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE + 8u, 1301u));
+    assert(psx_timers_write16(&machine->timers,
+        PSX_TIMER_BASE_ADDR + 2u * PSX_TIMER_STRIDE + 8u, 251u));
+    assert(psx_timers_write16(&machine->timers, PSX_TIMER_BASE_ADDR + 4u,
+                              timer_mode));
+    assert(psx_timers_write16(&machine->timers,
+        PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE + 4u, timer_mode));
+    assert(psx_timers_write16(&machine->timers,
+        PSX_TIMER_BASE_ADDR + 2u * PSX_TIMER_STRIDE + 4u, timer2_mode));
+}
+
+static void test_shared_clock_batch_invariance(PsxMachine *machine,
+                                                uint8_t *ram, uint8_t *bios,
+                                                uint16_t *vram)
+{
+    PsxMachine bulk;
+    PsxMachine chunked;
+    uint8_t *bulk_ram = (uint8_t *)calloc(1u, PSX_RAM_SIZE);
+    uint8_t *bulk_bios = (uint8_t *)calloc(1u, PSX_BIOS_SIZE);
+    uint16_t *bulk_vram = (uint16_t *)calloc(
+        PSX_GPU_VRAM_WIDTH * PSX_GPU_VRAM_HEIGHT, sizeof(uint16_t));
+    uint8_t *chunk_ram = (uint8_t *)calloc(1u, PSX_RAM_SIZE);
+    uint8_t *chunk_bios = (uint8_t *)calloc(1u, PSX_BIOS_SIZE);
+    uint16_t *chunk_vram = (uint16_t *)calloc(
+        PSX_GPU_VRAM_WIDTH * PSX_GPU_VRAM_HEIGHT, sizeof(uint16_t));
+    assert(bulk_ram && bulk_bios && bulk_vram &&
+           chunk_ram && chunk_bios && chunk_vram);
+    assert(psx_machine_init(&bulk, bulk_ram, PSX_RAM_SIZE, bulk_bios,
+        PSX_BIOS_SIZE, bulk_vram, PSX_GPU_VRAM_WIDTH * PSX_GPU_VRAM_HEIGHT));
+    assert(psx_machine_init(&chunked, chunk_ram, PSX_RAM_SIZE, chunk_bios,
+        PSX_BIOS_SIZE, chunk_vram, PSX_GPU_VRAM_WIDTH * PSX_GPU_VRAM_HEIGHT));
+    configure_timing_invariance_machine(&bulk);
+    configure_timing_invariance_machine(&chunked);
+
+    /* The same 20,000 master cycles must produce identical timer counts,
+     * IRQ latches and fractional clock phases regardless of caller batching.
+     * Irregular chunks deliberately cross scanline and /8 boundaries.
+     */
+    assert(psx_machine_advance_system_cycles(&bulk, 20000u));
+    {
+        const uint32_t chunks[] = {1u, 7u, 2152u, 3u, 4093u, 768u,
+                                   17u, 5000u, 7959u};
+        for (size_t i = 0u; i < sizeof(chunks) / sizeof(chunks[0]); ++i)
+            assert(psx_machine_advance_system_cycles(&chunked, chunks[i]));
+    }
+    for (unsigned timer = 0u; timer < 3u; ++timer)
+        assert(bulk.timers.timer[timer].counter ==
+               chunked.timers.timer[timer].counter);
+    assert(psx_irq_read_stat(&bulk.irq) == psx_irq_read_stat(&chunked.irq));
+    assert(bulk.cop0_cause == chunked.cop0_cause);
+    assert(bulk.timer2_div8_phase == chunked.timer2_div8_phase);
+    assert(bulk.gpu_scanline_cycle_phase == chunked.gpu_scanline_cycle_phase);
+    assert(bulk.gpu_scanline_cycle_remainder ==
+           chunked.gpu_scanline_cycle_remainder);
+    assert(bulk.gpu_video_clock_phase == chunked.gpu_video_clock_phase);
+    assert(bulk.timer0_dot_phase == chunked.timer0_dot_phase);
+
+    (void)machine; (void)ram; (void)bios; (void)vram;
+    free(chunk_vram); free(chunk_bios); free(chunk_ram);
+    free(bulk_vram); free(bulk_bios); free(bulk_ram);
+}
+
 int main(void)
 {
     PsxMachine machine;
@@ -104,6 +177,7 @@ int main(void)
     uint8_t *bios;
     uint16_t *vram;
     init_machine(&machine, &ram, &bios, &vram);
+    test_shared_clock_batch_invariance(&machine, ram, bios, vram);
 
     /* Timer 1 synchronization is driven by VBlank, while its selected
      * external clock is HBlank (one tick per scanline). */
