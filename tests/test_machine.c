@@ -417,6 +417,7 @@ int main(void)
         assert(machine.timers.timer[0].sync_started);
         assert(psx_timers_read16(&machine.timers,
             PSX_TIMER_BASE_ADDR, &counter));
+        fprintf(stderr, "HBlank reset counter observed: %u\\n", (unsigned)counter);
         assert(counter == 225u);
     }
 
