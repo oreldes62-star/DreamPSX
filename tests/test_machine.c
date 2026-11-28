@@ -435,7 +435,7 @@ int main(void)
     {
         static const unsigned gpu_modes[] = {0u, 1u, 2u, 3u, 0x40u};
         static const unsigned sync_modes[] = {0u, 2u};
-        const uint32_t chunks[] = {322u, 1612u, 214u, 322u, 1612u, 224u};
+        const uint32_t chunks[] = {322u, 1614u, 216u, 322u, 1615u, 227u};
         const uint32_t total_cycles = 2153u * 2u + 10u;
 
         for (size_t g = 0u; g < sizeof(gpu_modes) / sizeof(gpu_modes[0]); ++g) {
