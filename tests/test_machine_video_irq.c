@@ -998,6 +998,53 @@ int main(void)
     assert(psx_cpu_read_gpr(&machine.cpu, 10u) == (1u << 1u));
     assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) != 0u);
 
+    /* Guest I_MASK writes must immediately gate COP0 IP2 without
+     * destroying the independently latched GPU and Timer0 requests. */
+    psx_machine_reset(&machine);
+    assert(psx_gpu_gp0_write(&machine.gpu, 0x1f000000u));
+    assert(psx_timers_write16(&machine.timers,
+        PSX_TIMER_BASE_ADDR + 8u, 1u));
+    assert(psx_timers_write16(&machine.timers,
+        PSX_TIMER_BASE_ADDR + 4u, PSX_TIMER_MODE_IRQ_TARGET));
+    assert(psx_machine_timer_advance_clock(&machine, 0u,
+        PSX_TIMER_CLOCK_SYSTEM, 1u));
+    assert(psx_irq_read_stat(&machine.irq) == 0x0012u);
+    assert(psx_irq_read_mask(&machine.irq) == 0u);
+    assert(psx_bus_write32(&machine.bus, 0u, 0x3c081f80u)); /* LUI t0,1f80 */
+    assert(psx_bus_write32(&machine.bus, 4u, 0x35081074u)); /* ORI t0,t0,1074 */
+    assert(psx_bus_write32(&machine.bus, 8u, 0x24090012u)); /* ADDIU t1,zero,12 */
+    assert(psx_bus_write32(&machine.bus, 12u, 0xad090000u)); /* enable GPU+Timer0 */
+    assert(psx_bus_write32(&machine.bus, 16u, 0x8d0a0000u)); /* LW t2,I_MASK */
+    assert(psx_bus_write32(&machine.bus, 20u, 0x00000000u)); /* load delay */
+    assert(psx_bus_write32(&machine.bus, 24u, 0x24090000u)); /* ADDIU t1,zero,0 */
+    assert(psx_bus_write32(&machine.bus, 28u, 0xad090000u)); /* mask off */
+    assert(psx_bus_write32(&machine.bus, 32u, 0x8d0b0000u)); /* LW t3,I_MASK */
+    assert(psx_bus_write32(&machine.bus, 36u, 0x00000000u)); /* load delay */
+    assert(psx_bus_write32(&machine.bus, 40u, 0x24090010u)); /* Timer0 only */
+    assert(psx_bus_write32(&machine.bus, 44u, 0xad090000u)); /* enable Timer0 */
+    assert(psx_bus_write32(&machine.bus, 48u, 0x8d0c0000u)); /* LW t4,I_MASK */
+    assert(psx_bus_write32(&machine.bus, 52u, 0x00000000u)); /* load delay */
+    machine.cpu.pc = 0u;
+    machine.cpu.next_pc = 4u;
+    machine.cop0_status = 0u;
+    for (unsigned step = 0u; step < 4u; ++step)
+        assert(psx_machine_step(&machine));
+    assert(psx_irq_read_mask(&machine.irq) == 0x0012u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) != 0u);
+    for (unsigned step = 4u; step < 8u; ++step)
+        assert(psx_machine_step(&machine));
+    assert(psx_irq_read_mask(&machine.irq) == 0u);
+    assert((psx_irq_read_stat(&machine.irq) & 0x0012u) == 0x0012u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) == 0u);
+    for (unsigned step = 8u; step < 14u; ++step)
+        assert(psx_machine_step(&machine));
+    assert(psx_irq_read_mask(&machine.irq) == 0x0010u);
+    assert((psx_irq_read_stat(&machine.irq) & 0x0012u) == 0x0012u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) != 0u);
+    assert(psx_cpu_read_gpr(&machine.cpu, 10u) == 0x0012u);
+    assert(psx_cpu_read_gpr(&machine.cpu, 11u) == 0u);
+    assert(psx_cpu_read_gpr(&machine.cpu, 12u) == 0x0010u);
+
     free(vram);
     free(bios);
     free(ram);
