@@ -20,7 +20,7 @@ static void test_timer2_div8_instruction_boundaries(PsxMachine *machine)
 {
     const uint32_t timer2_mode = 3u << PSX_TIMER_MODE_CLOCK_SHIFT;
     psx_machine_reset(machine);
-    assert(psx_timers_write16(machine ? &machine->timers : NULL,
+    assert(psx_timers_write16(&machine->timers,
         PSX_TIMER_BASE_ADDR + 2u * PSX_TIMER_STRIDE + 4u,
         (uint16_t)timer2_mode));
 
