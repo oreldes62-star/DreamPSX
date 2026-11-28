@@ -258,6 +258,36 @@ int main(void)
     psx_machine_refresh_interrupts(&machine);
     assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) == 0u);
 
+    /* A VBlank IRQ arriving between a taken branch and its delay slot
+     * must be deferred until the delay-slot instruction has retired. */
+    psx_machine_reset(&machine);
+    assert(psx_gpu_gp1_write(&machine.gpu,
+        0x07000000u | (256u << 10u) | 16u));
+    assert(psx_gpu_gp1_write(&machine.gpu, 0x08000000u));
+    psx_irq_write_mask(&machine.irq, 1u);
+    assert(psx_bus_write32(&machine.bus, 0u, 0x10000001u)); /* BEQ zero,zero,+1 */
+    assert(psx_bus_write32(&machine.bus, 4u, 0x24090007u)); /* ADDIU t1,zero,7 */
+    assert(psx_bus_write32(&machine.bus, 8u, 0x240a0009u)); /* ADDIU t2,zero,9 */
+    machine.cop0_status = PSX_COP0_STATUS_IEC | (1u << 10u);
+    machine.cpu.pc = 0u;
+    machine.cpu.next_pc = 4u;
+    assert(psx_machine_step(&machine));
+    assert(machine.cpu.delay_slot_pending);
+    assert(machine.cpu.pc == 4u && machine.cpu.next_pc == 8u);
+    assert(psx_machine_video_advance_scanline(&machine, &video));
+    assert(video.vblank && video.vblank_started);
+    assert((psx_irq_read_stat(&machine.irq) & 1u) != 0u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) != 0u);
+    assert(psx_machine_step(&machine)); /* VBlank waits for the delay slot */
+    assert(!machine.cpu.delay_slot_pending);
+    assert(psx_cpu_read_gpr(&machine.cpu, 9u) == 7u);
+    assert(machine.cpu.pc == 8u && machine.cpu.next_pc == 12u);
+    assert(psx_machine_step(&machine)); /* Accept IRQ at next boundary */
+    assert(machine.cpu.pc == 0x80000080u);
+    assert(machine.cop0_epc == 8u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_BD) == 0u);
+    assert(psx_cpu_read_gpr(&machine.cpu, 10u) == 0u);
+
     free(vram);
     free(bios);
     free(ram);
