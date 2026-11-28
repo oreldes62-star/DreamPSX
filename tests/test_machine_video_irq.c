@@ -495,6 +495,26 @@ int main(void)
     assert(psx_machine_interrupt_eligible(&machine));
 
 
+    /* Guest LW accesses to COUNT and TARGET must return their own
+     * registers through the same MMIO path. COUNT is sampled after the
+     * two address-setup instructions have each advanced the timer once. */
+    psx_machine_reset(&machine);
+    assert(psx_bus_write16(&machine.bus, PSX_TIMER_BASE_ADDR, 0x1200u));
+    assert(psx_bus_write16(&machine.bus, PSX_TIMER_BASE_ADDR + 8u, 0x3456u));
+    assert(psx_bus_write32(&machine.bus, 0u, 0x3c081f80u)); /* LUI t0,1f80 */
+    assert(psx_bus_write32(&machine.bus, 4u, 0x35081100u)); /* ORI t0,t0,1100 */
+    assert(psx_bus_write32(&machine.bus, 8u, 0x8d090000u)); /* LW t1,COUNT */
+    assert(psx_bus_write32(&machine.bus, 12u, 0x00000000u)); /* NOP */
+    assert(psx_bus_write32(&machine.bus, 16u, 0x25080008u)); /* ADDIU t0,t0,8 */
+    assert(psx_bus_write32(&machine.bus, 20u, 0x8d0a0000u)); /* LW t2,TARGET */
+    assert(psx_bus_write32(&machine.bus, 24u, 0x00000000u)); /* NOP */
+    machine.cpu.pc = 0u;
+    machine.cpu.next_pc = 4u;
+    for (unsigned i = 0u; i < 7u; ++i)
+        assert(psx_machine_step(&machine));
+    assert(psx_cpu_read_gpr(&machine.cpu, 9u) == 0x1202u);
+    assert(psx_cpu_read_gpr(&machine.cpu, 10u) == 0x3456u);
+
     /* A guest LW of Timer0 MODE must observe the latched reached-target
      * flag, then clear that read-to-clear flag in the peripheral. */
     psx_machine_reset(&machine);
