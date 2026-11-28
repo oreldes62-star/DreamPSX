@@ -107,6 +107,8 @@ void psx_machine_reset(PsxMachine *machine)
     psx_gte_reset(&machine->gte);
     psx_gpu_reset(&machine->gpu);
     psx_timers_reset(&machine->timers);
+    /* The raster begins in horizontal blank before the first active line. */
+    machine->timers.timer[0].sync_signal_active = true;
     psx_dma_reset(&machine->dma);
     psx_cdrom_reset(&machine->cdrom);
     psx_spu_reset(&machine->spu);
@@ -174,10 +176,11 @@ bool psx_machine_timer_advance_clock(PsxMachine *machine, unsigned timer,
     return true;
 }
 
-/* Advance raster events and system-clocked Timer 0/1 chronologically.
- * Timer clocks up to a line boundary are delivered before the HBlank/VBlank
- * edge at that boundary. Horizontal blanking is still a line-level event,
- * not yet a timed interval within the line.
+/* Advance raster events and timers in chronological horizontal segments.
+ * GP1(06h) positions are normalized against the 3413 GPU-clock horizontal
+ * period and mapped onto the current master-clock line. This gives the
+ * HBlank level a real interval instead of an instantaneous scanline pulse;
+ * the conversion remains an approximation pending a full GPU dot scheduler.
  */
 static bool psx_machine_advance_raster_timers(PsxMachine *machine,
                                                uint32_t cycles)
@@ -193,18 +196,49 @@ static bool psx_machine_advance_raster_timers(PsxMachine *machine,
         machine->timer0_dot_divisor = mode_valid ? mode.dot_clock_divisor : 10u;
     }
     const uint32_t line_cycles = mode_valid && mode.pal ? 2157u : 2148u;
+    const uint32_t h_start = mode_valid ? mode.horizontal_start : 0x200u;
+    const uint32_t h_end = mode_valid ? mode.horizontal_end : 0xc00u;
+    uint32_t h_start_cycle = (uint32_t)(
+        ((uint64_t)h_start * line_cycles) / 3413u);
+    uint32_t h_end_cycle = (uint32_t)(
+        ((uint64_t)h_end * line_cycles) / 3413u);
+    if (h_start_cycle > line_cycles) h_start_cycle = line_cycles;
+    if (h_end_cycle > line_cycles) h_end_cycle = line_cycles;
+    if (h_end_cycle <= h_start_cycle) {
+        h_start_cycle = line_cycles / 4u;
+        h_end_cycle = (line_cycles * 3u) / 4u;
+    }
 
     while (cycles != 0u) {
-        const uint32_t until_line =
-            line_cycles - machine->gpu_scanline_cycle_phase;
-        const uint32_t step = cycles < until_line ? cycles : until_line;
+        const uint32_t phase = machine->gpu_scanline_cycle_phase;
+        const bool hblank = phase < h_start_cycle || phase >= h_end_cycle;
+        if (!psx_timers_set_sync_signal(&machine->timers, 0u, hblank))
+            return false;
+
+        uint32_t boundary = line_cycles;
+        if (phase < h_start_cycle)
+            boundary = h_start_cycle;
+        else if (phase < h_end_cycle)
+            boundary = h_end_cycle;
+        const uint32_t until_boundary = boundary - phase;
+        const uint32_t step = cycles < until_boundary ? cycles : until_boundary;
+        if (step == 0u) {
+            /* Degenerate/clamped boundaries are consumed on the next pass. */
+            if (boundary == line_cycles) {
+                PsxGpuVideoState video;
+                machine->gpu_scanline_cycle_phase = 0u;
+                if (!psx_machine_video_advance_scanline(machine, &video))
+                    return false;
+                continue;
+            }
+            return false;
+        }
+
         for (unsigned timer = 0u; timer < 2u; ++timer) {
             if (!psx_machine_timer_advance_clock(
                     machine, timer, PSX_TIMER_CLOCK_SYSTEM, step))
                 return false;
         }
-        /* Timer 0's dot clock is derived from the active GP1 display mode.
-         * Preserve the fractional master-clock remainder across calls. */
         if (machine->timer0_dot_divisor != 0u) {
             const uint64_t accumulated =
                 (uint64_t)machine->timer0_dot_phase + step;
@@ -217,6 +251,7 @@ static bool psx_machine_advance_raster_timers(PsxMachine *machine,
                     machine, 0u, PSX_TIMER_CLOCK_DOT, dot_ticks))
                 return false;
         }
+
         machine->gpu_scanline_cycle_phase += step;
         cycles -= step;
         if (machine->gpu_scanline_cycle_phase == line_cycles) {
@@ -316,17 +351,6 @@ bool psx_machine_video_advance_scanline(PsxMachine *machine,
      */
     if (!psx_timers_set_sync_signal(&machine->timers, 1u, state->vblank))
         return false;
-
-    /* Timer 0 synchronization observes the HBlank edge. The current GPU
-     * API reports a line event rather than a timed horizontal interval, so
-     * this pulse currently supports edge-triggered modes (1 and 3). Modes
-     * that gate clocks throughout blanking need the future dot-phase model.
-     */
-    if (state->hblank_pulse) {
-        if (!psx_timers_set_sync_signal(&machine->timers, 0u, true) ||
-            !psx_timers_set_sync_signal(&machine->timers, 0u, false))
-            return false;
-    }
 
     /* Timer 1 receives one abstract HBlank clock tick per completed line.
      * Its VBlank synchronization gate is applied by the timer subsystem.
