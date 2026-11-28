@@ -49,10 +49,16 @@ int main(void)
     psx_machine_refresh_interrupts(&machine);
     assert((psx_irq_read_stat(&machine.irq) & (1u << 5u)) == 0u);
     assert(machine.timers.timer[1].counter == 1u);
+    /* Clearing Timer 1 must not erase the independent VBlank request.
+     * COP0 IP2 therefore remains asserted while IRQ0 is still pending. */
+    assert((psx_irq_read_stat(&machine.irq) & 1u) != 0u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) != 0u);
+    assert(psx_machine_interrupt_eligible(&machine));
     assert(psx_machine_timer_advance_clock(&machine, 1u,
                                             PSX_TIMER_CLOCK_HBLANK, 1u));
     assert(machine.timers.timer[1].counter == 2u);
     assert((psx_irq_read_stat(&machine.irq) & (1u << 5u)) == 0u);
+    assert((psx_irq_read_stat(&machine.irq) & 1u) != 0u);
 
     /* IRQ0 remains level-asserted throughout VBlank, while I_STAT latches
      * the request. Entering the visible range deasserts the source line.
