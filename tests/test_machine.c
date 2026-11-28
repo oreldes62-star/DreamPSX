@@ -319,6 +319,50 @@ int main(void)
         }
     }
 
+    /* HBlank synchronization must remain batch-invariant in every
+     * supported GPU horizontal mode, including changes to the dot divisor.
+     * The modeled GP1(06h) interval is shared, but dot-clock phase must not
+     * leak into the system-clock Timer 0 tests.
+     */
+    {
+        static const unsigned gpu_modes[] = {0u, 1u, 2u, 3u, 0x40u};
+        static const unsigned sync_modes[] = {0u, 2u};
+        const uint32_t chunks[] = {322u, 1612u, 214u, 322u, 1612u, 224u};
+        const uint32_t total_cycles = 2148u * 2u + 10u;
+
+        for (size_t g = 0u; g < sizeof(gpu_modes) / sizeof(gpu_modes[0]); ++g) {
+            for (size_t s = 0u; s < sizeof(sync_modes) / sizeof(sync_modes[0]); ++s) {
+                uint16_t bulk_counter = 0u;
+                uint16_t chunk_counter = 0u;
+                const uint16_t timer_mode = (uint16_t)(
+                    PSX_TIMER_MODE_SYNC_ENABLE |
+                    (sync_modes[s] << PSX_TIMER_MODE_SYNC_SHIFT));
+
+                psx_machine_reset(&machine);
+                assert(psx_gpu_gp1_write(&machine.gpu,
+                    0x08000000u | gpu_modes[g]));
+                assert(psx_timers_write16(&machine.timers,
+                    PSX_TIMER_BASE_ADDR + 4u, timer_mode));
+                assert(psx_machine_advance_system_cycles(&machine, total_cycles));
+                assert(psx_timers_read16(&machine.timers,
+                    PSX_TIMER_BASE_ADDR, &bulk_counter));
+
+                psx_machine_reset(&machine);
+                assert(psx_gpu_gp1_write(&machine.gpu,
+                    0x08000000u | gpu_modes[g]));
+                assert(psx_timers_write16(&machine.timers,
+                    PSX_TIMER_BASE_ADDR + 4u, timer_mode));
+                for (size_t i = 0u; i < sizeof(chunks) / sizeof(chunks[0]); ++i)
+                    assert(psx_machine_advance_system_cycles(&machine, chunks[i]));
+                assert(psx_timers_read16(&machine.timers,
+                    PSX_TIMER_BASE_ADDR, &chunk_counter));
+                assert(chunk_counter == bulk_counter);
+                assert(machine.gpu_scanline_cycle_phase == 10u);
+                assert(machine.timers.timer[0].sync_signal_active);
+            }
+        }
+    }
+
     /* Timer 0 mode 3 starts on the first sampled HBlank level and
      * then free-runs; the initial raster position is already blanking.
      */
