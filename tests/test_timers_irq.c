@@ -197,6 +197,23 @@ int main(void)
     assert((machine.cop0_cause & 0x7cu) ==
            ((uint32_t)PSX_EXCEPTION_SYSCALL << 2u));
 
+    /* Address errors in a delay slot must additionally preserve the
+     * faulting virtual address in BadVAddr while EPC identifies the branch. */
+    psx_machine_reset(&machine);
+    assert(psx_bus_write32(&machine.bus, 0u, 0x10000001u)); /* BEQ zero,zero,+1 */
+    assert(psx_bus_write32(&machine.bus, 4u, 0x8c080001u)); /* LW t0,1(zero) */
+    machine.cpu.pc = 0u;
+    machine.cpu.next_pc = 4u;
+    assert(psx_machine_step(&machine));
+    assert(psx_machine_step(&machine));
+    assert(machine.cpu.pc == 0x80000080u);
+    assert(machine.cop0_epc == 0u);
+    assert(machine.cop0_badvaddr == 1u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_BD) != 0u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_EXCCODE) ==
+           ((uint32_t)PSX_EXCEPTION_ADDRESS_LOAD <<
+            PSX_COP0_CAUSE_EXCCODE_SHIFT));
+
     /* Clearing I_STAT removes IP2; a fresh edge is required to retrigger. */
     psx_irq_write_stat(&machine.irq, (uint16_t)~(1u << 4u));
     psx_machine_refresh_interrupts(&machine);
