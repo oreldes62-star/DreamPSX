@@ -25,16 +25,16 @@ int main(void)
     assert(psx_sio_write8(&sio, PSX_SIO_DATA_ADDR, 0x01u));
     assert((psx_irq_read_stat(&irq) & (1u << PSX_SIO_IRQ_SOURCE)) != 0u);
     assert(psx_sio_read8(&sio, PSX_SIO_DATA_ADDR, &value) && value == 0xffu);
-    assert(psx_sio_read8(&sio, PSX_SIO_STAT_ADDR, &value) &&
-           (value & PSX_SIO_STAT_IRQ));
+    assert(psx_sio_read16(&sio, PSX_SIO_STAT_ADDR, &status) &&
+           (status & PSX_SIO_STAT_IRQ));
 
     /* Correct acknowledge order: I_STAT first, then SIO_CTRL.4. */
     psx_irq_write_stat(&irq, (uint16_t)~(1u << PSX_SIO_IRQ_SOURCE));
     assert(psx_sio_write8(&sio, PSX_SIO_CTRL_ADDR,
                           PSX_SIO_CTRL_DTR | PSX_SIO_CTRL_DSRIEN |
                           PSX_SIO_CTRL_ERRRST));
-    assert(psx_sio_read8(&sio, PSX_SIO_STAT_ADDR, &value) &&
-           !(value & PSX_SIO_STAT_IRQ));
+    assert(psx_sio_read16(&sio, PSX_SIO_STAT_ADDR, &status) &&
+           !(status & PSX_SIO_STAT_IRQ));
 
     assert(psx_sio_write8(&sio, PSX_SIO_DATA_ADDR, 0x42u));
     assert(psx_sio_read8(&sio, PSX_SIO_DATA_ADDR, &value) && value == 0x41u);
