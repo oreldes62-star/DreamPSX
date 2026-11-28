@@ -17,7 +17,7 @@ static void init_machine(PsxMachine *machine, uint8_t **ram_out,
 }
 
 static uint16_t run_timer1_mode(PsxMachine *machine, unsigned sync_mode,
-                                unsigned lines, bool chunked)
+                                unsigned lines, bool pal, bool chunked)
 {
     const uint16_t mode = (uint16_t)(
         PSX_TIMER_MODE_SYNC_ENABLE |
