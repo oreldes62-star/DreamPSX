@@ -146,6 +146,54 @@ int main(void)
         assert(machine.gpu_scanline_cycle_phase == expected_phase);
     }
 
+    /* VBlank IRQ state must be independent of how master-clock cycles
+     * are batched while crossing multiple vertical blanking edges.
+     */
+    {
+        const uint32_t total_cycles = 2153u * 600u + 317u;
+        uint16_t whole_irq_stat;
+        uint16_t whole_timer1;
+        uint32_t whole_source_level;
+        uint32_t whole_cause;
+        uint16_t whole_scanline;
+        uint32_t whole_phase;
+
+        psx_machine_reset(&machine);
+        assert(psx_gpu_gp1_write(&machine.gpu,
+            0x07000000u | (256u << 10u) | 16u));
+        assert(psx_gpu_gp1_write(&machine.gpu, 0x08000000u));
+        psx_irq_write_mask(&machine.irq, 1u);
+        machine.cop0_status = PSX_COP0_STATUS_IEC | PSX_COP0_CAUSE_IP2;
+        assert(psx_machine_advance_system_cycles(&machine, total_cycles));
+        whole_irq_stat = psx_irq_read_stat(&machine.irq);
+        whole_timer1 = machine.timers.timer[1].counter;
+        whole_source_level = machine.irq.source_level;
+        whole_cause = machine.cop0_cause;
+        whole_scanline = machine.gpu.display.video_scanline;
+        whole_phase = machine.gpu_scanline_cycle_phase;
+
+        psx_machine_reset(&machine);
+        assert(psx_gpu_gp1_write(&machine.gpu,
+            0x07000000u | (256u << 10u) | 16u));
+        assert(psx_gpu_gp1_write(&machine.gpu, 0x08000000u));
+        psx_irq_write_mask(&machine.irq, 1u);
+        machine.cop0_status = PSX_COP0_STATUS_IEC | PSX_COP0_CAUSE_IP2;
+        {
+            const uint32_t chunks[] = {1u, 322u, 2153u, 4097u,
+                                       2153u * 200u, 17u,
+                                       total_cycles - 1u - 322u - 2153u -
+                                       4097u - 2153u * 200u - 17u};
+            for (size_t i = 0u; i < sizeof(chunks) / sizeof(chunks[0]); ++i)
+                assert(psx_machine_advance_system_cycles(&machine, chunks[i]));
+        }
+        assert(psx_irq_read_stat(&machine.irq) == whole_irq_stat);
+        assert(machine.timers.timer[1].counter == whole_timer1);
+        assert(machine.irq.source_level == whole_source_level);
+        assert(machine.cop0_cause == whole_cause);
+        assert(machine.gpu.display.video_scanline == whole_scanline);
+        assert(machine.gpu_scanline_cycle_phase == whole_phase);
+    }
+
     /* Interlaced 480-line NTSC output alternates 262/263-line fields.
      * A displayed frame completes only after the odd field returns to even.
      */
