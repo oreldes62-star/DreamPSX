@@ -22,6 +22,8 @@ void psx_timers_reset(PsxTimers *timers)
         timers->timer[i].mode = 0u;
         timers->timer[i].target = 0u;
         timers->timer[i].irq_fired = false;
+        timers->timer[i].sync_signal_active = false;
+        timers->timer[i].sync_started = false;
     }
 }
 
@@ -68,6 +70,8 @@ bool psx_timers_write16(PsxTimers *timers, uint32_t address,
         timer->counter = 0u;
         timer->mode = (uint16_t)(value & 0x03ffu);
         timer->irq_fired = false;
+        timer->sync_signal_active = false;
+        timer->sync_started = false;
     } else {
         timer->target = value;
     }
@@ -110,6 +114,47 @@ static PsxTimerClock selected_clock(unsigned index, uint16_t mode)
     return source == 1u ? PSX_TIMER_CLOCK_SYSTEM_DIV8 : PSX_TIMER_CLOCK_SYSTEM;
 }
 
+bool psx_timers_set_sync_signal(PsxTimers *timers, unsigned index,
+                                bool active)
+{
+    if (!timers || index >= 2u) return false;
+    PsxTimer *timer = &timers->timer[index];
+    const bool rising = active && !timer->sync_signal_active;
+    timer->sync_signal_active = active;
+    if ((timer->mode & PSX_TIMER_MODE_SYNC_ENABLE) == 0u)
+        return true;
+
+    const unsigned sync_mode =
+        (timer->mode & PSX_TIMER_MODE_SYNC_MASK) >>
+        PSX_TIMER_MODE_SYNC_SHIFT;
+    if (sync_mode == 1u && rising) {
+        timer->counter = 0u;
+        timer->sync_started = true;
+    } else if (sync_mode == 2u && rising) {
+        timer->counter = 0u;
+        timer->sync_started = true;
+    } else if (sync_mode == 3u && active) {
+        timer->sync_started = true;
+    }
+    return true;
+}
+
+static bool timer_sync_allows_clock(const PsxTimer *timer, unsigned index)
+{
+    if (index >= 2u ||
+        (timer->mode & PSX_TIMER_MODE_SYNC_ENABLE) == 0u)
+        return true;
+    const unsigned sync_mode =
+        (timer->mode & PSX_TIMER_MODE_SYNC_MASK) >>
+        PSX_TIMER_MODE_SYNC_SHIFT;
+    switch (sync_mode) {
+    case 0u: return !timer->sync_signal_active;
+    case 1u: return !timer->sync_signal_active;
+    case 2u: return !timer->sync_signal_active;
+    default: return timer->sync_started;
+    }
+}
+
 bool psx_timers_advance_clock(PsxTimers *timers, unsigned index,
                               PsxTimerClock clock, uint32_t ticks,
                               uint8_t *irq_sources)
@@ -119,7 +164,8 @@ bool psx_timers_advance_clock(PsxTimers *timers, unsigned index,
         return false;
     if (irq_sources) *irq_sources = 0u;
     PsxTimer *timer = &timers->timer[index];
-    if (selected_clock(index, timer->mode) != clock) return true;
+    if (selected_clock(index, timer->mode) != clock ||
+        !timer_sync_allows_clock(timer, index)) return true;
 
     while (ticks-- != 0u) {
         const uint16_t previous = timer->counter;
