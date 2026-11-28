@@ -23,6 +23,7 @@ int main(void)
     assert(psx_sio_read8(&sio, PSX_SIO_DATA_ADDR, &value) && value == 0x5au);
     assert(psx_sio_write8(&sio, PSX_SIO_DATA_ADDR, 0x00u));
     assert(psx_sio_read8(&sio, PSX_SIO_DATA_ADDR, &value) && value == (uint8_t)~buttons);
+    assert(psx_sio_write8(&sio, PSX_SIO_DATA_ADDR, 0x00u));
     assert(psx_sio_read8(&sio, PSX_SIO_DATA_ADDR, &value) && value == (uint8_t)~(buttons >> 8u));
     assert(psx_sio_read8(&sio, PSX_SIO_STAT_ADDR, &value) && !(value & PSX_SIO_STAT_RX_READY));
     assert(psx_sio_read16(&sio, PSX_SIO_STAT_ADDR, &status) && (status & PSX_SIO_STAT_TX_READY));
