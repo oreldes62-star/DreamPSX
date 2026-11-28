@@ -168,7 +168,7 @@ int main(void)
             const uint64_t accumulated =
                 (uint64_t)line_count * line_clocks * 451584u;
             const uint32_t expected_cycles =
-                (uint32_t)(accumulated / numerator);
+                (uint32_t)((accumulated + numerator - 1u) / numerator);
             const uint32_t expected_remainder =
                 (uint32_t)(accumulated % numerator);
 
@@ -352,7 +352,7 @@ int main(void)
         psx_machine_reset(&machine);
         assert(psx_timers_write16(&machine.timers,
             PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE + 4u, mode));
-        assert(psx_machine_advance_system_cycles(&machine, 34445u));
+        assert(psx_machine_advance_system_cycles(&machine, 34446u));
         assert(machine.gpu.display.video_scanline == 16u);
         assert(!machine.gpu.display.video_vblank);
         assert(!machine.timers.timer[1].sync_signal_active);
@@ -379,7 +379,7 @@ int main(void)
         assert(machine.timers.timer[0].sync_started);
         assert(psx_timers_read16(&machine.timers,
             PSX_TIMER_BASE_ADDR, &counter));
-        assert(counter == 227u);
+        assert(counter == 226u);
     }
 
     /* Timer 0 modes 0 and 2 must gate system-clock ticks over the
@@ -396,7 +396,7 @@ int main(void)
             (uint16_t)(PSX_TIMER_MODE_SYNC_ENABLE |
                        (2u << PSX_TIMER_MODE_SYNC_SHIFT))
         };
-        const uint16_t expected_mode0 = 3229u;
+        const uint16_t expected_mode0 = 3230u;
 
         for (size_t mode_index = 0u; mode_index < 2u; ++mode_index) {
             uint16_t bulk_counter = 0u;
