@@ -25,6 +25,7 @@ int main(void)
     assert((machine.cop0_cause & 0x00000700u) == 0x00000700u);
     assert(machine.cpu.pc == 0x80000080u);
     assert(machine.cpu.next_pc == 0x80000084u);
+    assert((machine.cop0_status & PSX_COP0_STATUS_EXCEPTION_STACK) == 0x2cu);
 
     /* Delay-slot exception records the branch address and sets Cause.BD. */
     machine.cpu.pc = 0x80002004u;
@@ -37,6 +38,16 @@ int main(void)
     assert(machine.cpu.pc == 0xbfc00180u);
     assert(machine.cpu.next_pc == 0xbfc00184u);
     assert((machine.cop0_cause & 0x00000700u) == 0x00000700u);
+    assert((machine.cop0_status & PSX_COP0_STATUS_EXCEPTION_STACK) == 0x2cu);
+
+    /* A nested exception pushes the already-shifted mode stack again. */
+    machine.cpu.pc = 0x80003000u;
+    psx_machine_raise_exception(&machine, PSX_EXCEPTION_BREAKPOINT,
+                                0u, false, 0u);
+    assert((machine.cop0_status & PSX_COP0_STATUS_EXCEPTION_STACK) == 0x30u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_BD) == 0u);
+    assert(machine.cop0_epc == 0x80003000u);
+    assert(machine.cpu.pc == 0xbfc00180u);
 
     free(bios);
     free(ram);
