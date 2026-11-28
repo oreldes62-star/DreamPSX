@@ -63,6 +63,7 @@ set(DREAMPSX_TESTS
     test_cpu_integer
     test_irq
     test_irq_cop0_integration
+    test_machine_software_irq
     test_irq_mmio
     test_gte
     test_gpu
