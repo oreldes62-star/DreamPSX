@@ -238,6 +238,20 @@ int main(void)
     assert(machine.cop0_status == 0x0000003fu);
     assert(psx_cpu_read_gpr(&machine.cpu, 10u) == 0x55u);
 
+    /* RFE pops one level of the R3000A six-bit mode stack, preserving
+     * the previous-mode field and all unrelated Status bits. */
+    machine.cpu.pc = 0x170u;
+    machine.cpu.next_pc = 0x174u;
+    machine.cpu.delay_slot_pending = false;
+    machine.cop0_status = 0x80000030u; /* two nested exception entries */
+    assert(psx_machine_step(&machine));
+    assert(machine.cop0_status == 0x8000003cu);
+    machine.cpu.pc = 0x170u;
+    machine.cpu.next_pc = 0x174u;
+    machine.cpu.delay_slot_pending = false;
+    assert(psx_machine_step(&machine));
+    assert(machine.cop0_status == 0x8000003fu);
+
     /* MTC0 Cause may write software interrupt requests IP0/IP1, but must
      * preserve the external hardware request on IP2. MFC0 observes the
      * combined value after its normal one-instruction transfer delay. */
