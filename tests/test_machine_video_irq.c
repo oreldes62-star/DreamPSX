@@ -166,6 +166,7 @@ int main(void)
         machine.cop0_status = PSX_COP0_STATUS_IEC | PSX_COP0_CAUSE_IP2;
         assert(psx_machine_advance_system_cycles(&machine, total_cycles));
         whole_irq_stat = psx_irq_read_stat(&machine.irq);
+        assert((whole_irq_stat & 1u) != 0u);
         whole_timer1 = machine.timers.timer[1].counter;
         whole_source_level = machine.irq.source_level;
         whole_cause = machine.cop0_cause;
