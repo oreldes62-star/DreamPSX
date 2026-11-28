@@ -7,9 +7,10 @@
 #include "dc/video.h"
 #include "dreampsx/kos_video_backend.h"
 
-static uint16_t dreamcast_framebuffer[PSX_KOS_VIDEO_WIDTH *
-                                      PSX_KOS_VIDEO_HEIGHT];
-uint16_t *vram_s = dreamcast_framebuffer;
+static uint16_t framebuffer_a[PSX_KOS_VIDEO_WIDTH * PSX_KOS_VIDEO_HEIGHT];
+static uint16_t framebuffer_b[PSX_KOS_VIDEO_WIDTH * PSX_KOS_VIDEO_HEIGHT];
+uint16_t *vram_s = framebuffer_a;
+static uint16_t *displayed_framebuffer;
 static unsigned selected_mode;
 static vid_pixel_mode_t selected_pixel_mode;
 static unsigned waitvbl_count;
@@ -32,7 +33,9 @@ void vid_clear(uint8_t r, uint8_t g, uint8_t b)
     (void)r;
     (void)g;
     (void)b;
-    memset(dreamcast_framebuffer, 0, sizeof(dreamcast_framebuffer));
+    assert(vram_s != NULL);
+    memset(vram_s, 0, PSX_KOS_VIDEO_WIDTH * PSX_KOS_VIDEO_HEIGHT *
+                     sizeof(*vram_s));
 }
 
 void vid_waitvbl(void)
@@ -43,6 +46,8 @@ void vid_waitvbl(void)
 void vid_flip(int32_t framebuffer)
 {
     assert(framebuffer == -1);
+    displayed_framebuffer = vram_s;
+    vram_s = (vram_s == framebuffer_a) ? framebuffer_b : framebuffer_a;
     ++flip_count;
 }
 
@@ -59,6 +64,8 @@ int main(void)
     assert(!dithering_enabled);
     assert(waitvbl_count == 1u);
     assert(flip_count == 1u);
+    assert(displayed_framebuffer == framebuffer_a);
+    assert(vram_s == framebuffer_b);
 
     assert(psx_gpu_init(&gpu, psx_vram,
                         PSX_GPU_VRAM_WIDTH * PSX_GPU_VRAM_HEIGHT));
@@ -71,9 +78,11 @@ int main(void)
     assert(backend.presented_frames == 1u);
     assert(waitvbl_count == 2u);
     assert(flip_count == 2u);
-    assert(dreamcast_framebuffer[0] == 0xf800u);
-    assert(dreamcast_framebuffer[1] == 0xf800u);
-    assert(dreamcast_framebuffer[2] == 0x07e0u);
+    assert(displayed_framebuffer == framebuffer_b);
+    assert(framebuffer_b[0] == 0xf800u);
+    assert(framebuffer_b[1] == 0xf800u);
+    assert(framebuffer_b[2] == 0x07e0u);
+    assert(vram_s == framebuffer_a);
 
     /* A 320-pixel active range must be used instead of the reset 256-pixel
        mode width, otherwise the right edge is sampled from the wrong texel. */
@@ -85,7 +94,9 @@ int main(void)
     assert(backend.presented_frames == 2u);
     assert(waitvbl_count == 3u);
     assert(flip_count == 3u);
-    assert(dreamcast_framebuffer[PSX_KOS_VIDEO_WIDTH - 1u] == 0x07e0u);
+    assert(displayed_framebuffer == framebuffer_a);
+    assert(framebuffer_a[PSX_KOS_VIDEO_WIDTH - 1u] == 0x07e0u);
+    assert(vram_s == framebuffer_b);
 
     assert(!psx_kos_video_backend_present(NULL, &gpu));
     assert(!psx_kos_video_backend_present(&backend, NULL));
