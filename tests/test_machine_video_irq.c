@@ -1083,6 +1083,20 @@ int main(void)
     assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) == 0u);
     assert(!psx_machine_interrupt_eligible(&machine));
 
+    /* A fresh GPU command after acknowledgement must create a new edge
+     * and relatch IRQ1; the prior exception must not erase the new request. */
+    assert(psx_gpu_gp0_write(&machine.gpu, 0x1f000000u));
+    psx_machine_refresh_interrupts(&machine);
+    assert(psx_irq_read_stat(&machine.irq) == (1u << 1u));
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) != 0u);
+    assert(!psx_machine_interrupt_eligible(&machine)); /* EXL still set */
+    assert(psx_gpu_gp1_write(&machine.gpu, 0x02000000u));
+    assert(psx_bus_write16(&machine.bus, PSX_IRQ_STAT_ADDR,
+                           (uint16_t)~(1u << 1u)));
+    psx_machine_refresh_interrupts(&machine);
+    assert(psx_irq_read_stat(&machine.irq) == 0u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) == 0u);
+
     free(vram);
     free(bios);
     free(ram);
