@@ -114,6 +114,58 @@ int main(void)
             PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE + 4u, &expected_irq_status));
         assert((expected_irq_status & PSX_TIMER_MODE_REACHED_TARGET) != 0u);
         assert((psx_irq_read_stat(&machine.irq) & (1u << 5u)) != 0u);
+
+        /* The reset-at-target path must also be invariant to cycle batching. */
+        {
+            const uint32_t reset_chunks[] = {1u, 2147u, 1u, 17u, 2000u,
+                                             2148u, 19u};
+            uint16_t bulk_reset_counter = 0u;
+            uint16_t bulk_reset_mode = 0u;
+            uint16_t bulk_reset_irq = 0u;
+            uint16_t chunk_reset_counter = 0u;
+            uint32_t reset_remaining = 2148u * 2u + 19u;
+
+            psx_machine_reset(&machine);
+            assert(psx_gpu_gp1_write(&machine.gpu, 0x08000000u));
+            assert(psx_timers_write16(&machine.timers,
+                PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE + 8u, 3u));
+            assert(psx_timers_write16(&machine.timers,
+                PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE + 4u,
+                (uint16_t)(timer1_mode | PSX_TIMER_MODE_RESET_AT_TARGET)));
+            assert(psx_machine_advance_system_cycles(&machine,
+                                                      reset_remaining));
+            assert(psx_timers_read16(&machine.timers,
+                PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE,
+                &bulk_reset_counter));
+            bulk_reset_mode = machine.timers.timer[1].mode;
+            bulk_reset_irq = psx_irq_read_stat(&machine.irq);
+
+            psx_machine_reset(&machine);
+            assert(psx_gpu_gp1_write(&machine.gpu, 0x08000000u));
+            assert(psx_timers_write16(&machine.timers,
+                PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE + 8u, 3u));
+            assert(psx_timers_write16(&machine.timers,
+                PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE + 4u,
+                (uint16_t)(timer1_mode | PSX_TIMER_MODE_RESET_AT_TARGET)));
+            for (size_t i = 0u;
+                 i < sizeof(reset_chunks) / sizeof(reset_chunks[0]); ++i) {
+                const uint32_t step = reset_chunks[i] < reset_remaining ?
+                                      reset_chunks[i] : reset_remaining;
+                if (step != 0u) {
+                    assert(psx_machine_advance_system_cycles(&machine, step));
+                    reset_remaining -= step;
+                }
+            }
+            if (reset_remaining != 0u)
+                assert(psx_machine_advance_system_cycles(&machine,
+                                                          reset_remaining));
+            assert(psx_timers_read16(&machine.timers,
+                PSX_TIMER_BASE_ADDR + PSX_TIMER_STRIDE,
+                &chunk_reset_counter));
+            assert(chunk_reset_counter == bulk_reset_counter);
+            assert(machine.timers.timer[1].mode == bulk_reset_mode);
+            assert(psx_irq_read_stat(&machine.irq) == bulk_reset_irq);
+        }
     }
     /* Timer 1 VBlank synchronization is wired to the GPU raster.
      * With sync mode 2 it counts HBlank ticks during VBlank only. The
