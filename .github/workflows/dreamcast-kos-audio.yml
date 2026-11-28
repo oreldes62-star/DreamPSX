@@ -62,7 +62,7 @@ jobs:
             -v "$GITHUB_WORKSPACE:/project" \
             -w /project/platform/dreamcast/audio-smoke \
             pcercuei/dreamcast-toolchain:stable \
-            sh -lc '. /workspace/environ.sh && sh-elf-readelf -h dreampsx-audio-smoke.elf && sh-elf-readelf -h dreampsx-boot-smoke.elf && test "$(sh-elf-ar t libdreampsx_core.a | wc -l)" -eq 25'
+            sh -lc '. /workspace/environ.sh && sh-elf-readelf -h dreampsx-audio-smoke.elf && sh-elf-readelf -h dreampsx-boot-smoke.elf && test "$(sh-elf-ar t libdreampsx_core.a | wc -l)" -eq 26'
 
       - name: Build mkdcdisc image packager
         run: |
