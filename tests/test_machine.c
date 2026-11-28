@@ -93,15 +93,28 @@ int main(void)
      * emulated video-clock modes, independent of CPU-cycle batching.
      */
     {
-        static const unsigned modes[] = {0u, 8u}; /* NTSC 256, PAL 256 */
+        static const unsigned output_modes[] = {8u, 0u}; /* deliberately cross-region */
         const uint32_t total_cycles = 1000003u;
         for (size_t i = 0u; i < sizeof(modes) / sizeof(modes[0]); ++i) {
             uint16_t bulk_counter = 0u;
             uint32_t bulk_dot_phase = 0u;
             uint32_t bulk_video_phase = 0u;
 
+            const PsxVideoClockRegion region =
+                i == 0u ? PSX_VIDEO_CLOCK_NTSC : PSX_VIDEO_CLOCK_PAL;
+            const uint32_t numerator =
+                region == PSX_VIDEO_CLOCK_PAL ? 709379u : 715909u;
+            const uint64_t expected_video =
+                (uint64_t)total_cycles * numerator;
+            const uint32_t expected_video_ticks =
+                (uint32_t)(expected_video / 451584u);
+            const uint32_t expected_video_phase =
+                (uint32_t)(expected_video % 451584u);
+
             psx_machine_reset(&machine);
-            assert(psx_gpu_gp1_write(&machine.gpu, 0x08000000u | modes[i]));
+            assert(psx_gpu_gp1_write(&machine.gpu,
+                0x08000000u | output_modes[i]));
+            assert(psx_machine_set_video_clock_region(&machine, region));
             assert(psx_timers_write16(&machine.timers,
                 PSX_TIMER_BASE_ADDR + 4u,
                 (uint16_t)(1u << PSX_TIMER_MODE_CLOCK_SHIFT)));
@@ -110,9 +123,14 @@ int main(void)
                 PSX_TIMER_BASE_ADDR, &bulk_counter));
             bulk_dot_phase = machine.timer0_dot_phase;
             bulk_video_phase = machine.gpu_video_clock_phase;
+            assert(bulk_video_phase == expected_video_phase);
+            assert(bulk_dot_phase == expected_video_ticks % 10u);
+            assert(bulk_counter == (uint16_t)(expected_video_ticks / 10u));
 
             psx_machine_reset(&machine);
-            assert(psx_gpu_gp1_write(&machine.gpu, 0x08000000u | modes[i]));
+            assert(machine.gpu_video_clock_region == region);
+            assert(psx_gpu_gp1_write(&machine.gpu,
+                0x08000000u | output_modes[i]));
             assert(psx_timers_write16(&machine.timers,
                 PSX_TIMER_BASE_ADDR + 4u,
                 (uint16_t)(1u << PSX_TIMER_MODE_CLOCK_SHIFT)));
