@@ -11,11 +11,38 @@ static void pulse_irq(PsxSio *sio)
     }
 }
 
-static void queue_byte(PsxSio *sio, uint8_t value)
+static void complete_transfer(PsxSio *sio)
 {
-    sio->response[0] = value;
+    if (!sio || !sio->tx_busy) return;
+    sio->tx_busy = false;
+    sio->response[0] = sio->pending_response;
     sio->response_size = 1u;
     sio->response_index = 0u;
+    if (sio->control & PSX_SIO_CTRL_TXIEN) pulse_irq(sio);
+    if ((sio->pending_ack && (sio->control & PSX_SIO_CTRL_DSRIEN)) ||
+        ((sio->control & PSX_SIO_CTRL_RXIEN) &&
+         sio->response_size >= (1u << ((sio->control >> 8u) & 3u))))
+        pulse_irq(sio);
+    sio->pending_ack = false;
+}
+
+static uint32_t transfer_duration(const PsxSio *sio)
+{
+    static const uint16_t divisors[4] = {1u, 16u, 64u, 256u};
+    uint32_t baud = sio->baud ? sio->baud : 1u;
+    uint32_t divider = divisors[sio->mode & 3u];
+    return baud * divider * 10u; /* start + 8 data + stop bit */
+}
+
+void psx_sio_advance_cycles(PsxSio *sio, uint32_t cycles)
+{
+    if (!sio || !sio->initialized || !sio->tx_busy || cycles == 0u) return;
+    if (cycles >= sio->tx_cycles_remaining) {
+        sio->tx_cycles_remaining = 0u;
+        complete_transfer(sio);
+    } else {
+        sio->tx_cycles_remaining -= cycles;
+    }
 }
 
 bool psx_sio_init(PsxSio *sio)
@@ -58,6 +85,8 @@ static void sio_data_write(PsxSio *sio, uint8_t value)
 {
     uint8_t response = 0xffu;
     bool acknowledged = false;
+
+    if (sio->tx_busy) return;
 
     /* SIO0 /CS is DTR (CTRL.1). RXEN (CTRL.2) allows one forced byte. */
     if (!sio->connected ||
@@ -102,14 +131,10 @@ static void sio_data_write(PsxSio *sio, uint8_t value)
         break;
     }
 
-    queue_byte(sio, response);
-
-    if (sio->control & PSX_SIO_CTRL_TXIEN)
-        pulse_irq(sio);
-    if ((acknowledged && (sio->control & PSX_SIO_CTRL_DSRIEN)) ||
-        ((sio->control & PSX_SIO_CTRL_RXIEN) &&
-         sio->response_size >= (1u << ((sio->control >> 8u) & 3u))))
-        pulse_irq(sio);
+    sio->pending_response = response;
+    sio->pending_ack = acknowledged;
+    sio->tx_cycles_remaining = transfer_duration(sio);
+    sio->tx_busy = true;
 }
 
 bool psx_sio_read8(PsxSio *sio, uint32_t address, uint8_t *value)
@@ -128,7 +153,8 @@ bool psx_sio_read8(PsxSio *sio, uint32_t address, uint8_t *value)
         return true;
     }
     if (address == PSX_SIO_STAT_ADDR) {
-        uint16_t status = PSX_SIO_STAT_TX_READY | PSX_SIO_STAT_TX_EMPTY;
+        uint16_t status = 0u;
+        if (!sio->tx_busy) status |= PSX_SIO_STAT_TX_READY | PSX_SIO_STAT_TX_EMPTY;
         if (sio->response_size) status |= PSX_SIO_STAT_RX_READY;
         if (sio->connected && sio->response_size) status |= PSX_SIO_STAT_DSR;
         if (sio->irq_pending) status |= PSX_SIO_STAT_IRQ;
