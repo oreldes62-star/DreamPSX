@@ -41,6 +41,7 @@ typedef struct {
     uint32_t gpu_scanline_cycle_remainder;
     uint32_t gpu_scanline_mode;
     uint32_t gpu_video_clock_phase;
+    uint32_t gpu_scanline_video_clock_phase;
     PsxVideoClockRegion gpu_video_clock_region;
     uint32_t timer0_dot_phase;
     uint32_t timer0_dot_divisor;
