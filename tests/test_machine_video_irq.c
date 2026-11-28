@@ -458,6 +458,42 @@ int main(void)
     assert((machine.cop0_cause & PSX_COP0_CAUSE_BD) == 0u);
     assert(psx_cpu_read_gpr(&machine.cpu, 11u) == 42u);
 
+
+    /* A guest SW to Timer0 MODE must reset the toggle output line while
+     * preserving the already-latched I_STAT request. This checks the full
+     * CPU -> bus -> timer/IRQ path, not only direct register helpers. */
+    psx_machine_reset(&machine);
+    assert(psx_bus_write16(&machine.bus, PSX_IRQ_MASK_ADDR,
+                           (uint16_t)(1u << 4u)));
+    assert(psx_bus_write16(&machine.bus, PSX_TIMER_BASE_ADDR + 8u, 1u));
+    assert(psx_bus_write16(&machine.bus, PSX_TIMER_BASE_ADDR + 4u,
+        (uint16_t)(PSX_TIMER_MODE_RESET_AT_TARGET |
+                   PSX_TIMER_MODE_IRQ_TARGET | PSX_TIMER_MODE_IRQ_REPEAT |
+                   PSX_TIMER_MODE_IRQ_TOGGLE)));
+    assert(psx_machine_timer_advance_clock(&machine, 0u,
+        PSX_TIMER_CLOCK_SYSTEM, 1u));
+    assert((machine.irq.source_level & (1u << 4u)) != 0u);
+    assert((psx_irq_read_stat(&machine.irq) & (1u << 4u)) != 0u);
+
+    /* t0 = 0x1f801104 (Timer0 MODE), t1 = 0. */
+    assert(psx_bus_write32(&machine.bus, 0u, 0x3c081f80u)); /* LUI t0,1f80 */
+    assert(psx_bus_write32(&machine.bus, 4u, 0x35081104u)); /* ORI t0,t0,1104 */
+    assert(psx_bus_write32(&machine.bus, 8u, 0x24090000u)); /* ADDIU t1,zero,0 */
+    assert(psx_bus_write32(&machine.bus, 12u, 0xad090000u)); /* SW t1,0(t0) */
+    machine.cpu.pc = 0u;
+    machine.cpu.next_pc = 4u;
+    machine.cop0_status = 0u; /* Let the guest finish the MODE write first. */
+    for (unsigned i = 0u; i < 4u; ++i)
+        assert(psx_machine_step(&machine));
+    assert(machine.cpu.pc == 16u);
+    assert((machine.irq.source_level & (1u << 4u)) == 0u);
+    assert((psx_irq_read_stat(&machine.irq) & (1u << 4u)) != 0u);
+    assert(!machine.timers.timer[0].irq_toggle_state);
+    machine.cop0_status = PSX_COP0_STATUS_IEC | (1u << 10u);
+    psx_machine_refresh_interrupts(&machine);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) != 0u);
+    assert(psx_machine_interrupt_eligible(&machine));
+
     free(vram);
     free(bios);
     free(ram);
