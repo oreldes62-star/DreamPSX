@@ -17,6 +17,7 @@
 #define PSX_TIMER_MODE_IRQ_TARGET (1u << 4)
 #define PSX_TIMER_MODE_IRQ_OVERFLOW (1u << 5)
 #define PSX_TIMER_MODE_IRQ_REPEAT (1u << 6)
+#define PSX_TIMER_MODE_IRQ_TOGGLE (1u << 7)
 #define PSX_TIMER_MODE_CLOCK_SHIFT 8u
 
 typedef enum {
@@ -32,6 +33,7 @@ typedef struct {
     uint16_t mode;
     uint16_t target;
     bool irq_fired;
+    bool irq_toggle_state;
     bool sync_signal_active;
     bool sync_started;
 } PsxTimer;
