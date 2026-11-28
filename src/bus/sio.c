@@ -41,10 +41,10 @@ static void sio_data_write(PsxSio *sio, uint8_t value)
     static const uint8_t ack[] = {0xffu};
     static const uint8_t id[] = {0x41u};
     static const uint8_t poll_header[] = {0x5au};
-    uint8_t buttons_low, buttons_high;
-    uint8_t response[3];
+    uint8_t button_byte;
 
     if (!sio->connected || !(sio->control & 0x0002u)) {
+        sio->phase = 0u;
         queue_response(sio, ack, 1u);
         return;
     }
@@ -63,13 +63,14 @@ static void sio_data_write(PsxSio *sio, uint8_t value)
         queue_response(sio, poll_header, 1u);
         break;
     case 3u:
-        buttons_low = (uint8_t)~sio->buttons;
-        buttons_high = (uint8_t)~(sio->buttons >> 8u);
-        response[0] = buttons_low;
-        response[1] = buttons_high;
-        response[2] = 0xffu;
+        button_byte = (uint8_t)~sio->buttons;
+        sio->phase = 4u;
+        queue_response(sio, &button_byte, 1u);
+        break;
+    case 4u:
+        button_byte = (uint8_t)~(sio->buttons >> 8u);
         sio->phase = 0u;
-        queue_response(sio, response, 3u);
+        queue_response(sio, &button_byte, 1u);
         break;
     default:
         sio->phase = 0u;
