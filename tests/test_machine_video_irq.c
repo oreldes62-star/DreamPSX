@@ -1159,6 +1159,51 @@ int main(void)
     assert(psx_irq_read_stat(&machine.irq) == 0u);
     assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) == 0u);
 
+    /* All three timer IRQs plus GPU IRQ1 must survive exception entry
+     * and RFE. Each source is acknowledged independently after re-entry. */
+    psx_machine_reset(&machine);
+    psx_irq_write_mask(&machine.irq, 0x0072u);
+    machine.cop0_status = PSX_COP0_STATUS_IEC | (1u << 10u);
+    assert(psx_bus_write32(&machine.bus, 0x80u, 0x42000010u)); /* RFE */
+    for (unsigned timer = 0u; timer < PSX_TIMER_COUNT; ++timer) {
+        const uint32_t base = PSX_TIMER_BASE_ADDR +
+                              timer * PSX_TIMER_STRIDE;
+        assert(psx_timers_write16(&machine.timers, base + 8u, 1u));
+        assert(psx_timers_write16(&machine.timers, base + 4u,
+                                  PSX_TIMER_MODE_IRQ_TARGET));
+        assert(psx_machine_timer_advance_clock(&machine, timer,
+            PSX_TIMER_CLOCK_SYSTEM, 1u));
+    }
+    assert(psx_gpu_gp0_write(&machine.gpu, 0x1f000000u));
+    psx_machine_refresh_interrupts(&machine);
+    assert(psx_irq_read_stat(&machine.irq) == 0x0072u);
+    assert(psx_machine_step(&machine)); /* first interrupt */
+    assert(machine.cpu.pc == 0x80000080u);
+    assert(psx_machine_step(&machine)); /* RFE */
+    assert((machine.cop0_status & PSX_COP0_STATUS_IEC) != 0u);
+    assert(psx_machine_step(&machine)); /* all four sources re-enter */
+    assert(machine.cpu.pc == 0x80000080u);
+    assert(machine.cop0_epc == 0x80000084u);
+    assert(psx_gpu_gp1_write(&machine.gpu, 0x02000000u));
+    assert(psx_bus_write16(&machine.bus, PSX_IRQ_STAT_ADDR,
+                           (uint16_t)~(1u << 1u)));
+    psx_machine_refresh_interrupts(&machine);
+    assert(psx_irq_read_stat(&machine.irq) == 0x0070u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) != 0u);
+    for (unsigned timer = 0u; timer < PSX_TIMER_COUNT; ++timer) {
+        const uint16_t bit = (uint16_t)(1u << (timer + 4u));
+        assert(psx_bus_write16(&machine.bus, PSX_IRQ_STAT_ADDR,
+                               (uint16_t)~bit));
+        psx_machine_refresh_interrupts(&machine);
+        assert(psx_irq_read_stat(&machine.irq) ==
+               (uint16_t)(0x0070u & (uint16_t)~((1u << (timer + 4u)) |
+                   ((1u << timer) - 1u << 4u))));
+        if (timer + 1u < PSX_TIMER_COUNT)
+            assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) != 0u);
+    }
+    assert(psx_irq_read_stat(&machine.irq) == 0u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) == 0u);
+
     free(vram);
     free(bios);
     free(ram);
