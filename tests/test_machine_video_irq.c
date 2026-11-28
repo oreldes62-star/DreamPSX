@@ -318,6 +318,39 @@ int main(void)
     psx_machine_refresh_interrupts(&machine);
     assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) == 0u);
 
+    /* Simultaneous VBlank IRQ0 and GPU command IRQ1 requests must remain
+     * independently latched when either device is acknowledged. */
+    psx_machine_reset(&machine);
+    assert(psx_gpu_gp1_write(&machine.gpu,
+        0x07000000u | (256u << 10u) | 16u));
+    assert(psx_gpu_gp1_write(&machine.gpu, 0x08000000u));
+    psx_irq_write_mask(&machine.irq, (uint16_t)((1u << 0u) | (1u << 1u)));
+    machine.cop0_status = PSX_COP0_STATUS_IEC | (1u << 10u);
+    assert(psx_machine_video_advance_scanline(&machine, &video));
+    assert(video.vblank_started);
+    assert(psx_bus_write32(&machine.bus, 0x1f801810u, 0x1f000000u));
+    psx_machine_refresh_interrupts(&machine);
+    assert((psx_irq_read_stat(&machine.irq) & 0x0003u) == 0x0003u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) != 0u);
+
+    /* Acknowledge the GPU's device-side IRQ1, then clear only its I_STAT bit.
+     * VBlank IRQ0 must remain pending on the shared CPU interrupt line. */
+    assert(psx_bus_write32(&machine.bus, 0x1f801814u, 0x02000000u));
+    psx_irq_write_stat(&machine.irq, (uint16_t)~(1u << 1u));
+    psx_machine_refresh_interrupts(&machine);
+    assert((psx_irq_read_stat(&machine.irq) & 0x0003u) == 0x0001u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) != 0u);
+
+    /* Once VBlank ends, its source line falls; clearing IRQ0 now drops IP2. */
+    for (unsigned i = 0u; i < 15u; ++i)
+        assert(psx_machine_video_advance_scanline(&machine, &video));
+    assert(video.scanline == 16u && !video.vblank);
+    psx_irq_write_stat(&machine.irq, (uint16_t)~1u);
+    psx_machine_refresh_interrupts(&machine);
+    assert((psx_irq_read_stat(&machine.irq) & 0x0003u) == 0u);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) == 0u);
+    assert(!psx_machine_interrupt_eligible(&machine));
+
     free(vram);
     free(bios);
     free(ram);
