@@ -147,3 +147,15 @@ target_include_directories(test_kos_video_backend PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/tests/kos_stub
 )
 add_test(NAME test_kos_video_backend COMMAND test_kos_video_backend)
+
+
+# Host-test the Dreamcast Maple controller input adapter.
+add_executable(test_kos_input_backend
+    tests/test_kos_input_backend.c
+    src/platform/dreamcast/kos_input_backend.c
+)
+target_include_directories(test_kos_input_backend PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/kos_stub
+)
+target_link_libraries(test_kos_input_backend PRIVATE dreampsx_core)
+add_test(NAME test_kos_input_backend COMMAND test_kos_input_backend)
