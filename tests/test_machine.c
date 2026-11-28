@@ -186,6 +186,26 @@ int main(void)
         assert(machine.timers.timer[0].counter == 3u);
     }
 
+    /* Timer 0 mode 1 must reset at each raster HBlank edge, after the
+     * system clocks preceding that edge have elapsed. Ten cycles after the
+     * second line boundary therefore leave a counter value of ten.
+     */
+    {
+        const uint16_t mode = (uint16_t)(
+            PSX_TIMER_MODE_SYNC_ENABLE |
+            (1u << PSX_TIMER_MODE_SYNC_SHIFT));
+
+        psx_machine_reset(&machine);
+        assert(psx_timers_write16(&machine.timers,
+            PSX_TIMER_BASE_ADDR + 4u, mode));
+        assert(psx_timers_write16(&machine.timers,
+            PSX_TIMER_BASE_ADDR, 77u));
+        assert(psx_machine_advance_system_cycles(&machine,
+                                                   2148u * 2u + 10u));
+        assert(machine.timers.timer[0].sync_started);
+        assert(machine.timers.timer[0].counter == 10u);
+    }
+
     psx_machine_reset(&machine);
     /* SPU output cadence is clocked at 44.1 kHz: 768 master cycles/frame. */
     {
