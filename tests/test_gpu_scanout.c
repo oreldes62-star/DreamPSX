@@ -29,13 +29,13 @@ int main(void)
     assert(psx_gpu_gp1_write(&gpu, 0x03000000u));
     assert(psx_gpu_scanout_rgb565(&gpu, 3u, 2u, output, 4u));
 
-    assert(output[0] == 0x001fu);
+    assert(output[0] == 0xf800u);
     assert(output[1] == 0x07e0u);
-    assert(output[2] == 0xf800u);
+    assert(output[2] == 0x001fu);
     assert(output[3] == 0xaaaau);
     assert(output[4] == 0xffffu);
     assert(output[5] == 0u);
-    assert(output[6] == 0xffe0u);
+    assert(output[6] == 0x07ffu);
     assert(output[7] == 0xaaaau);
 
     /* 24-bit pixels are packed RGB bytes within each VRAM scanline.
@@ -54,13 +54,13 @@ int main(void)
     vram[1u] = 0x0000u;
     vram[2u] = 0x00ffu;
     assert(psx_gpu_scanout_rgb565(&gpu, 3u, 2u, output, 4u));
-    assert(output[0] == 0x441fu); /* (255,128,64) */
-    assert(output[1] == 0xf900u); /* (0,32,255) */
-    assert(output[2] == 0xf800u); /* (0,0,255) */
+    assert(output[0] == 0xfc08u); /* (255,128,64) */
+    assert(output[1] == 0x011fu); /* (0,32,255) */
+    assert(output[2] == 0x001fu); /* (0,0,255) */
     assert(output[3] == 0xaaaau);
     assert(output[4] == 0xf81fu); /* (255,0,255) */
     assert(output[5] == 0u);    /* (0,0,0) */
-    assert(output[6] == 0xf800u); /* (0,0,255) */
+    assert(output[6] == 0x001fu); /* (0,0,255) */
     assert(output[7] == 0xaaaau);
 
     /* Reject invalid dimensions and destination stride. */
