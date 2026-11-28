@@ -119,9 +119,7 @@ static void configure_timing_invariance_machine(PsxMachine *machine)
         PSX_TIMER_BASE_ADDR + 2u * PSX_TIMER_STRIDE + 4u, timer2_mode));
 }
 
-static void test_shared_clock_batch_invariance(PsxMachine *machine,
-                                                uint8_t *ram, uint8_t *bios,
-                                                uint16_t *vram)
+static void test_shared_clock_batch_invariance(void)
 {
     PsxMachine bulk;
     PsxMachine chunked;
@@ -165,7 +163,6 @@ static void test_shared_clock_batch_invariance(PsxMachine *machine,
     assert(bulk.gpu_video_clock_phase == chunked.gpu_video_clock_phase);
     assert(bulk.timer0_dot_phase == chunked.timer0_dot_phase);
 
-    (void)machine; (void)ram; (void)bios; (void)vram;
     free(chunk_vram); free(chunk_bios); free(chunk_ram);
     free(bulk_vram); free(bulk_bios); free(bulk_ram);
 }
@@ -177,7 +174,7 @@ int main(void)
     uint8_t *bios;
     uint16_t *vram;
     init_machine(&machine, &ram, &bios, &vram);
-    test_shared_clock_batch_invariance(&machine, ram, bios, vram);
+    test_shared_clock_batch_invariance();
 
     /* Timer 1 synchronization is driven by VBlank, while its selected
      * external clock is HBlank (one tick per scanline). */
