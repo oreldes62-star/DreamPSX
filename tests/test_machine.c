@@ -163,6 +163,29 @@ int main(void)
         assert(machine.timers.timer[0].counter == 0u);
     }
 
+    /* Timer 0 synchronization mode 3 waits for the first HBlank edge,
+     * then free-runs on the system clock. This verifies the GPU-to-timer
+     * edge wiring independently from the Timer subsystem unit test.
+     */
+    {
+        PsxGpuVideoState video;
+        const uint16_t mode = (uint16_t)(
+            PSX_TIMER_MODE_SYNC_ENABLE |
+            (3u << PSX_TIMER_MODE_SYNC_SHIFT));
+
+        psx_machine_reset(&machine);
+        assert(psx_timers_write16(&machine.timers,
+            PSX_TIMER_BASE_ADDR + 4u, mode));
+        assert(psx_machine_advance_system_cycles(&machine, 5u));
+        assert(machine.timers.timer[0].counter == 0u);
+        assert(psx_machine_video_advance_scanline(&machine, &video));
+        assert(video.hblank_pulse);
+        assert(machine.timers.timer[0].sync_started);
+        assert(!machine.timers.timer[0].sync_signal_active);
+        assert(psx_machine_advance_system_cycles(&machine, 3u));
+        assert(machine.timers.timer[0].counter == 3u);
+    }
+
     psx_machine_reset(&machine);
     /* SPU output cadence is clocked at 44.1 kHz: 768 master cycles/frame. */
     {
