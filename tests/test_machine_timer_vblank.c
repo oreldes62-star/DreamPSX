@@ -16,6 +16,32 @@ static void init_machine(PsxMachine *machine, uint8_t **ram_out,
                             PSX_GPU_VRAM_WIDTH * PSX_GPU_VRAM_HEIGHT));
 }
 
+static void test_timer2_div8_instruction_boundaries(PsxMachine *machine)
+{
+    const uint32_t timer2_mode = 3u << PSX_TIMER_MODE_CLOCK_SHIFT;
+    psx_machine_reset(machine);
+    assert(psx_timers_write16(machine ? &machine->timers : NULL,
+        PSX_TIMER_BASE_ADDR + 2u * PSX_TIMER_STRIDE + 4u,
+        (uint16_t)timer2_mode));
+
+    /* Eight NOPs each consume one baseline CPU cycle. Timer 2's /8
+     * divider must carry its phase across individual instruction steps. */
+    for (unsigned i = 0u; i < 8u; ++i)
+        assert(psx_bus_write32(&machine->bus, i * 4u, 0u));
+    machine->cpu.pc = 0u;
+    machine->cpu.next_pc = 4u;
+
+    for (unsigned i = 0u; i < 7u; ++i) {
+        assert(psx_machine_step(machine));
+        assert(psx_cpu_last_step_cycles(&machine->cpu) == 1u);
+        assert(machine->timer2_div8_phase == i + 1u);
+        assert(machine->timers.timer[2].counter == 0u);
+    }
+    assert(psx_machine_step(machine));
+    assert(machine->timer2_div8_phase == 0u);
+    assert(machine->timers.timer[2].counter == 1u);
+}
+
 static uint16_t run_timer1_mode(PsxMachine *machine, unsigned sync_mode,
                                 unsigned lines, bool pal, bool chunked)
 {
@@ -175,6 +201,7 @@ int main(void)
     uint16_t *vram;
     init_machine(&machine, &ram, &bios, &vram);
     test_shared_clock_batch_invariance();
+    test_timer2_div8_instruction_boundaries(&machine);
 
     /* Timer 1 synchronization is driven by VBlank, while its selected
      * external clock is HBlank (one tick per scanline). */
