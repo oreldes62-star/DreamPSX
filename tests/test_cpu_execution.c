@@ -238,6 +238,44 @@ int main(void)
     assert(machine.cop0_status == 0x0000003fu);
     assert(psx_cpu_read_gpr(&machine.cpu, 10u) == 0x55u);
 
+    /* MTC0 Cause may write software interrupt requests IP0/IP1, but must
+     * preserve the external hardware request on IP2. MFC0 observes the
+     * combined value after its normal one-instruction transfer delay. */
+    machine.cop0_status = 0u;
+    machine.cop0_cause = 0u;
+    psx_irq_write_mask(&machine.irq, (uint16_t)(1u << 1u));
+    psx_irq_set_line(&machine.irq, 1u, true);
+    psx_machine_refresh_interrupts(&machine);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) != 0u);
+    put_word(ram, 0x174u, 0x40886800u); /* MTC0 t0,Cause */
+    put_word(ram, 0x178u, 0x40096800u); /* MFC0 t1,Cause */
+    put_word(ram, 0x17cu, 0x24020001u); /* ADDIU v0,zero,1 */
+    psx_cpu_write_gpr(&machine.cpu, 8u, 0xffffffffu);
+    psx_cpu_write_gpr(&machine.cpu, 9u, 0u);
+    machine.cpu.pc = 0x174u;
+    machine.cpu.next_pc = 0x178u;
+    machine.cpu.delay_slot_pending = false;
+    machine.cpu.load_delay_pending = false;
+    assert(psx_machine_step(&machine));
+    assert((machine.cop0_cause & 0x00000700u) == 0x00000700u);
+    assert(psx_machine_step(&machine)); /* MFC0 queues combined Cause */
+    assert(psx_cpu_read_gpr(&machine.cpu, 9u) == 0u);
+    assert(psx_machine_step(&machine)); /* retire MFC0 */
+    assert(psx_cpu_read_gpr(&machine.cpu, 9u) == 0x00000700u);
+    assert(psx_cpu_read_gpr(&machine.cpu, 2u) == 1u);
+
+    /* Clearing software IP0/IP1 must not clear the live external IP2 line. */
+    put_word(ram, 0x180u, 0x40886800u); /* MTC0 t0,Cause */
+    psx_cpu_write_gpr(&machine.cpu, 8u, 0u);
+    machine.cpu.pc = 0x180u;
+    machine.cpu.next_pc = 0x184u;
+    assert(psx_machine_step(&machine));
+    assert((machine.cop0_cause & 0x00000700u) == 0x00000400u);
+    psx_irq_set_line(&machine.irq, 1u, false);
+    psx_machine_refresh_interrupts(&machine);
+    assert((machine.cop0_cause & PSX_COP0_CAUSE_IP2) == 0u);
+    psx_irq_write_mask(&machine.irq, 0u);
+
     /* COP0 is rejected while the current mode is user mode. */
     machine.cop0_status = PSX_COP0_STATUS_KUC;
     machine.cpu.pc = 0x164u;
