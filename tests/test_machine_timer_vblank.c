@@ -224,7 +224,7 @@ static void run_mixed_timer_clocks(PsxMachine *machine, bool pal,
         for (size_t i = 0u; i < sizeof(chunks) / sizeof(chunks[0]); ++i)
             assert(psx_machine_advance_system_cycles(machine, chunks[i]));
     } else {
-        const uint32_t chunks[] = {322u, 1u, 700u, 914u, 1u, 214u};
+        const uint32_t chunks[] = {322u, 1u, 700u, 914u, 1u, 215u};
         for (size_t i = 0u; i < sizeof(chunks) / sizeof(chunks[0]); ++i)
             assert(psx_machine_advance_system_cycles(machine, chunks[i]));
     }
