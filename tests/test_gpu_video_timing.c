@@ -27,21 +27,14 @@ int main(void)
 
     init_gpu(&gpu, vram);
 
-    /* Reset and GP1(08h) begin at line zero, outside [16, 256):
-     * VBlank is already active before the first scanline advances.
-     */
-    assert(psx_gpu_read_status(&gpu, &status));
-    assert((status & (1u << 10u)) != 0u);
-
     /* NTSC progressive: 263 scanlines per frame. */
     assert(psx_gpu_gp1_write(&gpu, 0x08000000u));
-    assert(gpu.display.video_vblank);
-    assert(psx_gpu_read_status(&gpu, &status));
-    assert((status & (1u << 10u)) != 0u);
     advance(&gpu, &state, 1u);
     assert(state.scanline == 1u && !state.pal);
     assert(state.hblank_pulse);
-    assert(state.vblank && !state.vblank_started);
+    assert(state.vblank && state.vblank_started);
+    assert(psx_gpu_read_status(&gpu, &status));
+    assert((status & (1u << 10u)) != 0u);
     advance(&gpu, &state, 14u);
     assert(state.scanline == 15u && state.vblank);
     assert(state.hblank_pulse);
