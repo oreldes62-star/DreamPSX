@@ -203,20 +203,33 @@ static uint32_t psx_machine_video_position_to_cpu_cycles(
 bool psx_machine_timer_advance_clock(PsxMachine *machine, unsigned timer,
                                      PsxTimerClock clock, uint32_t ticks)
 {
-    uint8_t irq_sources = 0u;
-    if (!machine || !psx_timers_advance_clock(&machine->timers, timer,
-                                               clock, ticks, &irq_sources))
+    uint32_t irq_event_count = 0u;
+    if (!machine || !psx_timers_advance_clock_events(
+            &machine->timers, timer, clock, ticks, &irq_event_count))
         return false;
-    if ((irq_sources & (1u << timer)) != 0u) {
+    if (irq_event_count != 0u) {
         PsxTimer *source = &machine->timers.timer[timer];
         if ((source->mode & PSX_TIMER_MODE_IRQ_TOGGLE) != 0u) {
-            /* Toggle mode holds the timer IRQ output until the next event.
-             * The interrupt controller latches only the low-to-high edge. */
-            source->irq_toggle_state = !source->irq_toggle_state;
-            psx_irq_set_line(&machine->irq, 4u + timer,
-                             source->irq_toggle_state);
+            const bool initial_level = source->irq_toggle_state;
+            const bool final_level =
+                initial_level ^ ((irq_event_count & 1u) != 0u);
+
+            /* Preserve every low-to-high transition in a batched advance.
+             * A batch can contain several events, so the final level alone
+             * is insufficient: an intermediate rising edge must latch I_STAT.
+             */
+            if (!initial_level) {
+                psx_irq_set_line(&machine->irq, 4u + timer, true);
+            } else if (irq_event_count >= 2u) {
+                psx_irq_set_line(&machine->irq, 4u + timer, false);
+                psx_irq_set_line(&machine->irq, 4u + timer, true);
+            }
+            if (!final_level)
+                psx_irq_set_line(&machine->irq, 4u + timer, false);
+            source->irq_toggle_state = final_level;
         } else {
-            /* Pulse mode presents a short active pulse for each IRQ event. */
+            /* Pulse mode needs one observable rising edge per batch; I_STAT
+             * is a latch, so additional pulses cannot add information here. */
             psx_irq_set_line(&machine->irq, 4u + timer, true);
             psx_irq_set_line(&machine->irq, 4u + timer, false);
         }
